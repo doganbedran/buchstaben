@@ -22,8 +22,103 @@ const zustand = {
 
 const MAX_STERNE = 3;
 
-// Bild als Emoji oder als Bilddatei (für Wörter ohne passendes Emoji)
+// ---------- Profile, Fotos & Aufnahmen (IndexedDB, nur auf diesem Gerät) ----------
+
+// "Standard" ist kein Datenbank-Eintrag: Thorsten + mitgelieferte Bilder, immer vorhanden.
+const STANDARD = { id: 'standard', name: 'Standard' };
+zustand.profil = speicher.lesen('profil', STANDARD.id);
+
+const datenbank = (() => {
+  let dbPromise = null;
+  function oeffnen() {
+    if (!dbPromise) {
+      dbPromise = new Promise((resolve, reject) => {
+        const req = indexedDB.open('lernapp', 2);
+        req.onupgradeneeded = (ev) => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('aufnahmen')) db.createObjectStore('aufnahmen');
+          if (!db.objectStoreNames.contains('profile')) db.createObjectStore('profile', { keyPath: 'id' });
+          if (!db.objectStoreNames.contains('medien')) db.createObjectStore('medien');
+          if (ev.oldVersion === 1) aufnahmenUebernehmen(req.transaction);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    return dbPromise;
+  }
+  // Version 1 kannte nur Aufnahmen ohne Profil: in ein Profil "Eigene Aufnahmen" übernehmen
+  function aufnahmenUebernehmen(tx) {
+    const alt = tx.objectStore('aufnahmen');
+    const schluessel = alt.getAllKeys();
+    const werte = alt.getAll();
+    werte.onsuccess = () => {
+      if (!schluessel.result.length) return;
+      const id = 'p-uebernommen';
+      tx.objectStore('profile').put({ id, name: 'Eigene Aufnahmen', erstellt: Date.now() });
+      schluessel.result.forEach((b, i) => tx.objectStore('medien').put(werte.result[i], `${id}|${b}|stimme`));
+      alt.clear();
+      zustand.profil = id;
+      speicher.schreiben('profil', id);
+    };
+  }
+  async function aktion(store, modus, fn) {
+    try {
+      const db = await oeffnen();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(store, modus);
+        const req = fn(tx.objectStore(store));
+        tx.oncomplete = () => resolve(req && req.result);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch { return undefined; }
+  }
+  const bereich = (id) => IDBKeyRange.bound(`${id}|`, `${id}|￿`);
+  return {
+    profile: async () => ((await aktion('profile', 'readonly', (s) => s.getAll())) || [])
+      .sort((a, b) => a.erstellt - b.erstellt),
+    profilSpeichern: (p) => aktion('profile', 'readwrite', (s) => s.put(p)),
+    async profilLoeschen(id) {
+      await aktion('medien', 'readwrite', (s) => s.delete(bereich(id)));
+      await aktion('profile', 'readwrite', (s) => s.delete(id));
+    },
+    medienSetzen: (id, b, art, blob) => aktion('medien', 'readwrite', (s) => s.put(blob, `${id}|${b}|${art}`)),
+    medienEntfernen: (id, b, art) => aktion('medien', 'readwrite', (s) => s.delete(`${id}|${b}|${art}`)),
+    async medienVon(id) {
+      const [schluessel, werte] = await Promise.all([
+        aktion('medien', 'readonly', (s) => s.getAllKeys(bereich(id))),
+        aktion('medien', 'readonly', (s) => s.getAll(bereich(id))),
+      ]);
+      return (schluessel || []).map((k, i) => ({ schluessel: k, blob: werte[i] }));
+    },
+  };
+})();
+
+// Eigene Fotos/Aufnahmen des aktiven Profils, im Speicher für schnellen Zugriff: b -> { bildUrl, stimme }
+let medien = {};
+
+async function medienLaden() {
+  Object.values(medien).forEach((m) => m.bildUrl && URL.revokeObjectURL(m.bildUrl));
+  medien = {};
+  if (zustand.profil === STANDARD.id) return;
+  for (const { schluessel, blob } of await datenbank.medienVon(zustand.profil)) {
+    const [, b, art] = schluessel.split('|');
+    const m = medien[b] || (medien[b] = {});
+    if (art === 'bild') m.bildUrl = URL.createObjectURL(blob);
+    else if (art === 'stimme') m.stimme = blob;
+  }
+}
+
+async function profilAktivieren(id) {
+  zustand.profil = id;
+  speicher.schreiben('profil', id);
+  await medienLaden();
+}
+
+// Bild: eigenes Foto > Bilddatei (für Wörter ohne passendes Emoji) > Emoji
 function bildHtml(eintrag) {
+  const eigenes = medien[eintrag.b] && medien[eintrag.b].bildUrl;
+  if (eigenes) return `<img class="bild-datei foto" src="${eigenes}" alt="${eintrag.wort}">`;
   return eintrag.bild.startsWith('bilder/')
     ? `<img class="bild-datei" src="${eintrag.bild}" alt="${eintrag.wort}">`
     : eintrag.bild;
@@ -34,39 +129,6 @@ function zeichen(eintrag) {
   // 'ß'.toUpperCase() ergäbe "SS" – das große Eszett ist ein eigenes Zeichen
   return eintrag.b === 'ß' ? 'ẞ' : eintrag.b.toUpperCase();
 }
-
-// Aufnahmen der Eltern in IndexedDB (Blobs passen nicht in localStorage)
-const aufnahmeDb = (() => {
-  let dbPromise = null;
-  function oeffnen() {
-    if (!dbPromise) {
-      dbPromise = new Promise((resolve, reject) => {
-        const req = indexedDB.open('lernapp', 1);
-        req.onupgradeneeded = () => req.result.createObjectStore('aufnahmen');
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-    return dbPromise;
-  }
-  async function aktion(modus, fn) {
-    try {
-      const db = await oeffnen();
-      return await new Promise((resolve, reject) => {
-        const tx = db.transaction('aufnahmen', modus);
-        const req = fn(tx.objectStore('aufnahmen'));
-        tx.oncomplete = () => resolve(req && req.result);
-        tx.onerror = () => reject(tx.error);
-      });
-    } catch { return undefined; }
-  }
-  return {
-    holen: (b) => aktion('readonly', (s) => s.get(b)),
-    speichern: (b, blob) => aktion('readwrite', (s) => s.put(blob, b)),
-    loeschen: (b) => aktion('readwrite', (s) => s.delete(b)),
-    alleSchluessel: () => aktion('readonly', (s) => s.getAllKeys()),
-  };
-})();
 
 // ---------- Ton & Sprache ----------
 
@@ -140,11 +202,11 @@ function abspielen(quelle) {
   });
 }
 
-// Reihenfolge: eigene Aufnahme > Audiodatei (Piper) > Sprachausgabe des Geräts
+// Reihenfolge: eigene Aufnahme (aktives Profil) > Audiodatei (Piper) > Sprachausgabe des Geräts
 async function lautAbspielen(eintrag, lob = false) {
   wiedergabeStoppen();
   const nummer = wiedergabe.nummer;
-  const eigene = await aufnahmeDb.holen(eintrag.b);
+  const eigene = medien[eintrag.b] && medien[eintrag.b].stimme;
   const eigeneUrl = eigene ? URL.createObjectURL(eigene) : null;
   const quellen = [];
   if (lob) quellen.push(`audio/lob-${1 + Math.floor(Math.random() * LOB_ANZAHL)}.wav`);
@@ -502,15 +564,20 @@ async function elternOeffnen() {
   const fertig = BUCHSTABEN.filter((e) => (zustand.sterne[e.b] || 0) >= MAX_STERNE).length;
   $('#fortschritt-text').textContent =
     `${gesamt} Sterne gesammelt, ${fertig} von ${BUCHSTABEN.length} Buchstaben mit allen ${MAX_STERNE} Sternen.`;
-  await aufnahmenListe();
+  await elternZeichnen();
   zeigen('eltern');
+}
+
+async function elternZeichnen() {
+  await profileZeichnen();
+  anpassenZeichnen();
 }
 
 document.querySelectorAll('input[name="schreibweise"]').forEach((r) => {
   r.addEventListener('change', () => {
     zustand.schreibweise = r.value;
     speicher.schreiben('schreibweise', r.value);
-    aufnahmenListe();
+    anpassenZeichnen();
   });
 });
 
@@ -522,6 +589,160 @@ $('#btn-reset').addEventListener('click', () => {
   speicher.schreiben('sterne', {});
   elternOeffnen();
 });
+
+// --- Profile ---
+
+function htmlText(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+async function profileZeichnen() {
+  const liste = [STANDARD, ...(await datenbank.profile())];
+  const box = $('#profile');
+  box.innerHTML = '';
+  liste.forEach((p) => {
+    const zeile = document.createElement('label');
+    zeile.className = 'umschalter profil-zeile';
+    const beschreibung = p.id === STANDARD.id ? '<small>Thorsten &amp; mitgelieferte Bilder</small>' : '';
+    zeile.innerHTML = `<input type="radio" name="profil" value="${p.id}" ${p.id === zustand.profil ? 'checked' : ''}>`
+      + `<span>${p.id === STANDARD.id ? '⭐ ' : ''}${htmlText(p.name)}${beschreibung ? '<br>' + beschreibung : ''}</span>`;
+    zeile.querySelector('input').addEventListener('change', async () => {
+      stopAufnahme();
+      await profilAktivieren(p.id);
+      elternZeichnen();
+    });
+    box.appendChild(zeile);
+  });
+  const eigenes = zustand.profil !== STANDARD.id;
+  $('#btn-profil-umbenennen').hidden = !eigenes;
+  $('#btn-profil-loeschen').hidden = !eigenes;
+}
+
+async function aktivesProfil() {
+  return (await datenbank.profile()).find((p) => p.id === zustand.profil);
+}
+
+async function profilNeu() {
+  const name = (prompt('Wie soll das neue Profil heißen? (z. B. Mama)') || '').trim();
+  if (!name) return;
+  const profil = { id: `p-${Date.now().toString(36)}`, name: name.slice(0, 30), erstellt: Date.now() };
+  await datenbank.profilSpeichern(profil);
+  // Browser bitten, Fotos und Aufnahmen nicht bei Speicherknappheit zu löschen
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  await profilAktivieren(profil.id);
+  elternZeichnen();
+}
+
+$('#btn-profil-neu').addEventListener('click', profilNeu);
+
+$('#btn-profil-umbenennen').addEventListener('click', async () => {
+  const profil = await aktivesProfil();
+  if (!profil) return;
+  const name = (prompt('Neuer Name für das Profil:', profil.name) || '').trim();
+  if (!name) return;
+  profil.name = name.slice(0, 30);
+  await datenbank.profilSpeichern(profil);
+  profileZeichnen();
+});
+
+$('#btn-profil-loeschen').addEventListener('click', async () => {
+  const profil = await aktivesProfil();
+  if (!profil) return;
+  if (!confirm(`Profil „${profil.name}“ mit allen eigenen Fotos und Aufnahmen löschen?`)) return;
+  stopAufnahme();
+  await datenbank.profilLoeschen(profil.id);
+  await profilAktivieren(STANDARD.id);
+  elternZeichnen();
+});
+
+// --- Bilder & Stimme pro Buchstabe ---
+
+function anpassenZeichnen() {
+  const box = $('#anpassen');
+  if (zustand.profil === STANDARD.id) {
+    box.innerHTML = '<p class="hinweis">Das Profil „Standard“ bleibt immer unverändert. '
+      + 'Legen Sie ein eigenes Profil an, um Fotos zu machen und die Laute mit Ihrer Stimme aufzunehmen.</p>'
+      + '<button class="text-btn" data-a="neu">➕ Eigenes Profil anlegen</button>';
+    box.querySelector('[data-a=neu]').addEventListener('click', profilNeu);
+    return;
+  }
+  box.innerHTML = '<p class="hinweis">Was Sie nicht ändern, kommt automatisch aus „Standard“. '
+    + 'Sprechen Sie z. B. „mmm … mmm … Maus“. Alles bleibt nur auf diesem Gerät.</p>';
+  BUCHSTABEN.forEach((eintrag) => {
+    const m = medien[eintrag.b] || {};
+    const zeile = document.createElement('div');
+    zeile.className = 'anpassen-zeile';
+    zeile.innerHTML = `<span class="z">${zeichen(eintrag)}</span>`
+      + `<span class="vorschau">${bildHtml(eintrag)}</span>`
+      + `<span class="w">${eintrag.wort}<br><small>Bild: ${m.bildUrl ? '<b>eigenes Foto</b>' : 'Standard'}`
+      + ` · Stimme: ${m.stimme ? '<b>eigene</b>' : 'Standard'}</small></span>`
+      + '<div class="aktionen">'
+      + '<span class="gruppe"><span class="gruppe-name">Bild</span>'
+      + '<button class="mini-btn" data-a="foto" aria-label="Foto wählen">📷</button>'
+      + `<button class="mini-btn" data-a="bild-weg" aria-label="Standard-Bild" ${m.bildUrl ? '' : 'disabled'}>↩️</button></span>`
+      + '<span class="gruppe"><span class="gruppe-name">Stimme</span>'
+      + '<button class="mini-btn" data-a="rec" aria-label="Aufnehmen">🎙️</button>'
+      + '<button class="mini-btn" data-a="play" aria-label="Anhören">▶️</button>'
+      + `<button class="mini-btn" data-a="stimme-weg" aria-label="Standard-Stimme" ${m.stimme ? '' : 'disabled'}>↩️</button></span>`
+      + '</div>';
+    const knopf = (a) => zeile.querySelector(`[data-a=${a}]`);
+    knopf('foto').addEventListener('click', () => fotoWaehlen(eintrag.b));
+    knopf('bild-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'bild'));
+    knopf('rec').addEventListener('click', (e) => aufnehmen(eintrag.b, e.currentTarget));
+    knopf('play').addEventListener('click', () => lautAbspielen(eintrag));
+    knopf('stimme-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'stimme'));
+    box.appendChild(zeile);
+  });
+}
+
+async function medienEntfernen(b, art) {
+  await datenbank.medienEntfernen(zustand.profil, b, art);
+  await medienLaden();
+  anpassenZeichnen();
+}
+
+let fotoFuer = null;
+function fotoWaehlen(b) {
+  fotoFuer = b;
+  const input = $('#foto-input');
+  input.value = '';
+  input.click();
+}
+
+$('#foto-input').addEventListener('change', async (e) => {
+  const datei = e.target.files && e.target.files[0];
+  if (!datei || !fotoFuer) return;
+  try {
+    const blob = await fotoVerkleinern(datei);
+    await datenbank.medienSetzen(zustand.profil, fotoFuer, 'bild', blob);
+    await medienLaden();
+    anpassenZeichnen();
+  } catch {
+    alert('Das Foto konnte nicht geladen werden.');
+  }
+});
+
+// Quadratisch zuschneiden (Mitte) und auf 512 px verkleinern: spart Speicher, passt in jede Kachel
+async function fotoVerkleinern(datei) {
+  let bild;
+  try {
+    bild = await createImageBitmap(datei, { imageOrientation: 'from-image' });
+  } catch {
+    bild = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = URL.createObjectURL(datei);
+    });
+  }
+  const kante = Math.min(bild.width, bild.height);
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  c.getContext('2d').drawImage(bild, (bild.width - kante) / 2, (bild.height - kante) / 2, kante, kante, 0, 0, 512, 512);
+  return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject()), 'image/jpeg', 0.85));
+}
 
 let rekorder = null;
 
@@ -542,50 +763,40 @@ async function aufnehmen(b, knopf) {
     alert('Kein Zugriff auf das Mikrofon.');
     return;
   }
+  wiedergabeStoppen();
+  const profil = zustand.profil;
   const teile = [];
-  rekorder = new MediaRecorder(stream);
-  rekorder.ondataavailable = (e) => { if (e.data.size) teile.push(e.data); };
-  rekorder.onstop = async () => {
+  const r = new MediaRecorder(stream);
+  rekorder = r;
+  r.ondataavailable = (e) => { if (e.data.size) teile.push(e.data); };
+  r.onstop = async () => {
     stream.getTracks().forEach((t) => t.stop());
-    knopf.classList.remove('aktiv');
-    knopf.textContent = '🎙️';
-    if (teile.length) await aufnahmeDb.speichern(b, new Blob(teile, { type: rekorder.mimeType }));
-    rekorder = null;
-    aufnahmenListe();
+    if (teile.length) await datenbank.medienSetzen(profil, b, 'stimme', new Blob(teile, { type: r.mimeType }));
+    if (rekorder === r) rekorder = null;
+    await medienLaden();
+    if ($('#eltern').classList.contains('active')) anpassenZeichnen();
   };
-  rekorder.start();
+  r.start();
   knopf.classList.add('aktiv');
   knopf.textContent = '⏹️';
   // Sicherheitsstopp nach 5 Sekunden
-  setTimeout(() => { if (rekorder && rekorder.state === 'recording') rekorder.stop(); }, 5000);
-}
-
-async function aufnahmenListe() {
-  const vorhanden = new Set((await aufnahmeDb.alleSchluessel()) || []);
-  const liste = $('#aufnahmen');
-  liste.innerHTML = '';
-  BUCHSTABEN.forEach((eintrag) => {
-    const zeile = document.createElement('div');
-    zeile.className = 'aufnahme-zeile';
-    const hat = vorhanden.has(eintrag.b);
-    zeile.innerHTML = `<span class="z">${zeichen(eintrag)}</span>`
-      + `<span class="w">${bildHtml(eintrag)} ${eintrag.wort}<br><small>${hat ? 'eigene Stimme' : 'Computerstimme'}</small></span>`
-      + '<button class="mini-btn" data-a="rec" aria-label="Aufnehmen">🎙️</button>'
-      + '<button class="mini-btn" data-a="play" aria-label="Anhören">▶️</button>'
-      + `<button class="mini-btn" data-a="del" aria-label="Löschen" ${hat ? '' : 'disabled'}>🗑️</button>`;
-    zeile.querySelector('[data-a=rec]').addEventListener('click', (e) => aufnehmen(eintrag.b, e.currentTarget));
-    zeile.querySelector('[data-a=play]').addEventListener('click', () => lautAbspielen(eintrag));
-    zeile.querySelector('[data-a=del]').addEventListener('click', async () => {
-      await aufnahmeDb.loeschen(eintrag.b);
-      aufnahmenListe();
-    });
-    liste.appendChild(zeile);
-  });
+  setTimeout(() => { if (r.state === 'recording') r.stop(); }, 5000);
 }
 
 // ---------- Start ----------
 
 rasterZeichnen();
+
+(async () => {
+  // Datenbank öffnen (übernimmt ggf. alte Aufnahmen), gelöschtes Profil abfangen, eigene Medien laden
+  const profile = await datenbank.profile();
+  if (zustand.profil !== STANDARD.id && !profile.some((p) => p.id === zustand.profil)) {
+    zustand.profil = STANDARD.id;
+    speicher.schreiben('profil', STANDARD.id);
+  }
+  await medienLaden();
+  rasterZeichnen();
+})();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   // Neue Version übernommen: einmal neu laden, damit sie sofort sichtbar ist (nicht beim allerersten Start)

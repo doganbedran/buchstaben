@@ -96,6 +96,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .kachel .mini { font-size: 1.3rem; line-height: 1; }
 /* Bilddateien so groß wie ein Emoji in derselben Schriftgröße */
 .bild-datei { height: 1.15em; width: auto; vertical-align: -0.2em; }
+.bild-datei.foto { width: 1.15em; object-fit: cover; border-radius: 0.18em; }
 
 .kachel .punkte { font-size: 0.75rem; letter-spacing: 1px; min-height: 1em; }
 
@@ -182,19 +183,38 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .umschalter { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 1rem; }
 .umschalter input { width: 22px; height: 22px; accent-color: var(--akzent); }
 
-.aufnahmen { display: flex; flex-direction: column; gap: 6px; }
-.aufnahme-zeile {
+.profile { display: flex; flex-direction: column; margin-bottom: 8px; }
+.profil-zeile { border-bottom: 1px solid var(--rand); padding: 10px 0; }
+.profil-zeile:last-child { border-bottom: none; }
+.profil-zeile small { color: var(--leise); }
+.knopf-reihe { display: flex; flex-wrap: wrap; gap: 8px; }
+.knopf-reihe [hidden] { display: none; }
+
+.anpassen-zeile {
   display: grid;
-  grid-template-columns: 36px 1fr auto auto auto;
+  grid-template-columns: 32px 52px 1fr;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 6px 10px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--rand);
 }
-.aufnahme-zeile:last-child { border-bottom: none; }
-.aufnahme-zeile .z { font-size: 1.5rem; font-weight: 700; text-align: center; }
-.aufnahme-zeile .w { font-size: 0.95rem; }
-.aufnahme-zeile .w small { color: var(--leise); }
+.anpassen-zeile:last-child { border-bottom: none; }
+.anpassen-zeile .z { font-size: 1.5rem; font-weight: 700; text-align: center; }
+.anpassen-zeile .vorschau { font-size: 2.2rem; text-align: center; line-height: 1; }
+.anpassen-zeile .w { font-size: 0.95rem; line-height: 1.35; }
+.anpassen-zeile .w small { color: var(--leise); }
+.anpassen-zeile .w b { color: var(--gruen); font-weight: 600; }
+.anpassen-zeile .aktionen {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px 18px;
+  flex-wrap: wrap;
+}
+/* Knöpfe einer Gruppe bleiben zusammen; umgebrochen wird nur zwischen "Bild" und "Stimme" */
+.anpassen-zeile .gruppe { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.anpassen-zeile .gruppe-name { font-size: 0.8rem; color: var(--leise); margin-right: 2px; }
+.anpassen-zeile .mini-btn { width: 40px; height: 40px; }
 .mini-btn {
   width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--rand);
   background: var(--bg); font-size: 1.15rem;
@@ -203,7 +223,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .mini-btn.aktiv { background: var(--rot); border-color: var(--rot); animation: pulsieren 1s infinite; }
 @keyframes pulsieren { 50% { opacity: 0.6; } }
 
-.text-btn { border: 1px solid var(--rand); background: var(--bg); border-radius: 12px; padding: 10px 16px; }
+.text-btn { border: 1px solid var(--rand); background: var(--bg); border-radius: 12px; padding: 10px 12px; }
 .text-btn.warnung { color: var(--rot); border-color: var(--rot); }
 
 @media (min-width: 700px) {
