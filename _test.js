@@ -87,7 +87,7 @@
     ev('pointerup', punkte[punkte.length - 1].x, punkte[punkte.length - 1].y);
   }
   // Geführt: Finger entlang eines Strichs ziehen (Anteil von/bis, rückwärts, mit Wackeln)
-  function ziehen(nr, { von = 0, bis = 1, rueckwaerts = false, wackeln = 0, abheben = true } = {}) {
+  function ziehen(nr, { von = 0, bis = 1, rueckwaerts = false, wackeln = 0, abheben = true, aufsetzen = true } = {}) {
     const pfad = gefuehrt.pfade[nr];
     const schritte = Math.ceil(pfad.L / 4);
     const punkte = [];
@@ -100,7 +100,7 @@
       const versatz = wackeln * Math.sin(k / 3);
       punkte.push({ x: p.x - ((q.y - p.y) / n) * versatz, y: p.y + ((q.x - p.x) / n) * versatz });
     }
-    ev('pointerdown', punkte[0].x, punkte[0].y);
+    if (aufsetzen) ev('pointerdown', punkte[0].x, punkte[0].y);
     punkte.forEach((p) => ev('pointermove', p.x, p.y));
     if (abheben) ev('pointerup', punkte[punkte.length - 1].x, punkte[punkte.length - 1].y);
   }
@@ -153,6 +153,29 @@
       ev('pointerup', 5, 5);
       return Math.abs(gefuehrt.fortschritt - vorher) < 1 && gefuehrt.nr === 0;
     });
+    // Punkte (i, j, Umlaute) nur antippen
+    vorbereiten(i);
+    if (gefuehrt.pfade.some((p) => p.L <= gefuehrt.breite * 0.6)) {
+      test('geführt: Punkte antippen', true, () => {
+        gefuehrt.pfade.forEach((p, k) => {
+          if (p.L <= gefuehrt.breite * 0.6) { ev('pointerdown', p.p[0].x, p.p[0].y); ev('pointerup', p.p[0].x, p.p[0].y); }
+          else ziehen(k);
+        });
+        return tafelZustand.geschafft;
+      });
+    }
+    // Wo ein Strich dort beginnt, wo der vorige endet: ohne Absetzen weiterziehen
+    vorbereiten(i);
+    const verbunden = (k) => k + 1 < n() && Math.hypot(
+      gefuehrt.pfade[k].p[gefuehrt.pfade[k].p.length - 1].x - gefuehrt.pfade[k + 1].p[0].x,
+      gefuehrt.pfade[k].p[gefuehrt.pfade[k].p.length - 1].y - gefuehrt.pfade[k + 1].p[0].y) <= fangRadius();
+    if ([...Array(n()).keys()].some(verbunden)) {
+      test('geführt: ohne Absetzen weiterziehen', true, () => {
+        for (let k = 0; k < n(); k++) ziehen(k, { aufsetzen: !(k > 0 && verbunden(k - 1)), abheben: !verbunden(k) });
+        return tafelZustand.geschafft;
+      });
+      window.verbundeneBuchstaben = (window.verbundeneBuchstaben || []).concat(text());
+    }
     if (text() === 'a') {
       vorbereiten(i);
       test('geführt: halber Bauch, dann Strich', false, () => { ziehen(0, { bis: 0.5 }); ziehen(1); return tafelZustand.geschafft; });
@@ -226,6 +249,6 @@
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:' + (ok ? '#1b7f3a' : '#c62828') + ';color:#fff;font:11px monospace;padding:6px;z-index:9;max-height:70vh;overflow:hidden;word-break:break-all';
   d.textContent = (ok ? 'ALLE TESTS OK ' : `FEHLER (${ergebnis.length}): `) + ergebnis.join(' | ')
-    + ' || Querstrich-Messung: ' + (window.querstrich || []).join(' | ');
+    + ` || ${BUCHSTABEN.length * 2} Zeichen geführt geprüft; ohne Absetzen: ${(window.verbundeneBuchstaben || []).join(' ')}`;
   document.body.appendChild(d);
 })();

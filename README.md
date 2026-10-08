@@ -5,7 +5,8 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 
 ## Dateien
 - `letters.js` – Buchstaben, Wörter, Bilder, Laute (hier neue Wörter eintragen)
-- `striche.js` – Strichfolge in Schreibrichtung (Vierlinien-System) für geführtes Nachspuren; Buchstaben ohne Eintrag nutzen die Schrift + Flächenprüfung
+- `striche.js` – Strichfolge in Schreibrichtung (Vierlinien-System) für alle Buchstaben, groß und klein; daraus werden Vorlage, Kacheln und Prüfung gebaut (Zeichen ohne Eintrag nutzen die Schrift + Flächenprüfung)
+- `_striche.html` – Übersicht aller Buchstaben mit Strich-Nummern und Richtung (zum Prüfen von Formen)
 - `app.js` – Logik (Nachspuren, Prüfung, Sprache, Elternbereich)
 - `style.css`, `index.html` – Oberfläche
 - `sw.js`, `manifest.webmanifest`, `icons/` – Installation & Offline

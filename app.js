@@ -181,6 +181,22 @@ function bildHtml(eintrag) {
     : eintrag.bild;
 }
 
+// Buchstabe als kleine Grafik aus der Strichfolge (gleiche Schul-Form wie beim Nachspuren), sonst als Text.
+// Fester Höhenbereich je Schreibweise, damit Ober- und Unterlängen im Verhältnis bleiben.
+function zeichenHtml(eintrag) {
+  const z = zeichen(eintrag);
+  const daten = STRICHE[z];
+  if (!daten) return z;
+  const xs = daten.flat().map((p) => p[0]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const breite = Math.max(maxX - minX + 20, 60);
+  const links = (minX + maxX) / 2 - breite / 2;
+  const [oben, unten] = zustand.schreibweise === 'gross' ? [-26, 110] : [-10, 148];
+  const pfade = daten.map((st) => st.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('')).join('');
+  return `<svg class="zeichen-svg" viewBox="${links.toFixed(1)} ${oben} ${breite.toFixed(1)} ${unten - oben}" aria-label="${z}">`
+    + `<path d="${pfade}" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
 function zeichen(eintrag) {
   if (zustand.schreibweise !== 'gross') return eintrag.b;
   // 'ß'.toUpperCase() ergäbe "SS" – das große Eszett ist ein eigenes Zeichen
@@ -350,7 +366,7 @@ function rasterZeichnen() {
     const btn = document.createElement('button');
     btn.className = 'kachel';
     btn.setAttribute('aria-label', `${eintrag.b} wie ${eintrag.wort}`);
-    btn.innerHTML = `<span class="zeichen">${zeichen(eintrag)}</span>`
+    btn.innerHTML = `<span class="zeichen">${zeichenHtml(eintrag)}</span>`
       + `<span class="mini">${bildHtml(eintrag)}</span>`
       + `<span class="punkte">${'⭐'.repeat(n)}</span>`;
     btn.addEventListener('click', () => buchstabeOeffnen(i));
@@ -667,6 +683,8 @@ function gefuehrtStart(p) {
   const start = punktBei(pfad, gefuehrt.fortschritt);
   const folgt = Math.hypot(p.x - start.x, p.y - start.y) <= fangRadius();
   gefuehrt.versuch = { punkte: [p], folgt, startFortschritt: gefuehrt.fortschritt };
+  // Punkte (i, j, Umlaute): antippen reicht
+  if (folgt && pfad.L <= gefuehrt.breite * 0.6) strichFertig();
 }
 
 function gefuehrtBewegung(p) {
@@ -724,6 +742,13 @@ function strichFertig() {
     vorlageZeichnen();
     geschafft();
     return;
+  }
+  // Beginnt der nächste Strich genau hier (z. B. u, B), darf der Finger ohne Absetzen weiterziehen
+  const finger = tafelZustand.letzter;
+  const naechsterStart = gefuehrt.pfade[gefuehrt.nr].p[0];
+  if (v && tafelZustand.pointerId !== null && finger
+      && Math.hypot(finger.x - naechsterStart.x, finger.y - naechsterStart.y) <= fangRadius()) {
+    gefuehrt.versuch = { punkte: [finger], folgt: true, startFortschritt: 0 };
   }
   vorlageZeichnen();
 }

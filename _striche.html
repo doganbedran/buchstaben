@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Strichfolge – Übersicht</title>
+<!-- Entwickler-Übersicht: alle Buchstaben mit Strich-Nummer (Startpunkt) und Pfeil am Ende jedes Strichs -->
+<body style="margin:8px;background:#fff;font:11px sans-serif">
+<canvas id="c"></canvas>
+<script src="striche.js"></script>
+<script>
+const zeichen = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ', ...'abcdefghijklmnopqrstuvwxyzäöüß'];
+const spalten = 10, zelle = 128, s = 0.62;
+const c = document.getElementById('c');
+c.width = spalten * zelle; c.height = Math.ceil(zeichen.length / spalten) * zelle;
+const g = c.getContext('2d');
+const farben = ['#1d5fbf', '#c2410c', '#2e8b3e', '#8e44ad', '#b07800'];
+zeichen.forEach((z, i) => {
+  const ox = (i % spalten) * zelle + 24, oy = Math.floor(i / spalten) * zelle + 22;
+  g.strokeStyle = '#eee'; g.lineWidth = 1;
+  for (const y of [0, 50, 100, 140]) { g.beginPath(); g.moveTo(ox - 16, oy + y * s); g.lineTo(ox + 100, oy + y * s); g.stroke(); }
+  g.fillStyle = '#999'; g.fillText(z, ox - 18, oy - 8);
+  const daten = STRICHE[z];
+  if (!daten) { g.fillStyle = 'red'; g.fillText('FEHLT', ox, oy + 40); return; }
+  daten.forEach((st, k) => {
+    g.strokeStyle = farben[k % farben.length]; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); st.forEach(([x, y], j) => (j ? g.lineTo : g.moveTo).call(g, ox + x * s, oy + y * s)); g.stroke();
+    // Pfeil am Ende
+    const [x1, y1] = st[Math.max(0, st.length - 3)], [x2, y2] = st[st.length - 1];
+    const w = Math.atan2(y2 - y1, x2 - x1), ex = ox + x2 * s, ey = oy + y2 * s;
+    g.fillStyle = '#000';
+    g.beginPath(); g.moveTo(ex + 7 * Math.cos(w), ey + 7 * Math.sin(w));
+    g.lineTo(ex + 7 * Math.cos(w + 2.5), ey + 7 * Math.sin(w + 2.5)); g.lineTo(ex + 7 * Math.cos(w - 2.5), ey + 7 * Math.sin(w - 2.5)); g.fill();
+    // Nummer am Start
+    const [sx, sy] = st[0];
+    g.fillStyle = farben[k % farben.length]; g.beginPath(); g.arc(ox + sx * s, oy + sy * s, 7, 0, 7); g.fill();
+    g.fillStyle = '#fff'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(k + 1, ox + sx * s, oy + sy * s + 0.5); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.font = '11px sans-serif';
+  });
+});
+</script>

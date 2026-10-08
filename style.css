@@ -94,6 +94,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .kachel:active { transform: scale(0.94); }
 .kachel .zeichen { font-size: 2.6rem; font-weight: 700; line-height: 1; }
+.kachel .zeichen-svg { height: 1.45em; width: auto; display: block; }
 .kachel .mini { font-size: 1.3rem; line-height: 1; }
 /* Bilddateien so groß wie ein Emoji in derselben Schriftgröße */
 .bild-datei { height: 1.15em; width: auto; vertical-align: -0.2em; }
