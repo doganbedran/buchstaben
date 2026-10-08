@@ -213,6 +213,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .spiel-btn.aktiv { border-color: #1d5fbf; }
 .spiel-btn:active { transform: scale(0.92); }
 
+/* Sticker-Album */
+.album-titel { font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.album-titel span { font-size: 1.2rem; color: var(--leise); }
+.icon-btn.platzhalter { visibility: hidden; }
+.album-raster {
+  flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 10px; padding: 14px 0 24px; align-content: start;
+}
+.sticker {
+  aspect-ratio: 1; border-radius: 50%; border: 3px dashed #d9c9b0; background: var(--bg);
+  display: grid; place-items: center; font-size: 2.3rem; position: relative; color: #d9c9b0;
+}
+.sticker.hat { border: 3px solid #fff; background: var(--papier); box-shadow: 0 3px 0 rgba(74,63,53,0.15), 0 0 0 3px #f5c518; color: inherit; }
+.sticker .bild-datei { height: 1.1em; }
+.sticker small {
+  position: absolute; bottom: -4px; right: -2px; font-size: 0.8rem; font-weight: 700; background: #1d5fbf; color: #fff;
+  border-radius: 10px; padding: 0 6px; line-height: 1.4;
+}
+.sticker:not(.hat) small { background: #d9c9b0; }
+.sticker-neu {
+  position: absolute; top: 18%; left: 50%; transform: translateX(-50%); font-size: 2.6rem; opacity: 0;
+  background: #fff; border-radius: 24px; padding: 4px 16px; box-shadow: var(--schatten);
+}
+.jubel.mit-sticker .sticker-neu { animation: sticker-rein 2.4s ease forwards; }
+@keyframes sticker-rein { 0% { opacity: 0; transform: translate(-50%, -30px) scale(0.5); } 20%, 85% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; } }
+
 /* Mein Name */
 .name-leiste { display: flex; justify-content: center; gap: 6px; padding: 10px 0 0; flex-wrap: wrap; }
 .name-leiste span {

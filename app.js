@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 25;
+const APP_VERSION = 26;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -168,6 +168,7 @@ function einstellungenLaden() {
   zustand.schreibweise = k ? k.schreibweise : speicher.lesen('schreibweise', 'klein');
   zustand.sterne = k ? k.sterne : speicher.lesen('sterne', {});
   zustand.profil = k ? k.profil : speicher.lesen('profil', STANDARD.id);
+  zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
 }
 
 function einstellungenSpeichern() {
@@ -175,10 +176,12 @@ function einstellungenSpeichern() {
   if (k) {
     k.schreibweise = zustand.schreibweise;
     k.sterne = zustand.sterne;
+    k.album = zustand.album;
     return datenbank.kindSpeichern(k);
   }
   speicher.schreiben('schreibweise', zustand.schreibweise);
   speicher.schreiben('sterne', zustand.sterne);
+  speicher.schreiben('album', zustand.album);
   return Promise.resolve();
 }
 
@@ -392,12 +395,12 @@ function nameImLob() {
   return ja;
 }
 
-function lautAbspielen(eintrag, lob = false) {
+function lautAbspielen(eintrag, lob = false, danach = []) {
   // Beim gerade geöffneten Buchstaben das dort gewählte Wort verwenden
   const wahl = BUCHSTABEN[zustand.index] === eintrag && zustand.wahl && zustand.wahl.b === eintrag.b ? zustand.wahl : null;
   const wort = wahl ? wahl.wort : eintrag.wort;
   const ersatz = lob ? `Super! ${wort}` : `${eintrag.laut} … ${eintrag.laut} wie ${wort}`;
-  return folgeAbspielen(wiedergabeFolge(eintrag, lob, aktivesKind(), lob && nameImLob(), wahl), ersatz);
+  return folgeAbspielen([...wiedergabeFolge(eintrag, lob, aktivesKind(), lob && nameImLob(), wahl), ...danach], ersatz);
 }
 
 // Einzelnen Lob-Platz anhören: eigene Aufnahme, sonst Thorstens Satz für diesen Platz
@@ -1260,21 +1263,26 @@ function geschafft() {
   einstellungenSpeichern();
   $('#fortschritt').textContent = sterneText(n);
 
+  // Sticker fürs Album: das Wort, das gerade dran war
+  const wahl = zustand.wahl && zustand.wahl.b === eintrag.b ? zustand.wahl : hauptWahl(eintrag);
+  const neuerSticker = stickerVergeben(eintrag, wahl);
+
   glockenspiel();
   sterneFliegen();
   const jubel = $('#jubel');
-  $('#jubel-bild').innerHTML = zustand.wahl && zustand.wahl.b === eintrag.b ? zustand.wahl.bild() : bildHtml(eintrag);
-  jubel.classList.remove('zeigen');
+  $('#jubel-bild').innerHTML = wahl.bild();
+  jubel.classList.remove('zeigen', 'mit-sticker');
   void jubel.offsetWidth;
   jubel.classList.add('zeigen');
-  setTimeout(() => lautAbspielen(eintrag, true), 500);
+  if (neuerSticker) jubel.classList.add('mit-sticker');
+  setTimeout(() => lautAbspielen(eintrag, true, neuerSticker ? [{ url: 'audio/ansage-sticker.wav' }] : []), 500);
 
   // Danach neu starten, damit das Kind gleich nochmal üben kann
   clearTimeout(tafelZustand.jubelTimer);
   tafelZustand.jubelTimer = setTimeout(() => {
-    jubel.classList.remove('zeigen');
+    jubel.classList.remove('zeigen', 'mit-sticker');
     tafelLeeren();
-  }, 2600);
+  }, neuerSticker ? 3400 : 2600);
 }
 
 function sterneFliegen() {
@@ -1512,10 +1520,11 @@ $('#btn-kind-neu').addEventListener('click', async () => {
     schreibweise: erstesKind ? speicher.lesen('schreibweise', 'klein') : 'klein',
     sterne: erstesKind ? speicher.lesen('sterne', {}) : {},
     profil: erstesKind ? speicher.lesen('profil', STANDARD.id) : STANDARD.id,
+    album: erstesKind ? speicher.lesen('album', []) : [],
     erstellt: Date.now(),
   };
   await datenbank.kindSpeichern(kind);
-  if (erstesKind) speicher.schreiben('sterne', {});
+  if (erstesKind) { speicher.schreiben('sterne', {}); speicher.schreiben('album', []); }
   await kinderLaden();
   if (!aktivesKind()) { zustand.kind = kind.id; speicher.schreiben('kind', kind.id); }
   kindBearbeiten(kind.id);
@@ -1539,6 +1548,7 @@ async function kindAendern(fn) {
   if (kindInArbeit.id === zustand.kind) {
     zustand.schreibweise = kindInArbeit.schreibweise;
     zustand.sterne = kindInArbeit.sterne;
+    zustand.album = kindInArbeit.album || [];
   }
   kindFormularZeichnen();
 }
@@ -1967,6 +1977,49 @@ async function aufnehmen(knopf, fertig) {
   setTimeout(() => { if (r.state === 'recording') r.stop(); }, 5000);
 }
 
+// ---------- Sticker-Album ----------
+
+const stickerSchluessel = (b, wort) => `${b}|${wort}`;
+
+// Gibt true zurück, wenn der Sticker neu ist
+function stickerVergeben(eintrag, wahl) {
+  const key = stickerSchluessel(eintrag.b, wahl.wort);
+  if (!zustand.album) zustand.album = [];
+  if (zustand.album.includes(key)) return false;
+  zustand.album.push(key);
+  einstellungenSpeichern();
+  return true;
+}
+
+function alleSticker() {
+  return BUCHSTABEN.flatMap((e) => woerterFuer(e).map((w) => ({ e, w, key: stickerSchluessel(e.b, w.wort) })));
+}
+
+function albumZeichnen() {
+  const alle = alleSticker();
+  const gesammelt = new Set(zustand.album || []);
+  $('#album-zahl').textContent = `${alle.filter((s) => gesammelt.has(s.key)).length} / ${alle.length}`;
+  const raster = $('#album-raster');
+  raster.innerHTML = '';
+  alle.forEach(({ e, w, key }) => {
+    const hat = gesammelt.has(key);
+    const el = document.createElement('button');
+    el.className = `sticker${hat ? ' hat' : ''}`;
+    el.innerHTML = `${hat ? w.bild() : '?'}<small>${zeichen(e)}</small>`;
+    el.setAttribute('aria-label', hat ? w.wort : 'noch nicht gesammelt');
+    // Gesammelte Sticker sprechen ihr Wort ("mmm … mmm … Maus"), fehlende den Laut als Tipp
+    el.addEventListener('click', () => folgeAbspielen(hat ? w.ansage() : [{ url: `audio/${dateiName(e.b)}-laut.wav` }]));
+    raster.appendChild(el);
+  });
+}
+
+function albumOeffnen() {
+  albumZeichnen();
+  zeigen('album');
+}
+
+$('#btn-album-home').addEventListener('click', () => { wiedergabeStoppen(); zurStartseite(); });
+
 // ---------- Spiel: Ich höre was (Anlaute hören) ----------
 
 const HOER_RUNDEN = 5;
@@ -2077,7 +2130,7 @@ $('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.t
 $('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
 
 // Spiele-Leiste
-const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten };
+const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();
@@ -2126,6 +2179,7 @@ async function sicherungErstellen() {
       schreibweise: speicher.lesen('schreibweise', 'klein'),
       sterne: speicher.lesen('sterne', {}),
       profil: speicher.lesen('profil', STANDARD.id),
+      album: speicher.lesen('album', []),
     },
     profile,
     kinder: kinderListe,
@@ -2165,6 +2219,7 @@ async function sicherungEinspielen(s) {
     speicher.schreiben('schreibweise', s.einstellungen.schreibweise || 'klein');
     speicher.schreiben('sterne', s.einstellungen.sterne || {});
     speicher.schreiben('profil', s.einstellungen.profil || STANDARD.id);
+    speicher.schreiben('album', s.einstellungen.album || []);
   }
   await kinderLaden();
   if (!aktivesKind() && kinder.length) { zustand.kind = kinder[0].id; speicher.schreiben('kind', zustand.kind); }

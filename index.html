@@ -33,6 +33,7 @@
       <button class="spiel-btn aktiv" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
       <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
       <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
+      <button class="spiel-btn" data-spiel="album" aria-label="Sticker-Album">📒</button>
     </nav>
     <div id="grid" class="grid"></div>
   </section>
@@ -72,7 +73,17 @@
       <div id="fortschritt" class="fortschritt"></div>
       <button id="btn-loeschen" class="icon-btn" aria-label="Wegwischen">🧽</button>
     </footer>
-    <div id="jubel" class="jubel"><span id="jubel-bild"></span></div>
+    <div id="jubel" class="jubel"><span id="jubel-bild"></span><div id="sticker-neu" class="sticker-neu">📒 ✨</div></div>
+  </section>
+
+  <!-- Sticker-Album -->
+  <section id="album" class="screen">
+    <header class="topbar">
+      <button id="btn-album-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div class="album-titel">📒 <span id="album-zahl"></span></div>
+      <span class="icon-btn platzhalter"></span>
+    </header>
+    <div id="album-raster" class="album-raster"></div>
   </section>
 
   <!-- Elternbereich -->
