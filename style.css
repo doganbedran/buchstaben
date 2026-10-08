@@ -1,0 +1,211 @@
+:root {
+  --bg: #fdf6ec;
+  --papier: #ffffff;
+  --text: #4a3f35;
+  --leise: #8a7d70;
+  --rand: #eadfcf;
+  --akzent: #f28c38;
+  --gruen: #5cb85c;
+  --rot: #e05d5d;
+  --stern: #f5c518;
+  --schatten: 0 4px 0 rgba(74, 63, 53, 0.12);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Andika", "Nunito", system-ui, sans-serif;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.screen {
+  display: none;
+  flex-direction: column;
+  height: 100dvh;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+}
+.screen.active { display: flex; }
+
+.topbar, .bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+.topbar h1 { margin: 0; font-size: 2rem; }
+.topbar h2 { margin: 0; font-size: 1.3rem; }
+
+.icon-btn {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: 20px;
+  background: var(--papier);
+  box-shadow: var(--schatten);
+  font-size: 2rem;
+  display: grid;
+  place-items: center;
+  transition: transform 0.1s;
+}
+.icon-btn:active { transform: scale(0.92); }
+.icon-btn.small { width: 44px; height: 44px; font-size: 1.3rem; border-radius: 14px; opacity: 0.6; }
+
+/* Langes Drücken für Elternbereich: Fortschrittsring */
+.ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+.ring circle {
+  fill: none; stroke: var(--akzent); stroke-width: 3;
+  stroke-dasharray: 101; stroke-dashoffset: 101;
+}
+.icon-btn.halten .ring circle { stroke-dashoffset: 0; transition: stroke-dashoffset 2s linear; }
+
+/* Raster */
+.grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 12px;
+  padding: 12px 0 24px;
+  align-content: start;
+}
+.kachel {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 22px;
+  background: var(--papier);
+  box-shadow: var(--schatten);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: transform 0.1s;
+}
+.kachel:active { transform: scale(0.94); }
+.kachel .zeichen { font-size: 2.6rem; font-weight: 700; line-height: 1; }
+.kachel .mini { font-size: 1.3rem; line-height: 1; }
+.kachel .punkte { font-size: 0.75rem; letter-spacing: 1px; min-height: 1em; }
+
+/* Farben je Kachel, damit Kinder sie wiedererkennen */
+.kachel:nth-child(6n+1) .zeichen { color: #e8684a; }
+.kachel:nth-child(6n+2) .zeichen { color: #3d8fd1; }
+.kachel:nth-child(6n+3) .zeichen { color: #4caf50; }
+.kachel:nth-child(6n+4) .zeichen { color: #9b59b6; }
+.kachel:nth-child(6n+5) .zeichen { color: #e6a700; }
+.kachel:nth-child(6n+6) .zeichen { color: #e0567c; }
+
+/* Nachspuren */
+.bild-karte {
+  flex: 1;
+  max-width: 220px;
+  height: 72px;
+  border: none;
+  border-radius: 22px;
+  background: var(--papier);
+  box-shadow: var(--schatten);
+  font-size: 2.8rem;
+  display: grid;
+  place-items: center;
+}
+.bild-karte:active { transform: scale(0.96); }
+.bild-karte.wackeln span { display: inline-block; animation: wackeln 0.6s ease; }
+
+.tafel {
+  position: relative;
+  flex: 1;
+  margin: 12px 0;
+  border-radius: 28px;
+  background: var(--papier);
+  box-shadow: var(--schatten);
+  overflow: hidden;
+  min-height: 0;
+}
+.tafel canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+
+.sterne { position: absolute; inset: 0; pointer-events: none; }
+.sterne span {
+  position: absolute;
+  font-size: 2rem;
+  animation: fliegen 1.2s ease-out forwards;
+}
+
+.fortschritt { font-size: 1.8rem; letter-spacing: 4px; }
+
+.jubel {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+}
+.jubel span { font-size: 9rem; transform: scale(0.2); }
+.jubel.zeigen { opacity: 1; }
+.jubel.zeigen span { animation: aufpoppen 1.6s ease forwards; }
+
+@keyframes wackeln {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg) scale(1.1); }
+  75% { transform: rotate(12deg) scale(1.1); }
+}
+@keyframes fliegen {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.3) rotate(160deg); opacity: 0; }
+}
+@keyframes aufpoppen {
+  0% { transform: scale(0.2); opacity: 0; }
+  25% { transform: scale(1.15); opacity: 1; }
+  40% { transform: scale(1); }
+  80% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Elternbereich */
+.eltern { font-family: system-ui, sans-serif; }
+.eltern-inhalt { flex: 1; overflow-y: auto; padding: 16px 0 24px; display: flex; flex-direction: column; gap: 16px; }
+.karte { background: var(--papier); border-radius: 16px; padding: 16px; box-shadow: var(--schatten); }
+.karte h3 { margin: 0 0 10px; font-size: 1.05rem; }
+.hinweis { margin: 0 0 12px; color: var(--leise); font-size: 0.92rem; line-height: 1.4; }
+.umschalter { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 1rem; }
+.umschalter input { width: 22px; height: 22px; accent-color: var(--akzent); }
+
+.aufnahmen { display: flex; flex-direction: column; gap: 6px; }
+.aufnahme-zeile {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rand);
+}
+.aufnahme-zeile:last-child { border-bottom: none; }
+.aufnahme-zeile .z { font-size: 1.5rem; font-weight: 700; text-align: center; }
+.aufnahme-zeile .w { font-size: 0.95rem; }
+.aufnahme-zeile .w small { color: var(--leise); }
+.mini-btn {
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--rand);
+  background: var(--bg); font-size: 1.15rem;
+}
+.mini-btn:disabled { opacity: 0.3; }
+.mini-btn.aktiv { background: var(--rot); border-color: var(--rot); animation: pulsieren 1s infinite; }
+@keyframes pulsieren { 50% { opacity: 0.6; } }
+
+.text-btn { border: 1px solid var(--rand); background: var(--bg); border-radius: 12px; padding: 10px 16px; }
+.text-btn.warnung { color: var(--rot); border-color: var(--rot); }
+
+@media (min-width: 700px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
+  .kachel .zeichen { font-size: 3.6rem; }
+  .icon-btn { width: 80px; height: 80px; font-size: 2.6rem; }
+  .bild-karte { height: 88px; font-size: 3.4rem; max-width: 300px; }
+}

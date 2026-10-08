@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#fdf6ec">
+  <title>Buchstaben-Spuren</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Startseite: Buchstaben-Raster -->
+  <section id="home" class="screen active">
+    <header class="topbar">
+      <h1>🌈</h1>
+      <button id="btn-eltern" class="icon-btn small" aria-label="Elternbereich (lange drücken)">
+        <span>⚙️</span><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg>
+      </button>
+    </header>
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <!-- Nachspuren -->
+  <section id="trace" class="screen">
+    <header class="topbar">
+      <button id="btn-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <button id="btn-bild" class="bild-karte" aria-label="Laut anhören">
+        <span id="bild"></span>
+      </button>
+      <button id="btn-weiter" class="icon-btn" aria-label="Nächster Buchstabe">➡️</button>
+    </header>
+    <div id="tafel" class="tafel">
+      <canvas id="canvas"></canvas>
+      <div id="sterne" class="sterne"></div>
+    </div>
+    <footer class="bottombar">
+      <button id="btn-laut" class="icon-btn" aria-label="Nochmal hören">🔊</button>
+      <div id="fortschritt" class="fortschritt"></div>
+      <button id="btn-loeschen" class="icon-btn" aria-label="Wegwischen">🧽</button>
+    </footer>
+    <div id="jubel" class="jubel"><span id="jubel-bild"></span></div>
+  </section>
+
+  <!-- Elternbereich -->
+  <section id="eltern" class="screen eltern">
+    <header class="topbar">
+      <button id="btn-eltern-zurueck" class="icon-btn" aria-label="Zurück">🏠</button>
+      <h2>Elternbereich</h2>
+      <span></span>
+    </header>
+    <div class="eltern-inhalt">
+      <div class="karte">
+        <h3>Schrift</h3>
+        <label class="umschalter">
+          <input type="radio" name="schreibweise" value="klein"> kleine Buchstaben (Montessori)
+        </label>
+        <label class="umschalter">
+          <input type="radio" name="schreibweise" value="gross"> GROSSE Buchstaben
+        </label>
+      </div>
+
+      <div class="karte">
+        <h3>Eigene Stimme</h3>
+        <p class="hinweis">Kinder lernen am besten mit Ihrer Stimme. Sprechen Sie z. B. „mmm … Maus“.
+          Aufnahmen bleiben nur auf diesem Gerät.</p>
+        <div id="aufnahmen" class="aufnahmen"></div>
+      </div>
+
+      <div class="karte">
+        <h3>Fortschritt</h3>
+        <p class="hinweis" id="fortschritt-text"></p>
+        <button id="btn-reset" class="text-btn warnung">Sterne zurücksetzen</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="letters.js"></script>
+  <script src="app.js"></script><script src="_test.js"></script>
+</body>
+</html>

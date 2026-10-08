@@ -1,0 +1,4 @@
+# Lokale Werkzeuge, nicht online stellen
+.venv/
+.stimmen/
+__pycache__/
