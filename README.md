@@ -23,7 +23,8 @@ Dann http://localhost:8765 öffnen.
 ## Elternbereich
 Zahnrad oben rechts **2 Sekunden gedrückt halten**. Dort: Profile, große/kleine Buchstaben, Sterne zurücksetzen.
 
-**Kinder:** Jedes Kind hat Namen, Erkennungsbild (Tier oder Foto), eigene Sterne, eigene Schrift und ein
+**Kinder:** Jedes Kind hat Namen, Erkennungsbild (Tier oder Foto), optional eine Aufnahme des Namens fürs Lob
+(„Toll gemacht! … Lina! … Apfel“; ohne Aufnahme kein Name), eigene Sterne, eigene Schrift und ein
 zugewiesenes Profil. Mit Kindern startet die App mit „Wer spielt?“. Ohne Kinder gelten die Einstellungen app-weit.
 
 **Profile:** „Standard“ (Thorsten + mitgelieferte Bilder) ist immer da und unveränderlich. Eigene Profile

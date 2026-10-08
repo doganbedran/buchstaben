@@ -285,29 +285,41 @@ function abspielen(quelle) {
   });
 }
 
-// Reihenfolge: eigene Aufnahme (aktives Profil) > Audiodatei (Piper) > Sprachausgabe des Geräts
-async function lautAbspielen(eintrag, lob = false) {
+// Was nacheinander gespielt wird. Laut: eigene Aufnahme (aktives Profil) > Audiodatei (Piper).
+// Lob: Lob-Satz, dann der Name des Kindes (nur wenn aufgenommen), dann das Wort.
+// "eigen" = Objekt-URL, die nach dem Abspielen freigegeben wird.
+function wiedergabeFolge(eintrag, lob, kind) {
+  const folge = [];
+  if (lob) {
+    folge.push(lobQuelle());
+    if (kind && kind.nameStimme) folge.push({ url: URL.createObjectURL(kind.nameStimme), eigen: true, name: true });
+  }
+  const eigene = medien[eintrag.b] && medien[eintrag.b].stimme;
+  folge.push(eigene
+    ? { url: URL.createObjectURL(eigene), eigen: true }
+    : { url: `audio/${dateiName(eintrag.b)}${lob ? '-wort' : ''}.wav`, eigen: false });
+  return folge;
+}
+
+async function folgeAbspielen(folge, ersatzText) {
   wiedergabeStoppen();
   const nummer = wiedergabe.nummer;
-  const eigene = medien[eintrag.b] && medien[eintrag.b].stimme;
-  const eigeneUrl = eigene ? URL.createObjectURL(eigene) : null;
-  const lobDaten = lob ? lobQuelle() : null;
-  const quellen = [];
-  if (lobDaten) quellen.push(lobDaten.url);
-  quellen.push(eigeneUrl || `audio/${dateiName(eintrag.b)}${lob ? '-wort' : ''}.wav`);
   try {
-    for (const q of quellen) {
+    for (const q of folge) {
       if (nummer !== wiedergabe.nummer) return;
-      await abspielen(q);
+      await abspielen(q.url);
     }
   } catch {
-    if (nummer !== wiedergabe.nummer) return;
-    const satz = `${eintrag.laut} … ${eintrag.laut} wie ${eintrag.wort}`;
-    sprechen(lob ? `Super! ${eintrag.wort}` : satz);
+    // Datei fehlt (z. B. offline ohne Cache): Notlösung Sprachausgabe des Geräts
+    if (nummer === wiedergabe.nummer && ersatzText) sprechen(ersatzText);
   } finally {
-    if (eigeneUrl) URL.revokeObjectURL(eigeneUrl);
-    if (lobDaten && lobDaten.eigen) URL.revokeObjectURL(lobDaten.url);
+    folge.filter((q) => q.eigen).forEach((q) => URL.revokeObjectURL(q.url));
   }
+}
+
+function lautAbspielen(eintrag, lob = false) {
+  const ersatz = lob ? `Super! ${eintrag.wort}` : `${eintrag.laut} … ${eintrag.laut} wie ${eintrag.wort}`;
+  return folgeAbspielen(wiedergabeFolge(eintrag, lob, aktivesKind()), ersatz);
 }
 
 // Einzelnen Lob-Platz anhören: eigene Aufnahme, sonst Thorstens Satz für diesen Platz
@@ -1288,6 +1300,12 @@ async function kindFormularZeichnen() {
     box.appendChild(zeile);
   });
 
+  $('#kind-name-status').innerHTML = k.nameStimme
+    ? `<b>Aufgenommen.</b> Das Lob klingt dann z. B. „Toll gemacht! … ${htmlText(k.name)}!“`
+    : 'Noch nicht aufgenommen – das Lob kommt dann ohne Namen.';
+  $('#btn-kind-name-anhoeren').disabled = !k.nameStimme;
+  $('#btn-kind-name-weg').disabled = !k.nameStimme;
+
   const sterne = Object.values(k.sterne || {}).reduce((a, b) => a + b, 0);
   const fertig = BUCHSTABEN.filter((e) => (k.sterne[e.b] || 0) >= MAX_STERNE).length;
   $('#kind-sterne').textContent =
@@ -1307,6 +1325,17 @@ document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => {
 $('#btn-kind-foto').addEventListener('click', () => fotoWaehlen((blob) => kindAendern((k) => { k.foto = blob; })));
 
 $('#btn-kind-foto-weg').addEventListener('click', () => kindAendern((k) => { k.foto = null; }));
+
+$('#btn-kind-name-aufnehmen').addEventListener('click', (e) => {
+  aufnehmen(e.currentTarget, (blob) => kindAendern((k) => { k.nameStimme = blob; }));
+});
+
+// Probehören: ein Lob mit dem Namen dieses Kindes (Wort: Apfel)
+$('#btn-kind-name-anhoeren').addEventListener('click', () => {
+  folgeAbspielen(wiedergabeFolge(BUCHSTABEN[0], true, kindInArbeit));
+});
+
+$('#btn-kind-name-weg').addEventListener('click', () => kindAendern((k) => { k.nameStimme = null; }));
 
 $('#btn-kind-sterne-reset').addEventListener('click', () => {
   if (!confirm(`Alle Sterne von ${kindInArbeit.name} zurücksetzen?`)) return;
@@ -1462,7 +1491,7 @@ function anpassenZeichnen() {
     const knopf = (a) => zeile.querySelector(`[data-a=${a}]`);
     knopf('foto').addEventListener('click', () => buchstabenFotoWaehlen(eintrag.b));
     knopf('bild-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'bild'));
-    knopf('rec').addEventListener('click', (e) => aufnehmen(eintrag.b, e.currentTarget));
+    knopf('rec').addEventListener('click', (e) => medienAufnehmen(eintrag.b, e.currentTarget));
     knopf('play').addEventListener('click', () => lautAbspielen(eintrag));
     knopf('stimme-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'stimme'));
     box.appendChild(zeile);
@@ -1496,7 +1525,7 @@ function lobZeichnen() {
       + '<button class="mini-btn" data-a="rec" aria-label="Aufnehmen">🎙️</button>'
       + '<button class="mini-btn" data-a="play" aria-label="Anhören">▶️</button>'
       + `<button class="mini-btn" data-a="weg" aria-label="Aufnahme entfernen" ${hat ? '' : 'disabled'}>↩️</button>`;
-    zeile.querySelector('[data-a=rec]').addEventListener('click', (e) => aufnehmen(platz, e.currentTarget));
+    zeile.querySelector('[data-a=rec]').addEventListener('click', (e) => medienAufnehmen(platz, e.currentTarget));
     zeile.querySelector('[data-a=play]').addEventListener('click', () => lobAnhoeren(platz));
     zeile.querySelector('[data-a=weg]').addEventListener('click', () => medienEntfernen(platz, 'stimme'));
     box.appendChild(zeile);
@@ -1560,7 +1589,18 @@ function stopAufnahme() {
   if (rekorder && rekorder.state === 'recording') rekorder.stop();
 }
 
-async function aufnehmen(b, knopf) {
+// Aufnahme für einen Laut/Lob-Satz im gerade bearbeiteten Profil
+function medienAufnehmen(b, knopf) {
+  const profil = zustand.profil;
+  aufnehmen(knopf, async (blob) => {
+    await datenbank.medienSetzen(profil, b, 'stimme', blob);
+    await medienLaden();
+    if ($('#eltern').classList.contains('active')) medienZeichnen();
+  });
+}
+
+// Mikrofon-Aufnahme (höchstens 5 s); "fertig" bekommt die Aufnahme als Blob
+async function aufnehmen(knopf, fertig) {
   if (rekorder && rekorder.state === 'recording') { stopAufnahme(); return; }
   if (!navigator.mediaDevices || !window.MediaRecorder) {
     alert('Aufnehmen geht nur über https bzw. in der installierten App.');
@@ -1574,17 +1614,16 @@ async function aufnehmen(b, knopf) {
     return;
   }
   wiedergabeStoppen();
-  const profil = zustand.profil;
   const teile = [];
   const r = new MediaRecorder(stream);
   rekorder = r;
   r.ondataavailable = (e) => { if (e.data.size) teile.push(e.data); };
   r.onstop = async () => {
     stream.getTracks().forEach((t) => t.stop());
-    if (teile.length) await datenbank.medienSetzen(profil, b, 'stimme', new Blob(teile, { type: r.mimeType }));
     if (rekorder === r) rekorder = null;
-    await medienLaden();
-    if ($('#eltern').classList.contains('active')) medienZeichnen();
+    knopf.classList.remove('aktiv');
+    knopf.textContent = '🎙️';
+    if (teile.length) await fertig(new Blob(teile, { type: r.mimeType }));
   };
   r.start();
   knopf.classList.add('aktiv');

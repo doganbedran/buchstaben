@@ -53,6 +53,24 @@
   await kindWaehlen(emil.id);
   pruefe(zeichen(BUCHSTABEN[0]) === 'a', 'Emil sollte kleine Buchstaben haben');
 
+  // 4b. Name im Lob: nur wenn aufgenommen, Reihenfolge Lob -> Name -> Wort, jedes Kind seinen eigenen
+  const apfel = BUCHSTABEN[0];
+  const folgeText = (f) => f.map((q) => (q.name ? 'NAME' : q.url.startsWith('blob:') ? 'eigen' : q.url.replace('audio/', ''))).join(' > ');
+  const ohneName = wiedergabeFolge(apfel, true, kinder.find((k) => k.id === lina.id));
+  pruefe(ohneName.length === 2 && !ohneName.some((q) => q.name), `Ohne Namensaufnahme kein Name: ${folgeText(ohneName)}`);
+  kindBearbeiten(lina.id);
+  await kindAendern((k) => { k.nameStimme = new Blob(['lina'], { type: 'audio/webm' }); });
+  history.back();
+  await bis(() => $('#eltern').classList.contains('active'));
+  const linaNeu = kinder.find((k) => k.id === lina.id);
+  const mitName = wiedergabeFolge(apfel, true, linaNeu);
+  pruefe(mitName.length === 3 && mitName[1].name && /^lob-\d\.wav$/.test(mitName[0].url.replace('audio/', ''))
+    && mitName[2].url.endsWith('a-wort.wav'), `Lob mit Name falsch: ${folgeText(mitName)}`);
+  pruefe(!wiedergabeFolge(apfel, false, linaNeu).some((q) => q.name), 'Laut ohne Lob sollte keinen Namen haben');
+  pruefe(!wiedergabeFolge(apfel, true, kinder.find((k) => k.id === emil.id)).some((q) => q.name), 'Emil hört Linas Namen');
+  pruefe(!wiedergabeFolge(apfel, true, null).some((q) => q.name), 'Ohne Kind sollte kein Name kommen');
+  pruefe((await datenbank.kinder()).find((k) => k.id === lina.id).nameStimme instanceof Blob, 'Namensaufnahme nicht gespeichert');
+
   // 5. Profil pro Kind
   window.prompt = () => 'Papa';
   await profilNeu();

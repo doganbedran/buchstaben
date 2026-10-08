@@ -137,6 +137,16 @@
         </div>
       </div>
       <div class="karte">
+        <h3>Name fürs Lob</h3>
+        <p class="hinweis">Sprechen Sie den Namen so, wie Sie ihn beim Loben sagen. Die Aufnahme bleibt nur auf diesem Gerät.</p>
+        <p class="hinweis" id="kind-name-status"></p>
+        <div class="knopf-reihe">
+          <button id="btn-kind-name-aufnehmen" class="mini-btn" aria-label="Namen aufnehmen">🎙️</button>
+          <button id="btn-kind-name-anhoeren" class="mini-btn" aria-label="Lob mit Namen anhören">▶️</button>
+          <button id="btn-kind-name-weg" class="mini-btn" aria-label="Aufnahme entfernen">↩️</button>
+        </div>
+      </div>
+      <div class="karte">
         <h3>Schrift</h3>
         <label class="umschalter"><input type="radio" name="kind-schreibweise" value="klein"> kleine Buchstaben (Montessori)</label>
         <label class="umschalter"><input type="radio" name="kind-schreibweise" value="gross"> GROSSE Buchstaben</label>
@@ -166,6 +176,6 @@
   <script src="striche.js"></script>
   <script src="app.js"></script>
   <script src="_test_kinder.js"></script>
-  <iframe src="/_warten?ms=20000" hidden></iframe>
+  <iframe src="/_warten?ms=35000" hidden></iframe>
 </body>
 </html>
