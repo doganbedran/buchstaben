@@ -15,6 +15,7 @@ LAEUFE=(
   "kinder|_test_kinder.html#wer|412,300|120"
   "sichern|_test_sichern.html|412,300|90"
   "hoeren|_test_hoeren.html|412,300|90"
+  "woerter|_test_woerter.html|412,860|120"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do

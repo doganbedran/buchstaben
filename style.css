@@ -315,6 +315,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .anpassen-zeile .gruppe-name { font-size: 0.8rem; color: var(--leise); margin-right: 2px; }
 .anpassen-zeile .mini-btn { width: 40px; height: 40px; }
 
+.eigene-woerter { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; padding-left: 42px; }
+.eigenes-wort {
+  display: grid; grid-template-columns: 40px 1fr auto auto auto auto; align-items: center; gap: 6px;
+  background: var(--bg); border-radius: 12px; padding: 4px 6px;
+}
+.eigenes-wort .vorschau { font-size: 1.8rem; text-align: center; line-height: 1; }
+.eigenes-wort .w { font-size: 0.92rem; line-height: 1.3; }
+.eigenes-wort .w small { color: var(--leise); }
+.eigenes-wort .w b { color: var(--gruen); font-weight: 600; }
+.eigenes-wort .mini-btn { width: 36px; height: 36px; font-size: 1rem; }
+.text-btn.klein { padding: 6px 10px; font-size: 0.88rem; align-self: flex-start; }
+
 .lob-zeile {
   display: grid;
   grid-template-columns: 1fr auto auto auto;

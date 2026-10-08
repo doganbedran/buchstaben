@@ -8,6 +8,7 @@ Aufruf (aus dem Projektordner):
 Pro Buchstabe:  <b>.wav       Laut, Laut, Wort   ("mmm … mmm … Maus")
                 <b>-wort.wav  nur das Wort       (nach dem Lob)
                 <b>-laut.wav  nur der Laut       ("mmm … mmm", für das Hör-Spiel)
+                <b>-2.wav, <b>-2-wort.wav …  weitere Wörter aus "mehr" in letters.js
                 (Umlaute/ß im Dateinamen als ae, oe, ue, ss)
 Dazu:           lob-1.wav …   kurze Lob-Sätze
                 ansage-*.wav  Ansagen der Spiele
@@ -35,7 +36,7 @@ LAUTE = {
 }
 
 # Aussprache-Hilfe, wo die Schreibweise die Sprachsynthese verwirrt
-SPRECHEN = {'Computer': 'Kompjuter'}
+SPRECHEN = {'Computer': 'Kompjuter', 'Clown': 'Klaun', 'Orange': 'Oransche'}
 
 DATEINAMEN = {'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss'}
 
@@ -48,12 +49,21 @@ ANSAGEN = {
     'runde-geschafft': 'Alles geschafft! Toll gemacht!',
 }
 
-TEILE = ['buchstaben', 'laute', 'lob', 'ansagen']
+TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen']
 
 
 def woerter_aus_letters_js():
     text = (PROJEKT / 'letters.js').read_text(encoding='utf-8')
     return dict(re.findall(r"b: '(\w)', wort: '([^']+)'", text))
+
+
+def weitere_woerter_aus_letters_js():
+    """Buchstabe -> Liste weiterer Wörter aus "mehr: [['Affe', '🐒'], ...]"."""
+    text = (PROJEKT / 'letters.js').read_text(encoding='utf-8')
+    ergebnis = {}
+    for b, liste in re.findall(r"b: '(\w)'.*?mehr: \[(.*?)\] \}", text):
+        ergebnis[b] = re.findall(r"\['([^']+)', '[^']+'\]", liste)
+    return ergebnis
 
 
 def synth(stimme, text, tempo=1.0):
@@ -98,6 +108,13 @@ def erzeugen(modell, ziel, teile):
             speichern(ziel / f'{datei}-wort.wav', wort_audio, rate)
         if 'laute' in teile:
             speichern(ziel / f'{datei}-laut.wav', np.concatenate([laut, pause(rate, 0.35), laut]), rate)
+        if 'mehr' in teile:
+            # Weitere Wörter: Nummer 2, 3, … (Nummer 1 ist das Hauptwort)
+            for nr, weiteres in enumerate(weitere_woerter_aus_letters_js().get(b, []), 2):
+                wort_audio = synth(stimme, SPRECHEN.get(weiteres, weiteres), tempo=1.15)
+                clip = np.concatenate([laut, pause(rate, 0.35), laut, pause(rate, 0.5), wort_audio])
+                speichern(ziel / f'{datei}-{nr}.wav', clip, rate)
+                speichern(ziel / f'{datei}-{nr}-wort.wav', wort_audio, rate)
     if 'lob' in teile:
         for i, satz in enumerate(LOB, 1):
             speichern(ziel / f'lob-{i}.wav', synth(stimme, satz, tempo=1.05), rate)

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 23;
+const APP_VERSION = 24;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -113,10 +113,16 @@ const datenbank = (() => {
 // Eigene Fotos/Aufnahmen des aktiven Profils, im Speicher für schnellen Zugriff: b -> { bildUrl, stimme }
 let medien = {};
 
+// Persönliche Wörter des aktiven Profils: [{ id, b, wort }]; Foto/Aufnahme unter medien['w-<id>']
+let eigeneWoerter = [];
+
 async function medienLaden() {
   Object.values(medien).forEach((m) => m.bildUrl && URL.revokeObjectURL(m.bildUrl));
   medien = {};
+  eigeneWoerter = [];
   if (zustand.profil === STANDARD.id) return;
+  const profil = (await datenbank.profile()).find((p) => p.id === zustand.profil);
+  eigeneWoerter = (profil && profil.woerter) || [];
   for (const { schluessel, blob } of await datenbank.medienVon(zustand.profil)) {
     const [, b, art] = schluessel.split('|');
     const m = medien[b] || (medien[b] = {});
@@ -296,19 +302,66 @@ function abspielen(quelle) {
   });
 }
 
-// Was nacheinander gespielt wird. Laut: eigene Aufnahme (aktives Profil) > Audiodatei (Piper).
-// Lob: Lob-Satz, dann der Name des Kindes (nur wenn aufgenommen), dann das Wort.
+// ---------- Wörter je Buchstabe ----------
+// Vorrat: Hauptwort (mit eigenem Foto/eigener Aufnahme des Profils), weitere Standard-Wörter ("mehr"),
+// persönliche Wörter des Profils. Jede Wahl liefert Bild, Ansage ("mmm … mmm … Maus") und das Wort allein.
+const blobQuelle = (blob) => ({ url: URL.createObjectURL(blob), eigen: true });
+
+function hauptWahl(e) {
+  const d = dateiName(e.b);
+  const eigene = () => medien[e.b] && medien[e.b].stimme;
+  return {
+    art: 'haupt', b: e.b, wort: e.wort, gewicht: 1,
+    bild: () => bildHtml(e),
+    ansage: () => [eigene() ? blobQuelle(eigene()) : { url: `audio/${d}.wav` }],
+    wortAllein: () => [eigene() ? blobQuelle(eigene()) : { url: `audio/${d}-wort.wav` }],
+  };
+}
+
+function woerterFuer(e) {
+  const d = dateiName(e.b);
+  const vorrat = [hauptWahl(e)];
+  (e.mehr || []).forEach(([wort, bild], i) => vorrat.push({
+    art: 'mehr', b: e.b, wort, gewicht: 1,
+    bild: () => bild,
+    ansage: () => [{ url: `audio/${d}-${i + 2}.wav` }],
+    wortAllein: () => [{ url: `audio/${d}-${i + 2}-wort.wav` }],
+  }));
+  eigeneWoerter.filter((w) => w.b === e.b).forEach((w) => {
+    const m = () => medien[`w-${w.id}`] || {};
+    vorrat.push({
+      art: 'eigen', b: e.b, wort: w.wort, id: w.id, gewicht: 3,   // persönliche Wörter kommen öfter dran
+      bild: () => (m().bildUrl ? `<img class="bild-datei foto" src="${m().bildUrl}" alt="${htmlText(w.wort)}">` : '💛'),
+      // Thorstens Laut + Ihre Aufnahme des Wortes ("mmm … mmm … Mama")
+      ansage: () => [{ url: `audio/${d}-laut.wav` }, ...(m().stimme ? [blobQuelle(m().stimme)] : [])],
+      wortAllein: () => (m().stimme ? [blobQuelle(m().stimme)] : []),
+    });
+  });
+  return vorrat;
+}
+
+// Zufälliges Wort nach Gewicht; möglichst nicht dasselbe wie beim letzten Mal
+function wortWaehlen(e, vorher = null) {
+  let vorrat = woerterFuer(e);
+  if (vorher && vorrat.length > 1) vorrat = vorrat.filter((w) => w.wort !== vorher.wort);
+  let r = Math.random() * vorrat.reduce((s, w) => s + w.gewicht, 0);
+  for (const w of vorrat) { r -= w.gewicht; if (r <= 0) return w; }
+  return vorrat[vorrat.length - 1];
+}
+
+// Was nacheinander gespielt wird. Ohne Lob: Ansage des gewählten Wortes ("mmm … mmm … Maus").
+// Lob: Lob-Satz, dann ab und zu der Name des Kindes (nur wenn aufgenommen), dann das Wort.
 // "eigen" = Objekt-URL, die nach dem Abspielen freigegeben wird.
-function wiedergabeFolge(eintrag, lob, kind, nameSagen = true) {
+function wiedergabeFolge(eintrag, lob, kind, nameSagen = true, wahl = null) {
+  const w = wahl || hauptWahl(eintrag);
   const folge = [];
   if (lob) {
     folge.push(lobQuelle());
     if (nameSagen && kind && kind.nameStimme) folge.push({ url: URL.createObjectURL(kind.nameStimme), eigen: true, name: true });
+    folge.push(...w.wortAllein());
+  } else {
+    folge.push(...w.ansage());
   }
-  const eigene = medien[eintrag.b] && medien[eintrag.b].stimme;
-  folge.push(eigene
-    ? { url: URL.createObjectURL(eigene), eigen: true }
-    : { url: `audio/${dateiName(eintrag.b)}${lob ? '-wort' : ''}.wav`, eigen: false });
   return folge;
 }
 
@@ -338,8 +391,11 @@ function nameImLob() {
 }
 
 function lautAbspielen(eintrag, lob = false) {
-  const ersatz = lob ? `Super! ${eintrag.wort}` : `${eintrag.laut} … ${eintrag.laut} wie ${eintrag.wort}`;
-  return folgeAbspielen(wiedergabeFolge(eintrag, lob, aktivesKind(), lob && nameImLob()), ersatz);
+  // Beim gerade geöffneten Buchstaben das dort gewählte Wort verwenden
+  const wahl = BUCHSTABEN[zustand.index] === eintrag && zustand.wahl && zustand.wahl.b === eintrag.b ? zustand.wahl : null;
+  const wort = wahl ? wahl.wort : eintrag.wort;
+  const ersatz = lob ? `Super! ${wort}` : `${eintrag.laut} … ${eintrag.laut} wie ${wort}`;
+  return folgeAbspielen(wiedergabeFolge(eintrag, lob, aktivesKind(), lob && nameImLob(), wahl), ersatz);
 }
 
 // Einzelnen Lob-Platz anhören: eigene Aufnahme, sonst Thorstens Satz für diesen Platz
@@ -1200,7 +1256,7 @@ function geschafft() {
   glockenspiel();
   sterneFliegen();
   const jubel = $('#jubel');
-  $('#jubel-bild').innerHTML = bildHtml(eintrag);
+  $('#jubel-bild').innerHTML = zustand.wahl && zustand.wahl.b === eintrag.b ? zustand.wahl.bild() : bildHtml(eintrag);
   jubel.classList.remove('zeigen');
   void jubel.offsetWidth;
   jubel.classList.add('zeigen');
@@ -1233,9 +1289,11 @@ function sterneFliegen() {
 }
 
 function buchstabeOeffnen(i) {
+  const gleicherBuchstabe = zustand.index === i && zustand.wahl;
   zustand.index = i;
   const eintrag = BUCHSTABEN[i];
-  $('#bild').innerHTML = bildHtml(eintrag);
+  zustand.wahl = wortWaehlen(eintrag, gleicherBuchstabe ? zustand.wahl : null);
+  $('#bild').innerHTML = zustand.wahl.bild();
   $('#fortschritt').textContent = sterneText(zustand.sterne[eintrag.b] || 0);
   if (!$('#trace').classList.contains('active')) zeigen('trace');
   // Layout erst nach dem Anzeigen messen
@@ -1607,10 +1665,71 @@ function anpassenZeichnen() {
     knopf('foto').addEventListener('click', () => buchstabenFotoWaehlen(eintrag.b));
     knopf('bild-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'bild'));
     knopf('rec').addEventListener('click', (e) => medienAufnehmen(eintrag.b, e.currentTarget));
-    knopf('play').addEventListener('click', () => lautAbspielen(eintrag));
+    knopf('play').addEventListener('click', () => folgeAbspielen(hauptWahl(eintrag).ansage()));
     knopf('stimme-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'stimme'));
+    zeile.appendChild(eigeneWoerterBox(eintrag));
     box.appendChild(zeile);
   });
+}
+
+// Persönliche Wörter eines Buchstabens: Foto + eigene Aufnahme des Wortes
+function eigeneWoerterBox(eintrag) {
+  const box = document.createElement('div');
+  box.className = 'eigene-woerter';
+  eigeneWoerter.filter((w) => w.b === eintrag.b).forEach((w) => {
+    const m = medien[`w-${w.id}`] || {};
+    const zeile = document.createElement('div');
+    zeile.className = 'eigenes-wort';
+    zeile.innerHTML = `<span class="vorschau">${m.bildUrl ? `<img class="bild-datei foto" src="${m.bildUrl}" alt="">` : '💛'}</span>`
+      + `<span class="w">${htmlText(w.wort)}<br><small>${m.stimme ? '<b>aufgenommen</b>' : 'noch nicht aufgenommen'}</small></span>`
+      + '<button class="mini-btn" data-a="foto" aria-label="Foto wählen">📷</button>'
+      + '<button class="mini-btn" data-a="rec" aria-label="Wort aufnehmen">🎙️</button>'
+      + `<button class="mini-btn" data-a="play" aria-label="Anhören" ${m.stimme ? '' : 'disabled'}>▶️</button>`
+      + '<button class="mini-btn" data-a="weg" aria-label="Wort löschen">🗑️</button>';
+    const knopf = (a) => zeile.querySelector(`[data-a=${a}]`);
+    knopf('foto').addEventListener('click', () => buchstabenFotoWaehlen(`w-${w.id}`));
+    knopf('rec').addEventListener('click', (e) => medienAufnehmen(`w-${w.id}`, e.currentTarget));
+    knopf('play').addEventListener('click', () => {
+      const wahl = woerterFuer(eintrag).find((x) => x.id === w.id);
+      if (wahl) folgeAbspielen(wahl.ansage());
+    });
+    knopf('weg').addEventListener('click', () => eigenesWortLoeschen(w));
+    box.appendChild(zeile);
+  });
+  const neu = document.createElement('button');
+  neu.className = 'text-btn klein';
+  neu.textContent = `➕ eigenes Wort mit „${zeichen(eintrag)}“`;
+  neu.addEventListener('click', () => eigenesWortNeu(eintrag));
+  box.appendChild(neu);
+  return box;
+}
+
+function faengtAnMit(wort, b) {
+  return b === 'ß' || wort.trim().toLowerCase().startsWith(b);
+}
+
+async function eigenesWortNeu(eintrag) {
+  const wort = (prompt(`Neues Wort mit „${eintrag.b}“, z. B. ${eintrag.b === 'm' ? 'Mama' : eintrag.b === 'p' ? 'Papa' : 'ein Name'}:`) || '').trim().slice(0, 30);
+  if (!wort) return;
+  if (!faengtAnMit(wort, eintrag.b) && !confirm(`„${wort}“ fängt nicht mit „${eintrag.b}“ an. Trotzdem hinzufügen?`)) return;
+  const profil = await aktivesProfil();
+  if (!profil) return;
+  profil.woerter = [...(profil.woerter || []), { id: Date.now().toString(36), b: eintrag.b, wort }];
+  await datenbank.profilSpeichern(profil);
+  await medienLaden();
+  medienZeichnen();
+}
+
+async function eigenesWortLoeschen(w) {
+  if (!confirm(`„${w.wort}“ mit Foto und Aufnahme löschen?`)) return;
+  const profil = await aktivesProfil();
+  if (!profil) return;
+  profil.woerter = (profil.woerter || []).filter((x) => x.id !== w.id);
+  await datenbank.profilSpeichern(profil);
+  await datenbank.medienEntfernen(profil.id, `w-${w.id}`, 'bild');
+  await datenbank.medienEntfernen(profil.id, `w-${w.id}`, 'stimme');
+  await medienLaden();
+  medienZeichnen();
 }
 
 async function medienEntfernen(b, art) {
@@ -1797,23 +1916,20 @@ function hoerNeueRunde() {
   const box = $('#hoeren-karten');
   box.innerHTML = '';
   karten.forEach((e) => {
+    // Pro Buchstabe ein zufälliges Wort aus dem Vorrat (auch persönliche Wörter)
+    const wahl = wortWaehlen(e);
+    if (e === ziel) hoerSpiel.zielWahl = wahl;
     const btn = document.createElement('button');
     btn.className = 'hoer-karte';
-    btn.innerHTML = bildHtml(e);
-    btn.setAttribute('aria-label', e.wort);
-    btn.addEventListener('click', () => hoerKarteGewaehlt(e, btn));
+    btn.innerHTML = wahl.bild();
+    btn.setAttribute('aria-label', wahl.wort);
+    btn.addEventListener('click', () => hoerKarteGewaehlt(e, btn, wahl));
     box.appendChild(btn);
   });
   hoerLautAbspielen();
 }
 
-// Wort zum Bild: eigene Aufnahme des Profils ("mmm … Maus"), sonst Thorstens Wort
-function wortQuelle(e) {
-  const eigene = medien[e.b] && medien[e.b].stimme;
-  return eigene ? { url: URL.createObjectURL(eigene), eigen: true } : { url: `audio/${dateiName(e.b)}-wort.wav` };
-}
-
-function hoerKarteGewaehlt(e, btn) {
+function hoerKarteGewaehlt(e, btn, wahl) {
   if (hoerSpiel.gesperrt || btn.classList.contains('falsch')) return;
   audio();
   if (e === hoerSpiel.ziel) {
@@ -1822,14 +1938,14 @@ function hoerKarteGewaehlt(e, btn) {
     glockenspiel();
     hoerSpiel.runde++;
     hoerRundenAnzeigen();
-    folgeAbspielen([wortQuelle(e)], e.wort);
+    folgeAbspielen(wahl.wortAllein(), wahl.wort);
     clearTimeout(hoerSpiel.timer);
     hoerSpiel.timer = setTimeout(() => (hoerSpiel.runde >= HOER_RUNDEN ? hoerGeschafft() : hoerNeueRunde()), 1900);
   } else {
     // Kein "falsch": Bild wackelt, sein Wort erklingt, dann der gesuchte Laut noch einmal
     btn.classList.add('falsch');
-    folgeAbspielen([wortQuelle(e), { url: 'audio/ansage-hoeren-nochmal.wav' },
-      { url: `audio/${dateiName(hoerSpiel.ziel.b)}-laut.wav` }], e.wort);
+    folgeAbspielen([...wahl.wortAllein(), { url: 'audio/ansage-hoeren-nochmal.wav' },
+      { url: `audio/${dateiName(hoerSpiel.ziel.b)}-laut.wav` }], wahl.wort);
   }
 }
 

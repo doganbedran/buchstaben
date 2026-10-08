@@ -22,13 +22,13 @@
 
   // 3. Falsche Karte: wackelt, zählt nicht, zweimal antippen ändert nichts
   const karten = [...document.querySelectorAll('.hoer-karte')];
-  const falsch = karten.find((k) => k.getAttribute('aria-label') !== hoerSpiel.ziel.wort);
+  const falsch = karten.find((k) => k.getAttribute('aria-label') !== hoerSpiel.zielWahl.wort);
   falsch.click(); falsch.click();
   pruefe(falsch.classList.contains('falsch') && hoerSpiel.runde === 0, 'Falsche Karte falsch behandelt');
 
   // 4. Fünf richtige Runden
   for (let r = 1; r <= HOER_RUNDEN; r++) {
-    const richtig = [...document.querySelectorAll('.hoer-karte')].find((k) => k.getAttribute('aria-label') === hoerSpiel.ziel.wort);
+    const richtig = [...document.querySelectorAll('.hoer-karte')].find((k) => k.getAttribute('aria-label') === hoerSpiel.zielWahl.wort);
     richtig.click();
     richtig.click();   // doppelt tippen darf nicht doppelt zählen
     pruefe(hoerSpiel.runde === r, `Nach Runde ${r}: ${hoerSpiel.runde}`);
@@ -47,7 +47,7 @@
 
   // Für den Screenshot: frische Runde, eine Karte falsch
   hoerSpiel.runde = 2; hoerNeueRunde();
-  [...document.querySelectorAll('.hoer-karte')].find((k) => k.getAttribute('aria-label') !== hoerSpiel.ziel.wort).classList.add('falsch');
+  [...document.querySelectorAll('.hoer-karte')].find((k) => k.getAttribute('aria-label') !== hoerSpiel.zielWahl.wort).classList.add('falsch');
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;color:#fff;font:12px monospace;padding:6px;z-index:9;background:'
     + (fehler.length ? '#c62828' : '#1b7f3a');

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#fdf6ec">
+  <title>Buchstaben-Spuren</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Wer spielt? (nur wenn Kinder angelegt sind) -->
+  <section id="wer" class="screen">
+    <header class="topbar wer-kopf">
+      <h1>🌈</h1>
+    </header>
+    <div id="wer-liste" class="wer-liste"></div>
+  </section>
+
+  <!-- Startseite: Buchstaben-Raster -->
+  <section id="home" class="screen active">
+    <header class="topbar">
+      <h1 id="regenbogen">🌈</h1>
+      <button id="btn-kind" class="kind-btn" aria-label="Anderes Kind" hidden></button>
+      <button id="btn-eltern" class="icon-btn small" aria-label="Elternbereich (lange drücken)">
+        <span>⚙️</span><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg>
+      </button>
+    </header>
+    <!-- Spiele: große Symbole, die Kinder ohne Lesen verstehen -->
+    <nav class="spiele-leiste" aria-label="Spiele">
+      <button class="spiel-btn aktiv" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
+      <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
+    </nav>
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <!-- Spiel: Ich höre was – welches Bild fängt mit dem Laut an? -->
+  <section id="hoeren" class="screen">
+    <header class="topbar">
+      <button id="btn-hoeren-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div id="hoeren-runden" class="runden-punkte"></div>
+      <button id="btn-hoeren-laut" class="icon-btn" aria-label="Nochmal hören">🔊</button>
+    </header>
+    <div class="hoeren-ohr" aria-hidden="true">👂</div>
+    <div id="hoeren-karten" class="hoeren-karten"></div>
+    <div id="hoeren-jubel" class="jubel"><span>🏆</span></div>
+  </section>
+
+  <!-- Nachspuren -->
+  <section id="trace" class="screen">
+    <header class="topbar">
+      <button id="btn-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <button id="btn-bild" class="bild-karte" aria-label="Laut anhören">
+        <span id="bild"></span>
+      </button>
+      <button id="btn-weiter" class="icon-btn" aria-label="Nächster Buchstabe">➡️</button>
+    </header>
+    <div id="tafel" class="tafel">
+      <canvas id="vorlage"></canvas>
+      <canvas id="lichter"></canvas>
+      <canvas id="canvas"></canvas>
+      <div id="startpunkt" class="startpunkt" hidden></div>
+      <div id="sterne" class="sterne"></div>
+    </div>
+    <footer class="bottombar">
+      <button id="btn-laut" class="icon-btn" aria-label="Nochmal hören">🔊</button>
+      <div id="fortschritt" class="fortschritt"></div>
+      <button id="btn-loeschen" class="icon-btn" aria-label="Wegwischen">🧽</button>
+    </footer>
+    <div id="jubel" class="jubel"><span id="jubel-bild"></span></div>
+  </section>
+
+  <!-- Elternbereich -->
+  <section id="eltern" class="screen eltern">
+    <header class="topbar">
+      <button id="btn-eltern-zurueck" class="icon-btn" aria-label="Zurück">🏠</button>
+      <h2>Elternbereich</h2>
+      <span></span>
+    </header>
+    <div class="eltern-inhalt">
+      <div class="karte">
+        <h3>Kinder</h3>
+        <p class="hinweis">Jedes Kind sammelt eigene Sterne und hat eigene Einstellungen.
+          Sobald ein Kind angelegt ist, fragt die App beim Start „Wer spielt?“.</p>
+        <div id="kinder-liste" class="kinder-liste"></div>
+        <button id="btn-kind-neu" class="text-btn">➕ Kind hinzufügen</button>
+      </div>
+
+      <div class="karte">
+        <h3>Sichern &amp; Übertragen</h3>
+        <p class="hinweis">Eigene Profile (Fotos, Aufnahmen, Lob) und Kinder (Bild, Name, Sterne) als eine Datei
+          sichern – z. B. um sie auf ein Tablet zu übertragen oder für den Notfall aufzuheben.
+          Beim Einspielen geht nichts verloren: Gleiche Profile und Kinder werden aktualisiert, andere bleiben.</p>
+        <p class="hinweis" id="sicherung-info"></p>
+        <div class="knopf-reihe">
+          <button id="btn-sichern" class="text-btn">💾 Sicherung speichern</button>
+          <button id="btn-teilen" class="text-btn" hidden>📤 Sicherung teilen</button>
+          <button id="btn-einspielen" class="text-btn">📥 Sicherung einspielen</button>
+        </div>
+        <input type="file" id="sicherung-input" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="karte">
+        <h3>Profil</h3>
+        <p class="hinweis">Ein Profil enthält eigene Fotos und Ihre Stimme.
+          <strong>„Standard“ ist immer da</strong> und kann nicht verändert werden – wenn etwas nicht passt,
+          einfach „Standard“ antippen.</p>
+        <p class="hinweis" id="profil-kinder-hinweis" hidden>Hier wählen Sie, welches Profil Sie
+          <b>bearbeiten</b>. Welches Profil ein Kind hört und sieht, stellen Sie beim Kind ein.</p>
+        <div id="profile" class="profile"></div>
+        <div class="knopf-reihe">
+          <button id="btn-profil-neu" class="text-btn">➕ Neues Profil</button>
+          <button id="btn-profil-umbenennen" class="text-btn">✏️ Umbenennen</button>
+          <button id="btn-profil-loeschen" class="text-btn warnung">🗑️ Löschen</button>
+        </div>
+      </div>
+
+      <div class="karte">
+        <h3>Lob nach dem Nachspuren</h3>
+        <div id="lob" class="anpassen"></div>
+      </div>
+
+      <div class="karte">
+        <h3>Bilder &amp; Stimme anpassen</h3>
+        <div id="anpassen" class="anpassen"></div>
+        <input type="file" id="foto-input" accept="image/*" hidden>
+      </div>
+
+      <div class="karte" id="karte-schrift">
+        <h3>Schrift</h3>
+        <label class="umschalter">
+          <input type="radio" name="schreibweise" value="klein"> kleine Buchstaben (Montessori)
+        </label>
+        <label class="umschalter">
+          <input type="radio" name="schreibweise" value="gross"> GROSSE Buchstaben
+        </label>
+      </div>
+
+      <div class="karte">
+        <h3>App</h3>
+        <label class="umschalter">
+          <input type="checkbox" id="vibration-an"> 📳 Vibration beim Nachspuren („Sandpapier-Gefühl“)
+        </label>
+        <p class="hinweis" id="vibration-hinweis">Das Handy vibriert leicht, solange der Finger richtig auf dem Strich ist.</p>
+        <p class="hinweis"><span id="app-version"></span> · Updates kommen automatisch, sobald das Gerät online ist.</p>
+        <button id="btn-update" class="text-btn">🔄 Nach Update suchen</button>
+      </div>
+
+      <div class="karte" id="karte-fortschritt">
+        <h3>Fortschritt</h3>
+        <p class="hinweis" id="fortschritt-text"></p>
+        <button id="btn-reset" class="text-btn warnung">Sterne zurücksetzen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Kind bearbeiten -->
+  <section id="kind" class="screen eltern">
+    <header class="topbar">
+      <button id="btn-kind-zurueck" class="icon-btn" aria-label="Zurück">⬅️</button>
+      <h2 id="kind-titel">Kind</h2>
+      <span></span>
+    </header>
+    <div class="eltern-inhalt">
+      <div class="karte">
+        <h3>Name</h3>
+        <input id="kind-name" class="textfeld" type="text" maxlength="20" autocomplete="off">
+      </div>
+      <div class="karte">
+        <h3>Erkennungsbild</h3>
+        <p class="hinweis">Daran erkennt das Kind sich bei „Wer spielt?“.</p>
+        <div id="kind-tiere" class="tier-auswahl"></div>
+        <div class="knopf-reihe">
+          <button id="btn-kind-foto" class="text-btn">📷 Foto vom Kind</button>
+          <button id="btn-kind-foto-weg" class="text-btn">↩️ Kein Foto</button>
+        </div>
+      </div>
+      <div class="karte">
+        <h3>Name fürs Lob</h3>
+        <p class="hinweis">Sprechen Sie den Namen so, wie Sie ihn beim Loben sagen. Die Aufnahme bleibt nur auf diesem Gerät.</p>
+        <p class="hinweis" id="kind-name-status"></p>
+        <div class="knopf-reihe">
+          <button id="btn-kind-name-aufnehmen" class="mini-btn" aria-label="Namen aufnehmen">🎙️</button>
+          <button id="btn-kind-name-anhoeren" class="mini-btn" aria-label="Lob mit Namen anhören">▶️</button>
+          <button id="btn-kind-name-weg" class="mini-btn" aria-label="Aufnahme entfernen">↩️</button>
+        </div>
+      </div>
+      <div class="karte">
+        <h3>Schrift</h3>
+        <label class="umschalter"><input type="radio" name="kind-schreibweise" value="klein"> kleine Buchstaben (Montessori)</label>
+        <label class="umschalter"><input type="radio" name="kind-schreibweise" value="gross"> GROSSE Buchstaben</label>
+      </div>
+      <div class="karte">
+        <h3>Stimme &amp; Bilder</h3>
+        <p class="hinweis">Welches Profil dieses Kind hört und sieht.</p>
+        <div id="kind-profile" class="profile"></div>
+      </div>
+      <div class="karte">
+        <h3>Fortschritt</h3>
+        <p class="hinweis" id="kind-sterne"></p>
+        <div class="knopf-reihe">
+          <button id="btn-kind-sterne-reset" class="text-btn">Sterne zurücksetzen</button>
+          <button id="btn-kind-loeschen" class="text-btn warnung">🗑️ Kind löschen</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="letters.js"></script>
+  <script src="striche.js"></script>
+  <script src="app.js"></script>
+  <script src="_test_woerter.js"></script>
+  <iframe src="/_warten?ms=15000" hidden></iframe>
+</body>
+</html>

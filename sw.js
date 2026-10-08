@@ -1,7 +1,7 @@
 // Offline-Cache: Mit Internet immer die neueste Version laden, ohne Internet aus dem Cache.
 importScripts('letters.js');
 
-const CACHE = 'buchstaben-v23';   // gleiche Nummer wie APP_VERSION in app.js
+const CACHE = 'buchstaben-v24';   // gleiche Nummer wie APP_VERSION in app.js
 const DATEIEN = [
   './', 'index.html', 'style.css', 'app.js', 'letters.js', 'striche.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png',
@@ -9,6 +9,7 @@ const DATEIEN = [
   ...BUCHSTABEN.filter(({ bild }) => bild.startsWith('bilder/')).map(({ bild }) => bild),
   ...BUCHSTABEN.flatMap(({ b }) => [`audio/${dateiName(b)}.wav`, `audio/${dateiName(b)}-wort.wav`, `audio/${dateiName(b)}-laut.wav`]),
   ...['hoeren', 'hoeren-nochmal', 'runde-geschafft'].map((a) => `audio/ansage-${a}.wav`),
+  ...BUCHSTABEN.flatMap(({ b, mehr }) => (mehr || []).flatMap((_, i) => [`audio/${dateiName(b)}-${i + 2}.wav`, `audio/${dateiName(b)}-${i + 2}-wort.wav`])),
 ];
 
 self.addEventListener('install', (e) => {
