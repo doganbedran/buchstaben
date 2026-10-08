@@ -8,4 +8,5 @@ sed 's#<script src="letters.js"></script>#<script>\n  // Stand vor den Kinder-Pr
 sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_sichern.js"></script>\n  <iframe src="/_warten?ms=12000" hidden></iframe>#' index.html > _test_sichern.html
 sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_hoeren.js"></script>\n  <iframe src="/_warten?ms=6000" hidden></iframe>#' index.html > _test_hoeren.html
 sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_woerter.js"></script>\n  <iframe src="/_warten?ms=15000" hidden></iframe>#' index.html > _test_woerter.html
+sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_name.js"></script>\n  <iframe src="/_warten?ms=8000" hidden></iframe>#' index.html > _test_name.html
 echo "Testseiten erzeugt"

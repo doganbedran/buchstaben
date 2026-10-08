@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 24;
+const APP_VERSION = 25;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -201,14 +201,16 @@ function bildHtml(eintrag) {
 // Buchstabe als kleine Grafik aus der Strichfolge (gleiche Schul-Form wie beim Nachspuren), sonst als Text.
 // Fester Höhenbereich je Schreibweise, damit Ober- und Unterlängen im Verhältnis bleiben.
 function zeichenHtml(eintrag) {
-  const z = zeichen(eintrag);
+  return strichSvg(zeichen(eintrag), zustand.schreibweise === 'gross' ? [-26, 110] : [-10, 148]);
+}
+
+function strichSvg(z, [oben, unten], mindestBreite = 60) {
   const daten = STRICHE[z];
   if (!daten) return z;
   const xs = daten.flat().map((p) => p[0]);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const breite = Math.max(maxX - minX + 20, 60);
+  const breite = Math.max(maxX - minX + 20, mindestBreite);
   const links = (minX + maxX) / 2 - breite / 2;
-  const [oben, unten] = zustand.schreibweise === 'gross' ? [-26, 110] : [-10, 148];
   const pfade = daten.map((st) => st.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('')).join('');
   return `<svg class="zeichen-svg" viewBox="${links.toFixed(1)} ${oben} ${breite.toFixed(1)} ${unten - oben}" aria-label="${z}">`
     + `<path d="${pfade}" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -429,6 +431,8 @@ window.addEventListener('popstate', async () => {
     return;
   }
   if ($('#eltern').classList.contains('active') || $('#kind').classList.contains('active')) await elternVerlassen();
+  clearTimeout(tafelZustand.jubelTimer);
+  nameModusBeenden();
   rasterZeichnen();
   zeigen('home', false);
 });
@@ -446,6 +450,7 @@ function rasterZeichnen() {
   // Oben links: wer gerade spielt (Tipp darauf -> "Wer spielt?")
   const k = aktivesKind();
   $('#btn-kind').hidden = !k;
+  document.querySelector('.spiel-btn[data-spiel="name"]').hidden = !k || !nameZeichen(k.name).length;
   $('#regenbogen').hidden = !!k;
   if (k) $('#btn-kind').innerHTML = kindBildHtml(k);
   const grid = $('#grid');
@@ -542,6 +547,7 @@ function buchstabeMalen(c, s, skala, art) {
 }
 
 function text() {
+  if (zustand.nameModus) return zustand.nameModus.zeichen[zustand.nameModus.pos];
   return zeichen(BUCHSTABEN[zustand.index]);
 }
 
@@ -1246,6 +1252,7 @@ function pruefen() {
 }
 
 function geschafft() {
+  if (zustand.nameModus) { nameSchrittGeschafft(); return; }
   tafelZustand.geschafft = true;
   const eintrag = BUCHSTABEN[zustand.index];
   const n = Math.min(MAX_STERNE, (zustand.sterne[eintrag.b] || 0) + 1);
@@ -1288,7 +1295,85 @@ function sterneFliegen() {
   setTimeout(() => { box.innerHTML = ''; }, 1600);
 }
 
+// ---------- Mein Name: den eigenen Namen Buchstabe für Buchstabe nachspuren ----------
+
+// Wie in der Schule: erster Buchstabe groß, Rest klein; Zeichen ohne Strichdaten (z. B. "-") werden übersprungen
+function nameZeichen(name) {
+  return [...name.trim()]
+    .map((c, i) => (i === 0 ? (c === 'ß' ? 'ẞ' : c.toUpperCase()) : c.toLowerCase()))
+    .filter((c) => STRICHE[c]);
+}
+
+function nameLeisteZeichnen() {
+  const n = zustand.nameModus;
+  const leiste = $('#name-leiste');
+  leiste.hidden = !n;
+  if (!n) return;
+  leiste.innerHTML = n.zeichen.map((c, i) =>
+    `<span class="${i < n.pos ? 'fertig' : i === n.pos ? 'aktuell' : ''}">${strichSvg(c, [-26, 148], 40)}</span>`).join('');
+}
+
+// Für Farbe der Spur und den Laut: der passende Eintrag im Alphabet
+function nameSchrittZeigen() {
+  const n = zustand.nameModus;
+  const c = n.zeichen[n.pos];
+  const klein = c === 'ẞ' ? 'ß' : c.toLowerCase();
+  zustand.index = Math.max(0, BUCHSTABEN.findIndex((e) => e.b === klein));
+  nameLeisteZeichnen();
+  requestAnimationFrame(tafelAufbauen);
+  folgeAbspielen([{ url: `audio/${dateiName(BUCHSTABEN[zustand.index].b)}-laut.wav` }]);
+}
+
+function nameStarten() {
+  const k = aktivesKind();
+  if (!k) return;
+  const zeichenListe = nameZeichen(k.name);
+  if (!zeichenListe.length) return;
+  zustand.nameModus = { zeichen: zeichenListe, pos: 0 };
+  zustand.wahl = null;
+  $('#bild').innerHTML = kindBildHtml(k);
+  $('#fortschritt').textContent = '';
+  zeigen('trace');
+  nameSchrittZeigen();
+  // Zum Start einmal den Namen hören, falls aufgenommen
+  if (k.nameStimme) folgeAbspielen([blobQuelle(k.nameStimme)]);
+}
+
+function nameSchrittGeschafft() {
+  tafelZustand.geschafft = true;
+  const n = zustand.nameModus;
+  n.pos++;
+  glockenspiel();
+  sterneFliegen();
+  nameLeisteZeichnen();
+  clearTimeout(tafelZustand.jubelTimer);
+  if (n.pos < n.zeichen.length) {
+    tafelZustand.jubelTimer = setTimeout(nameSchrittZeigen, 1300);
+    return;
+  }
+  // Ganzer Name geschafft: großer Jubel mit Bild des Kindes, Lob und (falls aufgenommen) dem Namen
+  const k = aktivesKind();
+  const jubel = $('#jubel');
+  $('#jubel-bild').innerHTML = k ? kindBildHtml(k) : '🏆';
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  folgeAbspielen([lobQuelle(), ...(k && k.nameStimme ? [blobQuelle(k.nameStimme)] : [])], 'Super!');
+  tafelZustand.jubelTimer = setTimeout(() => {
+    jubel.classList.remove('zeigen');
+    zustand.nameModus = null;
+    nameLeisteZeichnen();
+    zurStartseite();
+  }, 3600);
+}
+
+function nameModusBeenden() {
+  zustand.nameModus = null;
+  nameLeisteZeichnen();
+}
+
 function buchstabeOeffnen(i) {
+  nameModusBeenden();
   const gleicherBuchstabe = zustand.index === i && zustand.wahl;
   zustand.index = i;
   const eintrag = BUCHSTABEN[i];
@@ -1302,14 +1387,30 @@ function buchstabeOeffnen(i) {
 }
 
 $('#btn-home').addEventListener('click', zurStartseite);
-$('#btn-weiter').addEventListener('click', () => buchstabeOeffnen((zustand.index + 1) % BUCHSTABEN.length));
+$('#btn-weiter').addEventListener('click', () => {
+  // Bei "Mein Name": zum nächsten Buchstaben des Namens (überspringen)
+  if (zustand.nameModus) {
+    if (zustand.nameModus.pos < zustand.nameModus.zeichen.length - 1) { zustand.nameModus.pos++; nameSchrittZeigen(); }
+    return;
+  }
+  buchstabeOeffnen((zustand.index + 1) % BUCHSTABEN.length);
+});
 $('#btn-loeschen').addEventListener('click', tafelLeeren);
-$('#btn-laut').addEventListener('click', () => lautAbspielen(BUCHSTABEN[zustand.index]));
+$('#btn-laut').addEventListener('click', () => (zustand.nameModus ? nameLautWiederholen() : lautAbspielen(BUCHSTABEN[zustand.index])));
+function nameLautWiederholen() {
+  folgeAbspielen([{ url: `audio/${dateiName(BUCHSTABEN[zustand.index].b)}-laut.wav` }]);
+}
 $('#btn-bild').addEventListener('click', () => {
   const karte = $('#btn-bild');
   karte.classList.remove('wackeln');
   void karte.offsetWidth;
   karte.classList.add('wackeln');
+  if (zustand.nameModus) {
+    const k = aktivesKind();
+    if (k && k.nameStimme) folgeAbspielen([blobQuelle(k.nameStimme)]);
+    else nameLautWiederholen();
+    return;
+  }
   lautAbspielen(BUCHSTABEN[zustand.index]);
 });
 
@@ -1976,7 +2077,7 @@ $('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.t
 $('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
 
 // Spiele-Leiste
-const SPIELE = { hoeren: hoerSpielStarten };
+const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();

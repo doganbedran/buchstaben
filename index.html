@@ -32,6 +32,7 @@
     <nav class="spiele-leiste" aria-label="Spiele">
       <button class="spiel-btn aktiv" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
       <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
+      <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
     </nav>
     <div id="grid" class="grid"></div>
   </section>
@@ -57,6 +58,8 @@
       </button>
       <button id="btn-weiter" class="icon-btn" aria-label="Nächster Buchstabe">➡️</button>
     </header>
+    <!-- Nur bei "Mein Name": der ganze Name, geschaffte Buchstaben farbig -->
+    <div id="name-leiste" class="name-leiste" hidden></div>
     <div id="tafel" class="tafel">
       <canvas id="vorlage"></canvas>
       <canvas id="lichter"></canvas>

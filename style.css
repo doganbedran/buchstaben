@@ -213,6 +213,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .spiel-btn.aktiv { border-color: #1d5fbf; }
 .spiel-btn:active { transform: scale(0.92); }
 
+/* Mein Name */
+.name-leiste { display: flex; justify-content: center; gap: 6px; padding: 10px 0 0; flex-wrap: wrap; }
+.name-leiste span {
+  min-width: 40px; padding: 2px 8px; border-radius: 12px; text-align: center;
+  font-size: 1.9rem; font-weight: 700; color: #c7b08a; background: var(--papier); box-shadow: var(--schatten);
+}
+.name-leiste span.fertig { color: #fff; background: #1d5fbf; }
+.name-leiste .zeichen-svg { height: 2.4rem; width: auto; display: block; }
+.name-leiste span.aktuell { color: var(--text); outline: 3px solid #f28c38; }
+
 /* Hör-Spiel */
 .runden-punkte { display: flex; gap: 8px; }
 .runden-punkte span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c7b08a; background: var(--papier); }

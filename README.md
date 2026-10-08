@@ -16,6 +16,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `_test_kinder.html` – Test der Kinder-Profile (frisches Browserprofil; Ansicht per `#wer`, `#home`, `#kind`, `#eltern`)
 - `_test_sichern.html` – Test Sichern & Übertragen (frisches Browserprofil)
 - `_test_hoeren.html` – Test Hör-Spiel
+- `_test_name.html` – Test „Mein Name“
 - `_test_woerter.html` – Test Wort-Vorrat und persönliche Wörter (`#eltern`, `#spuren`)
 - `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
 - `werkzeuge/testseiten_erzeugen.sh` – Testseiten nach Änderungen an `index.html` neu erzeugen
@@ -57,6 +58,7 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 ## Spiele
 - ✏️ **Nachspuren** – Startseite
 - 📳 **Vibration** beim Nachspuren (Sandpapier-Gefühl, Android), im Elternbereich abschaltbar
+- ✍️ **Mein Name** – eigenen Namen Buchstabe für Buchstabe nachspuren (nur mit ausgewähltem Kind)
 - 👂 **Ich höre was** – Laut hören („mmm …“), passendes Bild von dreien antippen; 5 Runden. Ähnlich klingende
   Anlaute (f/v, k/c/q/x, e/ä, j/y) nie in derselben Runde, ß ausgenommen. Nutzt `audio/<b>-laut.wav`.
 
