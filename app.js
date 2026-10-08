@@ -577,6 +577,11 @@ function punkt(e) {
 }
 
 canvas.addEventListener('pointerdown', (e) => {
+  // Ein neuer erster Finger heißt: der vorige Kontakt ist vorbei, auch wenn sein "pointerup" nie ankam
+  // (z. B. am Rand abgehoben oder Handballen). Sonst würden alle weiteren Tipps ignoriert.
+  if (tafelZustand.pointerId !== null && e.isPrimary && e.pointerId !== tafelZustand.pointerId) {
+    strichEnde({ pointerId: tafelZustand.pointerId });
+  }
   if (tafelZustand.pointerId !== null || tafelZustand.geschafft) return;
   e.preventDefault();
   audio();
@@ -609,6 +614,7 @@ function strichEnde(e) {
 }
 canvas.addEventListener('pointerup', strichEnde);
 canvas.addEventListener('pointercancel', strichEnde);
+canvas.addEventListener('lostpointercapture', strichEnde);
 
 // ---------- Geführtes Nachspuren: Strich für Strich in Schreibrichtung ----------
 
@@ -693,10 +699,11 @@ function gefuehrtStart(p) {
   startpunktZeigen(punktBei(gefuehrt.pfade[gefuehrt.nr], gefuehrt.fortschritt));
   const pfad = gefuehrt.pfade[gefuehrt.nr];
   const start = punktBei(pfad, gefuehrt.fortschritt);
-  const folgt = Math.hypot(p.x - start.x, p.y - start.y) <= fangRadius();
+  const istPunkt = pfad.L <= gefuehrt.breite * 0.6;
+  const folgt = Math.hypot(p.x - start.x, p.y - start.y) <= fangRadius() * (istPunkt ? 1.4 : 1);
   gefuehrt.versuch = { punkte: [p], folgt, startFortschritt: gefuehrt.fortschritt };
   // Punkte (i, j, Umlaute): antippen reicht
-  if (folgt && pfad.L <= gefuehrt.breite * 0.6) strichFertig();
+  if (folgt && istPunkt) strichFertig();
 }
 
 function gefuehrtBewegung(p) {
@@ -716,8 +723,8 @@ function gefuehrtBewegung(p) {
     gefuehrt.fortschritt = treffer.s;
     startpunktZeigen(punktBei(pfad, gefuehrt.fortschritt));
   }
-  // Am Ende angekommen (eine halbe Strichbreite Spielraum)
-  if (gefuehrt.fortschritt >= pfad.L - b * 0.5) strichFertig();
+  // Erst fertig, wenn der Finger wirklich am Ende ist (kleiner Spielraum, sonst fehlt z. B. beim j das Hakenende)
+  if (gefuehrt.fortschritt >= pfad.L - b * 0.2) strichFertig();
 }
 
 function gefuehrtEnde() {

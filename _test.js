@@ -1,3 +1,7 @@
+// Abstürze sichtbar machen (rote Leiste mit Fehlermeldung)
+window.addEventListener('error', (e) => {
+  document.body.insertAdjacentHTML('beforeend', `<div style="position:fixed;left:0;right:0;bottom:0;background:#c62828;color:#fff;font:12px monospace;padding:6px;z-index:10">ABSTURZ: ${e.message} (Zeile ${e.lineno})</div>`);
+});
 // Testet die Spur-Erkennung für alle Buchstaben (klein und groß):
 // sauber = erkannt, kritzeln = nicht erkannt, große Lücke / fehlendes Teil / fehlender Querstrich = nicht erkannt,
 // kleine Lücke = erkannt (Kinder dürfen ungenau sein).
@@ -153,6 +157,26 @@
       ev('pointerup', 5, 5);
       return Math.abs(gefuehrt.fortschritt - vorher) < 1 && gefuehrt.nr === 0;
     });
+    // Strich darf nicht vor seinem Ende fertig sein (z. B. Hakenende beim j)
+    vorbereiten(i);
+    const ersterLang = gefuehrt.pfade.findIndex((p) => p.L > gefuehrt.breite * 3);
+    if (ersterLang === 0) {
+      test('geführt: bei 92 % noch nicht fertig', 0, () => { ziehen(0, { bis: 0.92 }); return gefuehrt.nr; });
+    }
+    // Hängender Fingerkontakt (kein pointerup) darf weitere Tipps nicht blockieren
+    vorbereiten(i);
+    test('geführt: hängender Kontakt blockiert nicht', true, () => {
+      const r = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 99, isPrimary: true, clientX: r.left + 3, clientY: r.top + 3, bubbles: true }));
+      // kein pointerup für 99 – jetzt normal zeichnen (neuer erster Finger)
+      for (let k = 0; k < n(); k++) {
+        const p = gefuehrt.pfade[k];
+        canvas.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 200 + k, isPrimary: true, clientX: r.left + p.p[0].x, clientY: r.top + p.p[0].y, bubbles: true }));
+        p.p.forEach((q) => canvas.dispatchEvent(new PointerEvent('pointermove', { pointerId: 200 + k, isPrimary: true, clientX: r.left + q.x, clientY: r.top + q.y, bubbles: true })));
+        canvas.dispatchEvent(new PointerEvent('pointerup', { pointerId: 200 + k, isPrimary: true, clientX: r.left + p.p[p.p.length - 1].x, clientY: r.top + p.p[p.p.length - 1].y, bubbles: true }));
+      }
+      return tafelZustand.geschafft;
+    });
     // Punkte (i, j, Umlaute) nur antippen
     vorbereiten(i);
     if (gefuehrt.pfade.some((p) => p.L <= gefuehrt.breite * 0.6)) {
@@ -242,8 +266,8 @@
     lauflicht.eingefroren = true;
     lauflicht.zyklusStart = 0;
     const pfad = gefuehrt.pfade[gefuehrt.nr];
-    // Licht hat gerade 60 % des restlichen Strichs erreicht
-    lichterZeichnen(((pfad.L - gefuehrt.fortschritt) * 0.6 / lichtTempo()) * 1000);
+    // Licht hat gerade 60 % des restlichen Strichs erreicht (bei Buchstaben, die schon fertig sind, entfällt das)
+    if (pfad) lichterZeichnen(((pfad.L - gefuehrt.fortschritt) * 0.6 / lichtTempo()) * 1000);
   }
   const ok = ergebnis.length === 0;
   const d = document.createElement('div');
