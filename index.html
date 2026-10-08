@@ -72,6 +72,20 @@
       </div>
 
       <div class="karte">
+        <h3>Sichern &amp; Übertragen</h3>
+        <p class="hinweis">Eigene Profile (Fotos, Aufnahmen, Lob) und Kinder (Bild, Name, Sterne) als eine Datei
+          sichern – z. B. um sie auf ein Tablet zu übertragen oder für den Notfall aufzuheben.
+          Beim Einspielen geht nichts verloren: Gleiche Profile und Kinder werden aktualisiert, andere bleiben.</p>
+        <p class="hinweis" id="sicherung-info"></p>
+        <div class="knopf-reihe">
+          <button id="btn-sichern" class="text-btn">💾 Sicherung speichern</button>
+          <button id="btn-teilen" class="text-btn" hidden>📤 Sicherung teilen</button>
+          <button id="btn-einspielen" class="text-btn">📥 Sicherung einspielen</button>
+        </div>
+        <input type="file" id="sicherung-input" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="karte">
         <h3>Profil</h3>
         <p class="hinweis">Ein Profil enthält eigene Fotos und Ihre Stimme.
           <strong>„Standard“ ist immer da</strong> und kann nicht verändert werden – wenn etwas nicht passt,

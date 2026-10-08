@@ -181,16 +181,10 @@
     </div>
   </section>
 
-  <script>
-  // Alte Datenbank (Version 1) mit einer Aufnahme für "m" anlegen, wie vor dem Profil-Update
-  const v1 = indexedDB.open("lernapp", 1);
-  v1.onupgradeneeded = () => v1.result.createObjectStore("aufnahmen").put(new Blob(["x"], { type: "audio/webm" }), "m");
-  v1.onsuccess = () => v1.result.close();
-</script>
   <script src="letters.js"></script>
   <script src="striche.js"></script>
   <script src="app.js"></script>
-  <script src="_test_profile.js"></script>
-  <iframe src="/_warten?ms=6000" hidden></iframe>
+  <script src="_test_sichern.js"></script>
+  <iframe src="/_warten?ms=12000" hidden></iframe>
 </body>
 </html>

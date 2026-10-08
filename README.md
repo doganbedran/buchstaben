@@ -14,6 +14,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `_test.html` – Test der Spur-Erkennung inkl. geführtem Nachspuren (grüne Leiste = OK; `#A`, `#a`, `#m`, `#H` wählt den gezeigten Buchstaben)
 - `_test_profile.html` – Test der Profile inkl. Lob (in einem frischen Browserprofil öffnen, grüne Leiste = OK)
 - `_test_kinder.html` – Test der Kinder-Profile (frisches Browserprofil; Ansicht per `#wer`, `#home`, `#kind`, `#eltern`)
+- `_test_sichern.html` – Test Sichern & Übertragen (frisches Browserprofil)
 - `werkzeuge/testseiten_erzeugen.sh` – Testseiten nach Änderungen an `index.html` neu erzeugen
 
 ## Lokal starten
@@ -43,3 +44,9 @@ Das geführte Nachspuren nutzt Blau (Startpunkt) + Orange (Pfeile): bleibt bei R
 Wichtige Unterschiede stecken zusätzlich in der Helligkeit (WCAG-Kontrast):
 Startpunkt/Strich 3,7 : 1 · Pfeile/Strich 3,3 : 1 · Zahl im Startpunkt 6,1 : 1 · Buchstaben-Umriss/Tafel 2,1 : 1.
 Kachel-Buchstaben auf Weiß ≥ 3,2 : 1. Die Farben stehen in `FARBE` in `app.js`.
+
+## Sichern & Übertragen
+Elternbereich → „Sichern & Übertragen“: alle eigenen Profile (Fotos, Aufnahmen, Lob) und Kinder (Bild,
+Namensaufnahme, Sterne, Einstellungen) als eine JSON-Datei speichern oder teilen (Android-Teilen-Menü)
+und auf einem anderen Gerät einspielen. Einspielen ergänzt bzw. aktualisiert (gleiche ID), löscht nichts.
+Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.

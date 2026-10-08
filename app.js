@@ -87,6 +87,14 @@ const datenbank = (() => {
       .sort((a, b) => a.erstellt - b.erstellt),
     kindSpeichern: (k) => aktion('kinder', 'readwrite', (s) => s.put(k)),
     kindLoeschen: (id) => aktion('kinder', 'readwrite', (s) => s.delete(id)),
+    alleMedien: async () => {
+      const [schluessel, werte] = await Promise.all([
+        aktion('medien', 'readonly', (s) => s.getAllKeys()),
+        aktion('medien', 'readonly', (s) => s.getAll()),
+      ]);
+      return (schluessel || []).map((k, i) => ({ schluessel: k, blob: werte[i] }));
+    },
+    medienRoh: (schluessel, blob) => aktion('medien', 'readwrite', (s) => s.put(blob, schluessel)),
     medienSetzen: (id, b, art, blob) => aktion('medien', 'readwrite', (s) => s.put(blob, `${id}|${b}|${art}`)),
     medienEntfernen: (id, b, art) => aktion('medien', 'readwrite', (s) => s.delete(`${id}|${b}|${art}`)),
     async medienVon(id) {
@@ -1253,6 +1261,9 @@ async function elternOeffnen() {
 
 async function elternZeichnen() {
   kinderListeZeichnen();
+  sicherungZusammenfassung();
+  // Teilen-Knopf nur, wo das Gerät Dateien teilen kann (z. B. Android)
+  $('#btn-teilen').hidden = !(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.json', { type: 'application/json' })] }));
   // Schrift und Fortschritt gibt es mit Kindern pro Kind (beim Kind einstellen)
   $('#karte-schrift').hidden = kinder.length > 0;
   $('#karte-fortschritt').hidden = kinder.length > 0;
@@ -1704,6 +1715,168 @@ async function aufnehmen(knopf, fertig) {
   // Sicherheitsstopp nach 5 Sekunden
   setTimeout(() => { if (r.state === 'recording') r.stop(); }, 5000);
 }
+
+// ---------- Sichern & Übertragen (Export/Import als eine JSON-Datei) ----------
+
+const SICHERUNG_FORMAT = 'buchstaben-sicherung';
+const SICHERUNG_VERSION = 1;
+
+const blobZuText = (blob) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);   // data:...;base64,...
+  r.onerror = reject;
+  r.readAsDataURL(blob);
+});
+const textZuBlob = async (daten) => (await fetch(daten)).blob();
+
+// Alles Eigene einsammeln: Profile mit Medien, Kinder mit Foto/Namensaufnahme, App-weite Einstellungen
+async function sicherungErstellen() {
+  const medienAlle = await datenbank.alleMedien();
+  const profile = [];
+  for (const p of await datenbank.profile()) {
+    const medien = [];
+    for (const m of medienAlle.filter((x) => x.schluessel.startsWith(`${p.id}|`))) {
+      medien.push({ schluessel: m.schluessel, daten: await blobZuText(m.blob) });
+    }
+    profile.push({ ...p, medien });
+  }
+  const kinderListe = [];
+  for (const k of await datenbank.kinder()) {
+    kinderListe.push({
+      ...k,
+      foto: k.foto ? await blobZuText(k.foto) : null,
+      nameStimme: k.nameStimme ? await blobZuText(k.nameStimme) : null,
+    });
+  }
+  return {
+    format: SICHERUNG_FORMAT,
+    version: SICHERUNG_VERSION,
+    erstellt: new Date().toISOString(),
+    einstellungen: {
+      schreibweise: speicher.lesen('schreibweise', 'klein'),
+      sterne: speicher.lesen('sterne', {}),
+      profil: speicher.lesen('profil', STANDARD.id),
+    },
+    profile,
+    kinder: kinderListe,
+  };
+}
+
+// Einspielen: Profile und Kinder aus der Datei kommen dazu bzw. ersetzen die mit gleicher ID.
+// Was es nur auf diesem Gerät gibt, bleibt unangetastet.
+async function sicherungEinspielen(s) {
+  if (!s || s.format !== SICHERUNG_FORMAT || !Array.isArray(s.profile) || !Array.isArray(s.kinder)) {
+    throw new Error('Das ist keine Sicherung dieser App.');
+  }
+  if (s.version > SICHERUNG_VERSION) throw new Error('Die Sicherung stammt aus einer neueren App-Version. Bitte die App aktualisieren.');
+  const warFrisch = kinder.length === 0 && (await datenbank.profile()).length === 0;
+  for (const { medien: medienListe, ...profil } of s.profile) {
+    if (!profil.id || !profil.name) continue;
+    // Alte Medien dieses Profils ersetzen, damit gelöschte Aufnahmen nicht wieder auftauchen
+    await datenbank.profilLoeschen(profil.id);
+    await datenbank.profilSpeichern(profil);
+    for (const m of medienListe || []) {
+      if (typeof m.schluessel === 'string' && m.schluessel.startsWith(`${profil.id}|`)) {
+        await datenbank.medienRoh(m.schluessel, await textZuBlob(m.daten));
+      }
+    }
+  }
+  for (const k of s.kinder) {
+    if (!k.id || !k.name) continue;
+    await datenbank.kindSpeichern({
+      ...k,
+      foto: k.foto ? await textZuBlob(k.foto) : null,
+      nameStimme: k.nameStimme ? await textZuBlob(k.nameStimme) : null,
+      sterne: k.sterne || {},
+    });
+  }
+  // App-weite Einstellungen nur auf einem frischen Gerät übernehmen (sonst nichts überschreiben)
+  if (warFrisch && s.einstellungen) {
+    speicher.schreiben('schreibweise', s.einstellungen.schreibweise || 'klein');
+    speicher.schreiben('sterne', s.einstellungen.sterne || {});
+    speicher.schreiben('profil', s.einstellungen.profil || STANDARD.id);
+  }
+  await kinderLaden();
+  if (!aktivesKind() && kinder.length) { zustand.kind = kinder[0].id; speicher.schreiben('kind', zustand.kind); }
+  einstellungenLaden();
+  if (zustand.profil !== STANDARD.id && !(await datenbank.profile()).some((p) => p.id === zustand.profil)) {
+    zustand.profil = STANDARD.id;
+  }
+  await medienLaden();
+  return { profile: s.profile.length, kinder: s.kinder.length };
+}
+
+function sicherungDateiname() {
+  return `buchstaben-sicherung-${new Date().toISOString().slice(0, 10)}.json`;
+}
+
+async function sicherungAlsDatei() {
+  const daten = await sicherungErstellen();
+  return new File([JSON.stringify(daten)], sicherungDateiname(), { type: 'application/json' });
+}
+
+function sicherungZusammenfassung() {
+  const box = $('#sicherung-info');
+  datenbank.profile().then((profile) => {
+    box.textContent = `Auf diesem Gerät: ${profile.length} eigene${profile.length === 1 ? 's Profil' : ' Profile'}, `
+      + `${kinder.length} ${kinder.length === 1 ? 'Kind' : 'Kinder'}.`;
+  });
+}
+
+$('#btn-sichern').addEventListener('click', async (e) => {
+  const knopf = e.currentTarget;
+  knopf.disabled = true;
+  try {
+    const datei = await sicherungAlsDatei();
+    const url = URL.createObjectURL(datei);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = datei.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch {
+    alert('Die Sicherung konnte nicht erstellt werden.');
+  } finally {
+    knopf.disabled = false;
+  }
+});
+
+$('#btn-teilen').addEventListener('click', async (e) => {
+  const knopf = e.currentTarget;
+  knopf.disabled = true;
+  try {
+    const datei = await sicherungAlsDatei();
+    await navigator.share({ files: [datei], title: 'Buchstaben-Sicherung' });
+  } catch (fehler) {
+    if (fehler && fehler.name !== 'AbortError') alert('Teilen hat nicht geklappt. Bitte „Sicherung speichern“ verwenden.');
+  } finally {
+    knopf.disabled = false;
+  }
+});
+
+$('#btn-einspielen').addEventListener('click', () => {
+  const input = $('#sicherung-input');
+  input.value = '';
+  input.click();
+});
+
+$('#sicherung-input').addEventListener('change', async (e) => {
+  const datei = e.target.files && e.target.files[0];
+  if (!datei) return;
+  try {
+    const inhalt = JSON.parse(await datei.text());
+    const anzahl = { profile: (inhalt.profile || []).length, kinder: (inhalt.kinder || []).length };
+    if (!confirm(`Sicherung einspielen: ${anzahl.profile} Profil(e) und ${anzahl.kinder} Kind(er).\n`
+      + 'Gleiche Profile/Kinder werden aktualisiert, alles andere bleibt erhalten.')) return;
+    const ergebnis = await sicherungEinspielen(inhalt);
+    await elternOeffnen();
+    alert(`Fertig: ${ergebnis.profile} Profil(e) und ${ergebnis.kinder} Kind(er) übernommen.`);
+  } catch (fehler) {
+    alert(fehler instanceof SyntaxError ? 'Die Datei ist keine gültige Sicherung.' : (fehler.message || 'Einspielen fehlgeschlagen.'));
+  }
+});
 
 // ---------- Start ----------
 
