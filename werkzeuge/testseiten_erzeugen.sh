@@ -1,19 +1,43 @@
 #!/usr/bin/env bash
-# Erzeugt _test.html und _test_profile.html aus der aktuellen index.html (nach Änderungen an index.html ausführen).
+# Erzeugt die Testseiten tests/<name>.html aus der aktuellen index.html (läuft automatisch in alle_tests.sh).
+# Jede Seite = App + tests/<name>.js; <base href="/"> lässt die App ihre Dateien (app.js, audio/ …) vom Hauptordner laden.
+# Die erzeugten .html-Dateien stehen in .gitignore.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-sed 's#<script src="app.js"></script>#<script src="app.js"></script><script src="_test.js"></script>#' index.html > _test.html
-sed 's#<script src="letters.js"></script>#<script>\n  // Alte Datenbank (Version 1) mit einer Aufnahme für "m" anlegen, wie vor dem Profil-Update\n  const v1 = indexedDB.open("lernapp", 1);\n  v1.onupgradeneeded = () => v1.result.createObjectStore("aufnahmen").put(new Blob(["x"], { type: "audio/webm" }), "m");\n  v1.onsuccess = () => v1.result.close();\n</script>\n  <script src="letters.js"></script>#; s#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_profile.js"></script>\n  <iframe src="/_warten?ms=6000" hidden></iframe>#' index.html > _test_profile.html
-sed 's#<script src="letters.js"></script>#<script>\n  // Stand vor den Kinder-Profilen: Sterne und Schrift app-weit\n  localStorage.setItem("sterne", JSON.stringify({ a: 2 }));\n  localStorage.setItem("schreibweise", JSON.stringify("gross"));\n</script>\n  <script src="letters.js"></script>#; s#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_kinder.js"></script>\n  <iframe src="/_warten?ms=35000" hidden></iframe>#' index.html > _test_kinder.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_sichern.js"></script>\n  <iframe src="/_warten?ms=12000" hidden></iframe>#' index.html > _test_sichern.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_hoeren.js"></script>\n  <iframe src="/_warten?ms=6000" hidden></iframe>#' index.html > _test_hoeren.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_woerter.js"></script>\n  <iframe src="/_warten?ms=15000" hidden></iframe>#' index.html > _test_woerter.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_name.js"></script>\n  <iframe src="/_warten?ms=8000" hidden></iframe>#' index.html > _test_name.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_album.js"></script>\n  <iframe src="/_warten?ms=9000" hidden></iframe>#' index.html > _test_album.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_memory.js"></script>\n  <iframe src="/_warten?ms=4000" hidden></iframe>#' index.html > _test_memory.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_montessori.js"></script>\n  <iframe src="/_warten?ms=10000" hidden></iframe>#' index.html > _test_montessori.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_farben.js"></script>\n  <iframe src="/_warten?ms=10000" hidden></iframe>#' index.html > _test_farben.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_jagd.js"></script>\n  <iframe src="/_warten?ms=12000" hidden></iframe>#' index.html > _test_jagd.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_legen.js"></script>\n  <iframe src="/_warten?ms=4000" hidden></iframe>#' index.html > _test_legen.html
-sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_silben.js"></script>\n  <iframe src="/_warten?ms=15000" hidden></iframe>#' index.html > _test_silben.html
+
+# seite <name> <Wartezeit ms oder 0> [Skript, das vor letters.js läuft (alter Datenstand)]
+seite() {
+  local name=$1 warten=$2 vorher=${3:-}
+  local nachher="  <script src=\"tests/$name.js\"></script>"
+  [ "$warten" != 0 ] && nachher+=$'\n'"  <iframe src=\"/_warten?ms=$warten\" hidden></iframe>"
+  VORHER="$vorher" NACHHER="$nachher" /usr/bin/python3 - "$name" <<'PY'
+import os, sys
+s = open('index.html', encoding='utf-8').read()
+s = s.replace('<head>', '<head>\n  <base href="/">', 1)
+if os.environ['VORHER']:
+    s = s.replace('  <script src="letters.js"></script>', f"  <script>\n{os.environ['VORHER']}\n  </script>\n  <script src=\"letters.js\"></script>", 1)
+s = s.replace('  <script src="app.js"></script>', '  <script src="app.js"></script>\n' + os.environ['NACHHER'], 1)
+open(f'tests/{sys.argv[1]}.html', 'w', encoding='utf-8').write(s)
+PY
+}
+
+seite spur 0
+seite profile 6000 '  // Alte Datenbank (Version 1) mit einer Aufnahme für "m" anlegen, wie vor dem Profil-Update
+  const v1 = indexedDB.open("lernapp", 1);
+  v1.onupgradeneeded = () => v1.result.createObjectStore("aufnahmen").put(new Blob(["x"], { type: "audio/webm" }), "m");
+  v1.onsuccess = () => v1.result.close();'
+seite kinder 35000 '  // Stand vor den Kinder-Profilen: Sterne und Schrift app-weit
+  localStorage.setItem("sterne", JSON.stringify({ a: 2 }));
+  localStorage.setItem("schreibweise", JSON.stringify("gross"));'
+seite sichern 12000
+seite hoeren 6000
+seite woerter 15000
+seite name 8000
+seite album 9000
+seite memory 4000
+seite montessori 10000
+seite farben 10000
+seite jagd 12000
+seite legen 4000
+seite silben 15000
 echo "Testseiten erzeugt"

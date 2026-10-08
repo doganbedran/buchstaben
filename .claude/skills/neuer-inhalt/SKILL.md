@@ -21,7 +21,7 @@ Die Rollen liegen in `.claude/agents/`. Berichte dem User zwischendurch kurz und
 - Plan in 5–8 Zeilen dem User zeigen; bei offenen Konzeptfragen fragen, sonst weiter.
 
 ## 3. Bauen
-- Selbst bauen nach dem Arbeitsablauf in CLAUDE.md (Testserver, Testseite `_test_<name>.js`, Eintrag in beide
+- Selbst bauen nach dem Arbeitsablauf in CLAUDE.md (Testserver, Test `tests/<name>.js`, Eintrag in beide
   Werkzeug-Skripte, README-Abschnitt „Spiele“ ergänzen). Version noch **nicht** erhöhen – das macht `/veroeffentlichen`.
 
 ## 4. Prüfen
