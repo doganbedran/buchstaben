@@ -15,6 +15,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
   `index.html` die Seiten `tests/<name>.html` (nicht im Repo). Einzeln im Browser öffnen, z. B. http://localhost:8765/tests/silben.html
   - `spur` – Spur-Erkennung inkl. geführtem Nachspuren (`#A`, `#a`, `#m`, `#H` wählt den gezeigten Buchstaben)
   - `profile`, `kinder` (Ansicht `#wer`, `#home`, `#kind`, `#eltern`), `sichern`, `woerter` (`#eltern`, `#spuren`) – frisches Browserprofil
+  - `startseite` – Startseite nur mit Spielen, Weg ✏️ → Buchstaben → Nachspuren → zurück
   - `hoeren`, `silben`, `legen`, `jagd`, `farben`, `montessori`, `memory`, `album`, `name` – je ein Spiel/eine Funktion
 - `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
 
@@ -53,7 +54,9 @@ und auf einem anderen Gerät einspielen. Einspielen ergänzt bzw. aktualisiert (
 Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 
 ## Spiele
-- ✏️ **Nachspuren** – Startseite; Reihenfolge pro Kind: A–Z (alles offen) oder Montessori (Gruppen m a s l → o i e n → …, nächste Gruppe ab 2 Sternen je Buchstabe)
+Die Startseite zeigt nur große Spiel-Kacheln (ohne Scrollen); die Buchstaben gibt es erst nach ✏️.
+
+- ✏️ **Nachspuren** – Buchstaben-Raster (eine Farbe, großes Bild, Sterne nur im Elternbereich); Reihenfolge pro Kind: A–Z (alles offen) oder Montessori (Gruppen m a s l → o i e n → …, nächste Gruppe ab 2 Sternen je Buchstabe)
 - 🎨 **Fingerfarben** – Farbwahl beim Nachspuren (bunt, 6 Farben, Regenbogen, Glitzer), pro Kind gespeichert
 - 📳 **Vibration** beim Nachspuren (Sandpapier-Gefühl, Android), im Elternbereich abschaltbar
 - ✍️ **Mein Name** – eigenen Namen Buchstabe für Buchstabe nachspuren (nur mit ausgewähltem Kind)

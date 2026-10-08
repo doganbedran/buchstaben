@@ -40,4 +40,5 @@ seite farben 10000
 seite jagd 12000
 seite legen 4000
 seite silben 15000
+seite startseite 3000
 echo "Testseiten erzeugt"

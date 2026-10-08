@@ -26,6 +26,9 @@ LAEUFE=(
   "silben|tests/silben.html|412,860|90"
   "silben-tab|tests/silben.html|1280,800|90"
   "silben-klein|tests/silben.html|360,640|90"
+  "startseite|tests/startseite.html|412,860|60"
+  "start-klein|tests/startseite.html|360,640|60"
+  "start-tab|tests/startseite.html|1280,800|60"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do

@@ -93,9 +93,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
   transition: transform 0.1s;
 }
 .kachel:active { transform: scale(0.94); }
-.kachel .zeichen { font-size: 2.6rem; font-weight: 700; line-height: 1; }
+/* Alle Buchstaben in einer ruhigen Farbe: das Kind soll sich die Form merken, nicht "das lila ist d" */
+.kachel .zeichen { font-size: 2.6rem; font-weight: 700; line-height: 1; color: #2f3b52; }
 .kachel .zeichen-svg { height: 1.45em; width: auto; display: block; }
-.kachel .mini { font-size: 1.3rem; line-height: 1; }
+/* Das Bild ist für Kinder, die noch nicht lesen, der Anker – darum groß */
+.kachel .mini { font-size: 2.1rem; line-height: 1; margin-top: 4px; }
 /* Bilddateien so groß wie ein Emoji in derselben Schriftgröße */
 .bild-datei { height: 1.15em; width: auto; vertical-align: -0.2em; }
 .bild-datei.foto { width: 1.15em; object-fit: cover; border-radius: 0.18em; }
@@ -109,15 +111,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   animation: sticker-rein 3s ease forwards;
 }
 
-.kachel .punkte { font-size: 0.75rem; letter-spacing: 1px; min-height: 1em; }
-
-/* Farben je Kachel, damit Kinder sie wiedererkennen */
-.kachel:nth-child(6n+1) .zeichen { color: #e8684a; }
-.kachel:nth-child(6n+2) .zeichen { color: #3d8fd1; }
-.kachel:nth-child(6n+3) .zeichen { color: #2e8b3e; }
-.kachel:nth-child(6n+4) .zeichen { color: #9b59b6; }
-.kachel:nth-child(6n+5) .zeichen { color: #b07800; }
-.kachel:nth-child(6n+6) .zeichen { color: #e0567c; }
 
 /* Nachspuren */
 .bild-karte {
@@ -212,15 +205,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
   100% { transform: scale(1.4); opacity: 0; }
 }
 
-/* Spiele-Leiste auf der Startseite */
-.spiele-leiste { display: flex; gap: 10px; justify-content: center; padding: 10px 0 2px; flex: 0 0 auto; overflow-x: auto; }
-.spiel-btn {
-  width: 56px; height: 56px; border-radius: 50%; border: 3px solid transparent;
-  background: var(--papier); box-shadow: var(--schatten); font-size: 1.8rem; flex: 0 0 auto;
-  display: grid; place-items: center;
+/* Startseite: große Spiel-Kacheln, ohne Scrollen (2 Spalten hochkant, 4 im Querformat) */
+.spiele-raster {
+  flex: 1; display: grid; gap: 18px; padding: 10px 0 30px;
+  grid-template-columns: repeat(2, min(170px, 40vw, 19vh)); grid-auto-rows: min(170px, 40vw, 19vh);
+  justify-content: center; align-content: center;
 }
-.spiel-btn.aktiv { border-color: #1d5fbf; }
-.spiel-btn:active { transform: scale(0.92); }
+@media (orientation: landscape) {
+  .spiele-raster { grid-template-columns: repeat(4, min(180px, 20vw, 32vh)); grid-auto-rows: min(180px, 20vw, 32vh); }
+}
+.spiel-btn {
+  border: none; border-radius: 32px; background: var(--papier); box-shadow: var(--schatten);
+  font-size: clamp(2.6rem, 9vh, 5rem); display: grid; place-items: center; padding: 0;
+}
+.spiel-btn[hidden] { display: none; }
+.spiel-btn:active { transform: scale(0.94); }
 
 /* Memory */
 .memory-karten {

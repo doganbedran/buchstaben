@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 34;
+const APP_VERSION = 35;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -460,7 +460,8 @@ window.addEventListener('popstate', async () => {
   clearTimeout(tafelZustand.jubelTimer);
   nameModusBeenden();
   rasterZeichnen();
-  zeigen('home', false);
+  // Vom Nachspuren zurück zur Buchstabenwahl, sonst zur Startseite
+  zeigen(ziel === 'buchstaben' ? 'buchstaben' : 'home', false);
 });
 
 // Spiel-Ende: Pokal bleibt stehen, dann großes Haus und kleineres Nochmal.
@@ -528,21 +529,19 @@ function rasterZeichnen() {
   const k = aktivesKind();
   $('#btn-kind').hidden = !k;
   document.querySelector('.spiel-btn[data-spiel="name"]').hidden = !k || !nameZeichen(k.name).length;
-  $('#regenbogen').hidden = !!k;
   if (k) $('#btn-kind').innerHTML = kindBildHtml(k);
   const grid = $('#grid');
   grid.innerHTML = '';
   const frei = freigeschaltet();
   buchstabenReihenfolge().forEach((i) => {
     const eintrag = BUCHSTABEN[i];
-    const n = zustand.sterne[eintrag.b] || 0;
     const offen = frei.has(eintrag.b);
     const btn = document.createElement('button');
     btn.className = `kachel${offen ? '' : ' gesperrt'}`;
     btn.setAttribute('aria-label', offen ? `${eintrag.b} wie ${eintrag.wort}` : `${eintrag.b} – kommt später`);
+    // Sterne nur im Album/Elternbereich – auf jeder Kachel verleiten sie zum Sammeln statt zum Spuren
     btn.innerHTML = `<span class="zeichen">${zeichenHtml(eintrag)}</span>`
-      + `<span class="mini">${offen ? bildHtml(eintrag) : '🔒'}</span>`
-      + `<span class="punkte">${'⭐'.repeat(n)}</span>`;
+      + `<span class="mini">${offen ? bildHtml(eintrag) : '🔒'}</span>`;
     btn.addEventListener('click', () => {
       if (offen) { buchstabeOeffnen(i); return; }
       // Gesperrt: kurz wackeln
@@ -2970,7 +2969,13 @@ document.addEventListener('visibilitychange', () => {
 silbenPruefen();
 
 // Spiele-Leiste
-const SPIELE = { hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
+function buchstabenZeigen() {
+  rasterZeichnen();
+  zeigen('buchstaben');
+}
+$('#btn-buchstaben-home').addEventListener('click', zurStartseite);
+
+const SPIELE = { spuren: buchstabenZeigen, hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();

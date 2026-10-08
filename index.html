@@ -19,18 +19,18 @@
     <div id="wer-liste" class="wer-liste"></div>
   </section>
 
-  <!-- Startseite: Buchstaben-Raster -->
+  <!-- Startseite: nur große Spiel-Kacheln (ein Bildschirm, eine Aufgabe) -->
   <section id="home" class="screen active">
     <header class="topbar">
-      <h1 id="regenbogen">🌈</h1>
       <button id="btn-kind" class="kind-btn" aria-label="Anderes Kind" hidden></button>
+      <span></span>
       <button id="btn-eltern" class="icon-btn small" aria-label="Elternbereich (lange drücken)">
         <span>⚙️</span><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg>
       </button>
     </header>
     <!-- Spiele: große Symbole, die Kinder ohne Lesen verstehen -->
-    <nav class="spiele-leiste" aria-label="Spiele">
-      <button class="spiel-btn aktiv" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
+    <nav class="spiele-raster" aria-label="Spiele">
+      <button class="spiel-btn" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
       <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
       <button class="spiel-btn" data-spiel="silben" aria-label="Silben-Trommel" hidden>🥁</button>
       <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
@@ -39,6 +39,13 @@
       <button class="spiel-btn" data-spiel="legen" aria-label="Wörter legen">🔤</button>
       <button class="spiel-btn" data-spiel="album" aria-label="Sticker-Album">📒</button>
     </nav>
+  </section>
+
+  <!-- Nachspuren: Buchstaben wählen -->
+  <section id="buchstaben" class="screen">
+    <header class="topbar">
+      <button id="btn-buchstaben-home" class="icon-btn" aria-label="Zurück">🏠</button>
+    </header>
     <div id="grid" class="grid"></div>
   </section>
 

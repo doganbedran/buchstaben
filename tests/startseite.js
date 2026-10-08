@@ -1,0 +1,50 @@
+// Testet die Startseite (nur Spiel-Kacheln) und den Weg ✏️ → Buchstaben → Nachspuren → zurück. Frisches Browserprofil.
+(async function () {
+  const fehler = [];
+  const pruefe = (b, t) => { if (!b) fehler.push(t); };
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const aktiv = (id) => $(`#${id}`).classList.contains('active');
+  await startFertig;
+  folgeAbspielen = () => Promise.resolve();
+
+  // 1. Startseite: nur Spiele, keine Buchstaben, nichts ragt über den Rand, kein Scrollen nötig
+  pruefe(aktiv('home'), 'Startseite nicht aktiv');
+  pruefe(!$('#home .kachel'), 'Buchstaben auf der Startseite');
+  const spiele = [...document.querySelectorAll('#home .spiel-btn')].filter((b) => !b.hidden);
+  pruefe(spiele.length >= 6, `Zu wenige Spiele: ${spiele.length}`);
+  spiele.forEach((b) => {
+    const r = b.getBoundingClientRect();
+    pruefe(r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, `${b.dataset.spiel} ragt heraus`);
+    pruefe(r.width >= 100, `${b.dataset.spiel} zu klein: ${Math.round(r.width)}`);
+  });
+
+  // 2. ✏️ → Buchstaben: 30 Kacheln, eine Farbe, keine Sterne
+  zustand.sterne = { a: 2 };
+  document.querySelector('.spiel-btn[data-spiel="spuren"]').click();
+  pruefe(aktiv('buchstaben'), 'Buchstaben nicht geöffnet');
+  const kacheln = document.querySelectorAll('#grid .kachel');
+  pruefe(kacheln.length === BUCHSTABEN.length, `Kacheln: ${kacheln.length}`);
+  pruefe(!document.querySelector('#grid .punkte') && !$('#grid').textContent.includes('⭐'), 'Sterne auf den Kacheln');
+  const farben = new Set([...document.querySelectorAll('#grid .zeichen')].map((z) => getComputedStyle(z).color));
+  pruefe(farben.size === 1, `Mehrere Buchstabenfarben: ${[...farben]}`);
+
+  // 3. Buchstabe → Nachspuren → 🏠 zurück zu den Buchstaben → 🏠 zur Startseite
+  kacheln[0].click();
+  pruefe(aktiv('trace'), 'Nachspuren nicht geöffnet');
+  $('#btn-home').click();
+  await pause(300);
+  pruefe(aktiv('buchstaben'), 'Vom Nachspuren nicht zurück zu den Buchstaben');
+  $('#btn-buchstaben-home').click();
+  await pause(300);
+  pruefe(aktiv('home'), 'Nicht zurück zur Startseite');
+
+  // Ansicht: Buchstaben-Bildschirm
+  document.querySelector('.spiel-btn[data-spiel="spuren"]').click();
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;color:#fff;font:12px monospace;padding:6px;z-index:9;background:'
+    + (fehler.length ? '#c62828' : '#1b7f3a');
+  d.textContent = fehler.length ? 'FEHLER: ' + fehler.join(' | ') : `STARTSEITE OK (${spiele.length} Spiele)`;
+  document.body.appendChild(d);
+})().catch((e) => {
+  document.body.insertAdjacentHTML('beforeend', `<div style="position:fixed;bottom:0;background:#c62828;color:#fff;padding:6px;z-index:9">ABSTURZ: ${e}</div>`);
+});
