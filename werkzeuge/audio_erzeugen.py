@@ -3,10 +3,11 @@
 
 Aufruf (aus dem Projektordner):
     .venv/bin/python werkzeuge/audio_erzeugen.py                       # alle Stimmen -> audio-vergleich/
-    .venv/bin/python werkzeuge/audio_erzeugen.py --stimme de_DE-kerstin-low --ziel audio
+    .venv/bin/python werkzeuge/audio_erzeugen.py --stimme de_DE-thorsten-high --ziel audio
 
 Pro Buchstabe:  <b>.wav       Laut, Laut, Wort   ("mmm … mmm … Maus")
                 <b>-wort.wav  nur das Wort       (nach dem Lob)
+                (Umlaute/ß im Dateinamen als ae, oe, ue, ss)
 Dazu:           lob-1.wav …   kurze Lob-Sätze
 """
 import argparse
@@ -22,10 +23,16 @@ STIMMEN = PROJEKT / '.stimmen'
 
 # Anlaut in Lautschrift (espeak/IPA). ː verlängert Dauerlaute, ə macht Klinger hörbar ("bə", nicht "Be").
 LAUTE = {
-    'a': 'aː', 'b': 'bə', 'd': 'də', 'e': 'ɛː', 'f': 'fːː', 'g': 'ɡə', 'h': 'hə', 'i': 'iː',
-    'j': 'jə', 'k': 'kə', 'l': 'lːː', 'm': 'mːː', 'n': 'nːː', 'o': 'ɔː', 'p': 'pə', 'r': 'ʁːː',
-    's': 'zːː', 't': 'tə', 'u': 'uː', 'v': 'fːː', 'w': 'vːː', 'z': 'tsə',
+    'a': 'aː', 'ä': 'ɛː', 'b': 'bə', 'c': 'kə', 'd': 'də', 'e': 'ɛː', 'f': 'fːː', 'g': 'ɡə', 'h': 'hə', 'i': 'iː',
+    'j': 'jə', 'k': 'kə', 'l': 'lːː', 'm': 'mːː', 'n': 'nːː', 'o': 'ɔː', 'ö': 'øː', 'p': 'pə', 'q': 'kvə',
+    'r': 'ʁːː', 's': 'zːː', 'ß': 'sːː', 't': 'tə', 'u': 'uː', 'ü': 'yː', 'v': 'fːː', 'w': 'vːː',
+    'x': 'ksː', 'y': 'jə', 'z': 'tsə',
 }
+
+# Aussprache-Hilfe, wo die Schreibweise die Sprachsynthese verwirrt
+SPRECHEN = {'Yo-Yo': 'Jojo', 'Computer': 'Kompjuter'}
+
+DATEINAMEN = {'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss'}
 
 LOB = ['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Wunderbar!']
 
@@ -69,10 +76,11 @@ def erzeugen(modell, ziel):
     ziel.mkdir(parents=True, exist_ok=True)
     for b, wort in woerter_aus_letters_js().items():
         laut = synth(stimme, f'[[ {LAUTE[b]} ]]', tempo=1.3)
-        wort_audio = synth(stimme, wort, tempo=1.15)
+        wort_audio = synth(stimme, SPRECHEN.get(wort, wort), tempo=1.15)
+        datei = DATEINAMEN.get(b, b)
         clip = np.concatenate([laut, pause(rate, 0.35), laut, pause(rate, 0.5), wort_audio])
-        speichern(ziel / f'{b}.wav', clip, rate)
-        speichern(ziel / f'{b}-wort.wav', wort_audio, rate)
+        speichern(ziel / f'{datei}.wav', clip, rate)
+        speichern(ziel / f'{datei}-wort.wav', wort_audio, rate)
     for i, satz in enumerate(LOB, 1):
         speichern(ziel / f'lob-{i}.wav', synth(stimme, satz, tempo=1.05), rate)
     print('fertig:', ziel)

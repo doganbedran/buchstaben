@@ -23,7 +23,9 @@ const zustand = {
 const MAX_STERNE = 3;
 
 function zeichen(eintrag) {
-  return zustand.schreibweise === 'gross' ? eintrag.b.toUpperCase() : eintrag.b;
+  if (zustand.schreibweise !== 'gross') return eintrag.b;
+  // 'ß'.toUpperCase() ergäbe "SS" – das große Eszett ist ein eigenes Zeichen
+  return eintrag.b === 'ß' ? 'ẞ' : eintrag.b.toUpperCase();
 }
 
 // Aufnahmen der Eltern in IndexedDB (Blobs passen nicht in localStorage)
@@ -139,7 +141,7 @@ async function lautAbspielen(eintrag, lob = false) {
   const eigeneUrl = eigene ? URL.createObjectURL(eigene) : null;
   const quellen = [];
   if (lob) quellen.push(`audio/lob-${1 + Math.floor(Math.random() * LOB_ANZAHL)}.wav`);
-  quellen.push(eigeneUrl || `audio/${eintrag.b}${lob ? '-wort' : ''}.wav`);
+  quellen.push(eigeneUrl || `audio/${dateiName(eintrag.b)}${lob ? '-wort' : ''}.wav`);
   try {
     for (const q of quellen) {
       if (nummer !== wiedergabe.nummer) return;
