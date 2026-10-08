@@ -177,9 +177,61 @@ window.addEventListener('error', (e) => {
       }
       return tafelZustand.geschafft;
     });
+    // Ganzer Buchstabe ohne Absetzen: nach jedem Strich mit liegendem Finger zum nächsten Startpunkt
+    vorbereiten(i);
+    test('geführt: ganz ohne Absetzen', true, () => {
+      let finger = null;
+      const hinfahren = (ziel) => {
+        const schritte = Math.max(1, Math.ceil(Math.hypot(ziel.x - finger.x, ziel.y - finger.y) / 4));
+        for (let k = 1; k <= schritte; k++) ev('pointermove', finger.x + ((ziel.x - finger.x) * k) / schritte, finger.y + ((ziel.y - finger.y) * k) / schritte);
+        finger = ziel;
+      };
+      for (let k = 0; k < n(); k++) {
+        const p = gefuehrt.pfade[k];
+        if (k === 0) ev('pointerdown', p.p[0].x, p.p[0].y);
+        else hinfahren(p.p[0]);
+        ziehen(k, { aufsetzen: false, abheben: false });
+        finger = p.p[p.p.length - 1];
+      }
+      ev('pointerup', finger.x, finger.y);
+      return tafelZustand.geschafft;
+    });
+    // Beim H: auf dem Weg vom linken zum rechten Stamm keine Spur
+    if (text() === 'H') {
+      vorbereiten(i);
+      test('geführt: keine Spur auf dem Weg', 0, () => {
+        const [s1, s2] = gefuehrt.pfade;
+        ev('pointerdown', s1.p[0].x, s1.p[0].y);
+        ziehen(0, { aufsetzen: false, abheben: false });
+        const a = s1.p[s1.p.length - 1], b = s2.p[0];
+        for (let k = 1; k <= 30; k++) ev('pointermove', a.x + ((b.x - a.x) * k) / 30, a.y + ((b.y - a.y) * k) / 30);
+        const mitte = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const dpr = canvas.width / tafelZustand.breite;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const alpha = ctx.getImageData(Math.round(mitte.x * dpr), Math.round(mitte.y * dpr), 1, 1).data[3];
+        ev('pointerup', b.x, b.y);
+        return alpha;
+      });
+    }
     // Punkte (i, j, Umlaute) nur antippen
     vorbereiten(i);
     if (gefuehrt.pfade.some((p) => p.L <= gefuehrt.breite * 0.6)) {
+      if (gefuehrt.pfade.filter((p) => p.L <= gefuehrt.breite * 0.6).length === 2) {
+        test('geführt: Punkte in umgekehrter Reihenfolge', true, () => {
+          const punkte = gefuehrt.pfade.filter((p) => p.L <= gefuehrt.breite * 0.6).map((p) => p.p[0]);
+          gefuehrt.pfade.forEach((p, k) => { if (p.L > gefuehrt.breite * 0.6) ziehen(k); });
+          [punkte[1], punkte[0]].forEach((q) => { ev('pointerdown', q.x, q.y); ev('pointerup', q.x, q.y); });
+          return tafelZustand.geschafft;
+        });
+        vorbereiten(i);
+        test('geführt: ein Punkt zweimal angetippt reicht nicht', false, () => {
+          const q = gefuehrt.pfade.find((p) => p.L <= gefuehrt.breite * 0.6).p[0];
+          gefuehrt.pfade.forEach((p, k) => { if (p.L > gefuehrt.breite * 0.6) ziehen(k); });
+          for (let t = 0; t < 2; t++) { ev('pointerdown', q.x, q.y); ev('pointerup', q.x, q.y); }
+          return tafelZustand.geschafft;
+        });
+        vorbereiten(i);
+      }
       test('geführt: Punkte antippen', true, () => {
         gefuehrt.pfade.forEach((p, k) => {
           if (p.L <= gefuehrt.breite * 0.6) { ev('pointerdown', p.p[0].x, p.p[0].y); ev('pointerup', p.p[0].x, p.p[0].y); }

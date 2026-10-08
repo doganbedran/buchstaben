@@ -491,6 +491,8 @@ function tafelAufbauen() {
   if (!rect.width || !rect.height) return;
   // Ein noch laufender Jubel vom vorigen Buchstaben darf die neue Tafel nicht leeren
   clearTimeout(tafelZustand.jubelTimer);
+  tafelZustand.pointerId = null;
+  tafelZustand.letzter = null;
   $('#jubel').classList.remove('zeigen');
   const dpr = window.devicePixelRatio || 1;
   tafelZustand.breite = rect.width;
@@ -599,7 +601,9 @@ canvas.addEventListener('pointermove', (e) => {
   const gesammelt = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
   for (const ev of gesammelt.length ? gesammelt : [e]) {
     const p = punkt(ev);
-    linie(tafelZustand.letzter, p);
+    // Auf dem Weg zum nächsten Strich (Finger nicht abgesetzt) keine Spur malen
+    const unterwegs = gefuehrt.aktiv && gefuehrt.versuch && gefuehrt.versuch.unterwegs;
+    if (!unterwegs) linie(tafelZustand.letzter, p);
     tafelZustand.letzter = p;
     if (gefuehrt.aktiv) gefuehrtBewegung(p);
   }
@@ -692,15 +696,40 @@ const fangRadius = () => Math.max(34, gefuehrt.breite * 1.6);      // so nah mus
 const spurToleranz = () => Math.max(26, gefuehrt.breite * 1.3);    // so weit darf er neben dem Strich sein
 const abrutschGrenze = () => Math.max(48, gefuehrt.breite * 2.4);  // ab hier gilt der Versuch als abgerutscht
 
+const istPunktStrich = (pfad) => pfad.L <= gefuehrt.breite * 0.6;
+
+// Mehrere Punkte hintereinander (ä, ö, ü): Reihenfolge egal – den Punkt nehmen, der dem Finger am nächsten ist.
+// Dazu wird er an die aktuelle Stelle getauscht.
+function naechstenPunktWaehlen(p) {
+  let best = gefuehrt.nr;
+  for (let k = gefuehrt.nr; k < gefuehrt.pfade.length && istPunktStrich(gefuehrt.pfade[k]); k++) {
+    const a = gefuehrt.pfade[k].p[0], b = gefuehrt.pfade[best].p[0];
+    if (Math.hypot(p.x - a.x, p.y - a.y) < Math.hypot(p.x - b.x, p.y - b.y)) best = k;
+  }
+  if (best !== gefuehrt.nr) {
+    [gefuehrt.pfade[gefuehrt.nr], gefuehrt.pfade[best]] = [gefuehrt.pfade[best], gefuehrt.pfade[gefuehrt.nr]];
+  }
+}
+
+// Liegt der Finger näher an einem schon erledigten Punkt als am Ziel? Dann gilt er nicht für das Ziel
+// (sonst würde bei ä/ö/ü ein zweiter Tipp auf denselben Punkt den Nachbarpunkt abhaken).
+function naeherAnErledigtemPunkt(p, ziel) {
+  const d = Math.hypot(p.x - ziel.x, p.y - ziel.y);
+  return gefuehrt.pfade.slice(0, gefuehrt.nr).some((pf) => istPunktStrich(pf)
+    && Math.hypot(p.x - pf.p[0].x, p.y - pf.p[0].y) < d);
+}
+
 function gefuehrtStart(p) {
   lauflicht.vormachen = null;          // Kind legt los: Vormachen sofort beenden
   lauflicht.letzteAktivitaet = performance.now();
   lauflicht.erinnert = false;
+  if (istPunktStrich(gefuehrt.pfade[gefuehrt.nr])) naechstenPunktWaehlen(p);
   startpunktZeigen(punktBei(gefuehrt.pfade[gefuehrt.nr], gefuehrt.fortschritt));
   const pfad = gefuehrt.pfade[gefuehrt.nr];
   const start = punktBei(pfad, gefuehrt.fortschritt);
-  const istPunkt = pfad.L <= gefuehrt.breite * 0.6;
-  const folgt = Math.hypot(p.x - start.x, p.y - start.y) <= fangRadius() * (istPunkt ? 1.4 : 1);
+  const istPunkt = istPunktStrich(pfad);
+  const folgt = Math.hypot(p.x - start.x, p.y - start.y) <= fangRadius() * (istPunkt ? 1.4 : 1)
+    && !(istPunkt && naeherAnErledigtemPunkt(p, start));
   gefuehrt.versuch = { punkte: [p], folgt, startFortschritt: gefuehrt.fortschritt };
   // Punkte (i, j, Umlaute): antippen reicht
   if (folgt && istPunkt) strichFertig();
@@ -710,6 +739,10 @@ function gefuehrtBewegung(p) {
   const v = gefuehrt.versuch;
   if (!v) return;
   lauflicht.letzteAktivitaet = performance.now();
+  if (v.unterwegs) {
+    unterwegsAngekommen(p);
+    return;
+  }
   v.punkte.push(p);
   if (!v.folgt) return;
   const pfad = gefuehrt.pfade[gefuehrt.nr];
@@ -727,6 +760,24 @@ function gefuehrtBewegung(p) {
   if (gefuehrt.fortschritt >= pfad.L - b * 0.2) strichFertig();
 }
 
+// Finger ist nach einem fertigen Strich liegen geblieben: am Startpunkt des nächsten Strichs geht es weiter
+function unterwegsAngekommen(p) {
+  const v = gefuehrt.versuch;
+  if (istPunktStrich(gefuehrt.pfade[gefuehrt.nr])) naechstenPunktWaehlen(p);
+  const pfad = gefuehrt.pfade[gefuehrt.nr];
+  const start = punktBei(pfad, gefuehrt.fortschritt);
+  // Nach einem Punkt zählt der nächste erst, wenn der Finger näher an ihm ist als am alten Punkt
+  if (istPunktStrich(pfad) && naeherAnErledigtemPunkt(p, start)) return;
+  // Hinfahren (statt Antippen): normaler Trefferbereich, damit nichts "im Vorbeifahren" abgehakt wird
+  if (Math.hypot(p.x - start.x, p.y - start.y) > fangRadius()) return;
+  const istPunkt = istPunktStrich(pfad);
+  gefuehrt.versuch = { punkte: [p], folgt: true, startFortschritt: gefuehrt.fortschritt };
+  if (istPunkt) {
+    linie(p, p);           // Punkt sichtbar ausmalen
+    strichFertig();
+  }
+}
+
 function gefuehrtEnde() {
   lauflicht.letzteAktivitaet = performance.now();
   lauflicht.zyklusStart = performance.now();    // Lauflicht startet neu ab der Stelle, an der es weitergeht
@@ -735,7 +786,7 @@ function gefuehrtEnde() {
   if (!v) return;
   // Gültige Spur bleibt stehen (Finger absetzen und weitermachen ist erlaubt), alles andere verschwindet
   if (v.folgt) gefuehrt.spuren.push(v.punkte);
-  else if (v.fertig) spurenNeuZeichnen();          // nach fertigem Strich einfach weitergemalt: nur aufräumen
+  else if (v.unterwegs || v.fertig) { /* auf dem Weg zum nächsten Strich abgesetzt: nichts zu tun */ }
   else { spurenNeuZeichnen(); hinweisZeigen(); }
 }
 
@@ -762,14 +813,17 @@ function strichFertig() {
     geschafft();
     return;
   }
-  // Beginnt der nächste Strich genau hier (z. B. u, B), darf der Finger ohne Absetzen weiterziehen
-  const finger = tafelZustand.letzter;
-  const naechsterStart = gefuehrt.pfade[gefuehrt.nr].p[0];
-  if (v && tafelZustand.pointerId !== null && finger
-      && Math.hypot(finger.x - naechsterStart.x, finger.y - naechsterStart.y) <= fangRadius()) {
-    gefuehrt.versuch = { punkte: [finger], folgt: true, startFortschritt: 0 };
-  }
   vorlageZeichnen();
+  // Finger bleibt liegen (wie beim Schreiben): weiter zum nächsten Strich, ohne Spur auf dem Weg.
+  // Beginnt der nächste Strich genau hier (z. B. u, B), geht es sofort weiter – außer nach einem Punkt,
+  // sonst wäre bei ä/ö/ü mit dem ersten Punkt auch gleich der zweite erledigt.
+  const finger = tafelZustand.letzter;
+  const warPunkt = istPunktStrich(gefuehrt.pfade[gefuehrt.nr - 1]);
+  if (v && tafelZustand.pointerId !== null && finger) {
+    gefuehrt.versuch = { punkte: [], folgt: false, unterwegs: true };
+    // Sofort weiter nur, wenn ein Strich genau hier beginnt – zu einem Punkt muss der Finger hinfahren
+    if (!warPunkt && !istPunktStrich(gefuehrt.pfade[gefuehrt.nr])) unterwegsAngekommen(finger);
+  }
 }
 
 function spurenNeuZeichnen() {
