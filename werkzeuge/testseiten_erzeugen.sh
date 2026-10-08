@@ -12,4 +12,5 @@ sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script 
 sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_album.js"></script>\n  <iframe src="/_warten?ms=9000" hidden></iframe>#' index.html > _test_album.html
 sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_memory.js"></script>\n  <iframe src="/_warten?ms=4000" hidden></iframe>#' index.html > _test_memory.html
 sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_montessori.js"></script>\n  <iframe src="/_warten?ms=10000" hidden></iframe>#' index.html > _test_montessori.html
+sed 's#<script src="app.js"></script>#<script src="app.js"></script>\n  <script src="_test_farben.js"></script>\n  <iframe src="/_warten?ms=10000" hidden></iframe>#' index.html > _test_farben.html
 echo "Testseiten erzeugt"

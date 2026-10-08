@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 28;
+const APP_VERSION = 29;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -170,6 +170,7 @@ function einstellungenLaden() {
   zustand.profil = k ? k.profil : speicher.lesen('profil', STANDARD.id);
   zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
   zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', 'alphabet');
+  zustand.farbe = k ? (k.farbe || 'bunt') : speicher.lesen('farbe', 'bunt');
 }
 
 function einstellungenSpeichern() {
@@ -179,9 +180,11 @@ function einstellungenSpeichern() {
     k.sterne = zustand.sterne;
     k.album = zustand.album;
     k.reihenfolge = zustand.reihenfolge;
+    k.farbe = zustand.farbe;
     return datenbank.kindSpeichern(k);
   }
   speicher.schreiben('reihenfolge', zustand.reihenfolge);
+  speicher.schreiben('farbe', zustand.farbe);
   speicher.schreiben('schreibweise', zustand.schreibweise);
   speicher.schreiben('sterne', zustand.sterne);
   speicher.schreiben('album', zustand.album);
@@ -428,6 +431,7 @@ function zeigen(id, verlauf = true) {
 // Zurück-Taste: zum Bildschirm aus dem Verlauf (z. B. vom Kind zurück in den Elternbereich), sonst Startseite
 window.addEventListener('popstate', async () => {
   wiedergabeStoppen();
+  $('#farbwahl').hidden = true;
   clearTimeout(hoerSpiel.timer);
   clearTimeout(memory.timer);
   clearTimeout(memory.timerNeu);
@@ -675,7 +679,34 @@ function tafelLeeren() {
 }
 
 const SPUR_FARBEN = ['#f28c38', '#3d8fd1', '#4caf50', '#9b59b6', '#e0567c', '#e6a700'];
-const spurFarbe = () => SPUR_FARBEN[zustand.index % SPUR_FARBEN.length];
+// Fingerfarbe des Kindes: 'bunt' (je Buchstabe eine Farbe), feste Farbe, 'regenbogen' oder 'glitzer'
+const FARB_AUSWAHL = ['bunt', '#f28c38', '#3d8fd1', '#4caf50', '#9b59b6', '#e0567c', '#e6a700', 'regenbogen', 'glitzer'];
+const GLITZER_GOLD = '#e6a700';
+let regenbogenWeg = 0;   // bisher gemalte Strecke: daraus der Farbton beim Regenbogen
+
+function spurFarbe(strecke = 0) {
+  const f = zustand.farbe || 'bunt';
+  if (f === 'bunt') return SPUR_FARBEN[zustand.index % SPUR_FARBEN.length];
+  if (f === 'glitzer') return GLITZER_GOLD;
+  if (f === 'regenbogen') {
+    regenbogenWeg += strecke;
+    return `hsl(${Math.round(regenbogenWeg * 0.9) % 360}, 85%, 55%)`;
+  }
+  return f;
+}
+
+// Glitzer: ab und zu ein kleiner weißer Funken auf der Spur
+function funkeln(p) {
+  if (zustand.farbe !== 'glitzer' || Math.random() > 0.35) return;
+  const r = 2 + Math.random() * 3;
+  const x = p.x + (Math.random() - 0.5) * tafelZustand.linienbreite * 0.7;
+  const y = p.y + (Math.random() - 0.5) * tafelZustand.linienbreite * 0.7;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 2); ctx.lineTo(x + r * 0.5, y - r * 0.5); ctx.lineTo(x + r * 2, y);
+  ctx.lineTo(x + r * 0.5, y + r * 0.5); ctx.lineTo(x, y + r * 2); ctx.lineTo(x - r * 0.5, y + r * 0.5);
+  ctx.lineTo(x - r * 2, y); ctx.lineTo(x - r * 0.5, y - r * 0.5); ctx.closePath(); ctx.fill();
+}
 
 // Ein Stück Fingerspur. Ein einzelner Punkt (Antippen) wird als gefüllter Kreis gemalt:
 // Chrome zeichnet eine Linie der Länge 0 nicht, auch nicht mit runden Enden.
@@ -700,7 +731,8 @@ function spurStueck(c, von, bis, breite, farbe) {
 function linie(von, bis) {
   const dpr = canvas.width / tafelZustand.breite;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  spurStueck(ctx, von, bis, tafelZustand.linienbreite, spurFarbe());
+  spurStueck(ctx, von, bis, tafelZustand.linienbreite, spurFarbe(Math.hypot(bis.x - von.x, bis.y - von.y)));
+  funkeln(bis);
   if (gefuehrt.aktiv) return;
 
   const s = pruef.skala;
@@ -714,6 +746,7 @@ function punkt(e) {
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 
+canvas.addEventListener('pointerdown', () => { $('#farbwahl').hidden = true; });
 canvas.addEventListener('pointerdown', (e) => {
   // Ein neuer erster Finger heißt: der vorige Kontakt ist vorbei, auch wenn sein "pointerup" nie ankam
   // (z. B. am Rand abgehoben oder Handballen). Sonst würden alle weiteren Tipps ignoriert.
@@ -1459,6 +1492,33 @@ $('#btn-weiter').addEventListener('click', () => {
   }
 });
 $('#btn-loeschen').addEventListener('click', tafelLeeren);
+
+function farbwahlZeichnen() {
+  const box = $('#farbwahl');
+  box.innerHTML = '';
+  FARB_AUSWAHL.forEach((f) => {
+    const btn = document.createElement('button');
+    const besonders = ['bunt', 'regenbogen', 'glitzer'].includes(f);
+    btn.className = `farbe-tupfer${besonders ? ` ${f}` : ''}${(zustand.farbe || 'bunt') === f ? ' gewaehlt' : ''}`;
+    if (!besonders) btn.style.background = f;
+    if (f === 'glitzer') btn.textContent = '✨';
+    btn.setAttribute('aria-label', { bunt: 'bunt gemischt', regenbogen: 'Regenbogen', glitzer: 'Glitzer' }[f] || 'Farbe');
+    btn.addEventListener('click', () => {
+      zustand.farbe = f;
+      regenbogenWeg = 0;
+      einstellungenSpeichern();
+      box.hidden = true;
+      if (gefuehrt.aktiv) spurenNeuZeichnen();   // schon Gemaltes in der neuen Farbe zeigen
+    });
+    box.appendChild(btn);
+  });
+}
+
+$('#btn-farbe').addEventListener('click', () => {
+  const box = $('#farbwahl');
+  if (box.hidden) farbwahlZeichnen();
+  box.hidden = !box.hidden;
+});
 $('#btn-laut').addEventListener('click', () => (zustand.nameModus ? nameLautWiederholen() : lautAbspielen(BUCHSTABEN[zustand.index])));
 function nameLautWiederholen() {
   folgeAbspielen([{ url: `audio/${dateiName(BUCHSTABEN[zustand.index].b)}-laut.wav` }]);
@@ -1580,6 +1640,7 @@ $('#btn-kind-neu').addEventListener('click', async () => {
     profil: erstesKind ? speicher.lesen('profil', STANDARD.id) : STANDARD.id,
     album: erstesKind ? speicher.lesen('album', []) : [],
     reihenfolge: erstesKind ? speicher.lesen('reihenfolge', 'alphabet') : 'alphabet',
+    farbe: erstesKind ? speicher.lesen('farbe', 'bunt') : 'bunt',
     erstellt: Date.now(),
   };
   await datenbank.kindSpeichern(kind);
@@ -1609,6 +1670,7 @@ async function kindAendern(fn) {
     zustand.sterne = kindInArbeit.sterne;
     zustand.album = kindInArbeit.album || [];
     zustand.reihenfolge = kindInArbeit.reihenfolge || 'alphabet';
+    zustand.farbe = kindInArbeit.farbe || 'bunt';
   }
   kindFormularZeichnen();
 }
@@ -2354,6 +2416,7 @@ async function sicherungErstellen() {
       profil: speicher.lesen('profil', STANDARD.id),
       album: speicher.lesen('album', []),
       reihenfolge: speicher.lesen('reihenfolge', 'alphabet'),
+      farbe: speicher.lesen('farbe', 'bunt'),
     },
     profile,
     kinder: kinderListe,
@@ -2395,6 +2458,7 @@ async function sicherungEinspielen(s) {
     speicher.schreiben('profil', s.einstellungen.profil || STANDARD.id);
     speicher.schreiben('album', s.einstellungen.album || []);
     speicher.schreiben('reihenfolge', s.einstellungen.reihenfolge || 'alphabet');
+    speicher.schreiben('farbe', s.einstellungen.farbe || 'bunt');
   }
   await kinderLaden();
   if (!aktivesKind() && kinder.length) { zustand.kind = kinder[0].id; speicher.schreiben('kind', zustand.kind); }

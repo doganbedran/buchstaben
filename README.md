@@ -16,6 +16,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `_test_kinder.html` – Test der Kinder-Profile (frisches Browserprofil; Ansicht per `#wer`, `#home`, `#kind`, `#eltern`)
 - `_test_sichern.html` – Test Sichern & Übertragen (frisches Browserprofil)
 - `_test_hoeren.html` – Test Hör-Spiel
+- `_test_farben.html` – Test Fingerfarben
 - `_test_montessori.html` – Test Montessori-Reihenfolge
 - `_test_memory.html` – Test Memory
 - `_test_album.html` – Test Sticker-Album
@@ -60,6 +61,7 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 
 ## Spiele
 - ✏️ **Nachspuren** – Startseite; Reihenfolge pro Kind: A–Z (alles offen) oder Montessori (Gruppen m a s l → o i e n → …, nächste Gruppe ab 2 Sternen je Buchstabe)
+- 🎨 **Fingerfarben** – Farbwahl beim Nachspuren (bunt, 6 Farben, Regenbogen, Glitzer), pro Kind gespeichert
 - 📳 **Vibration** beim Nachspuren (Sandpapier-Gefühl, Android), im Elternbereich abschaltbar
 - ✍️ **Mein Name** – eigenen Namen Buchstabe für Buchstabe nachspuren (nur mit ausgewähltem Kind)
 - 🧩 **Groß & klein** – Memory mit 4 Paaren (A/a); gleich aussehende Paare (C/c, O/o …) und i+l zusammen ausgeschlossen
