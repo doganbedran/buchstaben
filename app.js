@@ -184,7 +184,17 @@ function sprechen(text) {
 
 // Abspielen von Audiodateien nacheinander; ein neuer Aufruf bricht den laufenden ab
 const wiedergabe = { audio: null, nummer: 0 };
-const LOB_ANZAHL = 5;
+
+// Lob: 5 Plätze. Sobald Eltern einen eigenen Lob-Satz aufgenommen haben, kommen nur noch ihre Sätze.
+const LOB_SAETZE = ['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Wunderbar!'];
+const LOB_PLAETZE = LOB_SAETZE.map((_, i) => `lob-${i + 1}`);
+const zufall = (liste) => liste[Math.floor(Math.random() * liste.length)];
+
+function lobQuelle() {
+  const eigene = LOB_PLAETZE.filter((k) => medien[k] && medien[k].stimme);
+  if (eigene.length) return { url: URL.createObjectURL(medien[zufall(eigene)].stimme), eigen: true };
+  return { url: `audio/${zufall(LOB_PLAETZE)}.wav`, eigen: false };
+}
 
 function wiedergabeStoppen() {
   wiedergabe.nummer++;
@@ -208,8 +218,9 @@ async function lautAbspielen(eintrag, lob = false) {
   const nummer = wiedergabe.nummer;
   const eigene = medien[eintrag.b] && medien[eintrag.b].stimme;
   const eigeneUrl = eigene ? URL.createObjectURL(eigene) : null;
+  const lobDaten = lob ? lobQuelle() : null;
   const quellen = [];
-  if (lob) quellen.push(`audio/lob-${1 + Math.floor(Math.random() * LOB_ANZAHL)}.wav`);
+  if (lobDaten) quellen.push(lobDaten.url);
   quellen.push(eigeneUrl || `audio/${dateiName(eintrag.b)}${lob ? '-wort' : ''}.wav`);
   try {
     for (const q of quellen) {
@@ -222,7 +233,17 @@ async function lautAbspielen(eintrag, lob = false) {
     sprechen(lob ? `Super! ${eintrag.wort}` : satz);
   } finally {
     if (eigeneUrl) URL.revokeObjectURL(eigeneUrl);
+    if (lobDaten && lobDaten.eigen) URL.revokeObjectURL(lobDaten.url);
   }
+}
+
+// Einzelnen Lob-Platz anhören: eigene Aufnahme, sonst Thorstens Satz für diesen Platz
+async function lobAnhoeren(platz) {
+  wiedergabeStoppen();
+  const eigene = medien[platz] && medien[platz].stimme;
+  const url = eigene ? URL.createObjectURL(eigene) : `audio/${platz}.wav`;
+  try { await abspielen(url); } catch { /* abgebrochen */ }
+  if (eigene) URL.revokeObjectURL(url);
 }
 
 // ---------- Bildschirme & Navigation ----------
@@ -570,6 +591,11 @@ async function elternOeffnen() {
 
 async function elternZeichnen() {
   await profileZeichnen();
+  medienZeichnen();
+}
+
+function medienZeichnen() {
+  lobZeichnen();
   anpassenZeichnen();
 }
 
@@ -577,7 +603,7 @@ document.querySelectorAll('input[name="schreibweise"]').forEach((r) => {
   r.addEventListener('change', () => {
     zustand.schreibweise = r.value;
     speicher.schreiben('schreibweise', r.value);
-    anpassenZeichnen();
+    medienZeichnen();
   });
 });
 
@@ -700,7 +726,35 @@ function anpassenZeichnen() {
 async function medienEntfernen(b, art) {
   await datenbank.medienEntfernen(zustand.profil, b, art);
   await medienLaden();
-  anpassenZeichnen();
+  medienZeichnen();
+}
+
+function lobZeichnen() {
+  const box = $('#lob');
+  if (zustand.profil === STANDARD.id) {
+    box.innerHTML = '<p class="hinweis">Im Profil „Standard“ lobt Thorsten '
+      + '(„Super!“, „Toll gemacht!“, …). Eigene Lob-Sätze gehen in einem eigenen Profil.</p>';
+    return;
+  }
+  const eigene = LOB_PLAETZE.filter((k) => medien[k] && medien[k].stimme).length;
+  box.innerHTML = '<p class="hinweis">Nehmen Sie bis zu 5 Lob-Sätze auf, z. B. „Toll gemacht!“ oder „Super, mein Schatz!“. '
+    + (eigene
+      ? `<b>Ihre ${eigene === 1 ? 'Aufnahme wird' : `${eigene} Aufnahmen werden`} abwechselnd gespielt</b>, Thorsten lobt nicht mehr.`
+      : 'Solange keiner aufgenommen ist, lobt Thorsten.')
+    + '</p>';
+  LOB_PLAETZE.forEach((platz, i) => {
+    const hat = medien[platz] && medien[platz].stimme;
+    const zeile = document.createElement('div');
+    zeile.className = 'lob-zeile';
+    zeile.innerHTML = `<span class="w">Lob ${i + 1}<br><small>${hat ? '<b>eigene Aufnahme</b>' : `Thorsten: „${LOB_SAETZE[i]}“`}</small></span>`
+      + '<button class="mini-btn" data-a="rec" aria-label="Aufnehmen">🎙️</button>'
+      + '<button class="mini-btn" data-a="play" aria-label="Anhören">▶️</button>'
+      + `<button class="mini-btn" data-a="weg" aria-label="Aufnahme entfernen" ${hat ? '' : 'disabled'}>↩️</button>`;
+    zeile.querySelector('[data-a=rec]').addEventListener('click', (e) => aufnehmen(platz, e.currentTarget));
+    zeile.querySelector('[data-a=play]').addEventListener('click', () => lobAnhoeren(platz));
+    zeile.querySelector('[data-a=weg]').addEventListener('click', () => medienEntfernen(platz, 'stimme'));
+    box.appendChild(zeile);
+  });
 }
 
 let fotoFuer = null;
@@ -718,7 +772,7 @@ $('#foto-input').addEventListener('change', async (e) => {
     const blob = await fotoVerkleinern(datei);
     await datenbank.medienSetzen(zustand.profil, fotoFuer, 'bild', blob);
     await medienLaden();
-    anpassenZeichnen();
+    medienZeichnen();
   } catch {
     alert('Das Foto konnte nicht geladen werden.');
   }
@@ -774,7 +828,7 @@ async function aufnehmen(b, knopf) {
     if (teile.length) await datenbank.medienSetzen(profil, b, 'stimme', new Blob(teile, { type: r.mimeType }));
     if (rekorder === r) rekorder = null;
     await medienLaden();
-    if ($('#eltern').classList.contains('active')) anpassenZeichnen();
+    if ($('#eltern').classList.contains('active')) medienZeichnen();
   };
   r.start();
   knopf.classList.add('aktiv');
@@ -787,7 +841,8 @@ async function aufnehmen(b, knopf) {
 
 rasterZeichnen();
 
-(async () => {
+// Promise, damit Tests auf das Ende des Starts warten können
+const startFertig = (async () => {
   // Datenbank öffnen (übernimmt ggf. alte Aufnahmen), gelöschtes Profil abfangen, eigene Medien laden
   const profile = await datenbank.profile();
   if (zustand.profil !== STANDARD.id && !profile.some((p) => p.id === zustand.profil)) {

@@ -215,6 +215,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .anpassen-zeile .gruppe { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .anpassen-zeile .gruppe-name { font-size: 0.8rem; color: var(--leise); margin-right: 2px; }
 .anpassen-zeile .mini-btn { width: 40px; height: 40px; }
+
+.lob-zeile {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rand);
+}
+.lob-zeile:last-child { border-bottom: none; }
+.lob-zeile .w { font-size: 0.95rem; line-height: 1.35; }
+.lob-zeile .w small { color: var(--leise); }
+.lob-zeile .w b, .hinweis b { color: var(--gruen); font-weight: 600; }
+.lob-zeile .mini-btn { width: 40px; height: 40px; }
 .mini-btn {
   width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--rand);
   background: var(--bg); font-size: 1.15rem;

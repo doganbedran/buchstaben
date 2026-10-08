@@ -4,7 +4,7 @@
   const warte = (ms) => new Promise((r) => setTimeout(r, ms));
   const fehler = [];
   const pruefe = (bedingung, text) => { if (!bedingung) fehler.push(text); };
-  await warte(800);
+  await startFertig;
 
   // 1. Alte Aufnahme wurde in "Eigene Aufnahmen" übernommen und ist aktiv
   pruefe(zustand.profil === 'p-uebernommen', `Übernahme: aktives Profil ${zustand.profil}`);
@@ -36,10 +36,20 @@
   pruefe(medien.b && medien.b.stimme, 'Eigene Stimme für b fehlt');
   pruefe(bildHtml(BUCHSTABEN[1]) === '🍌', 'Nicht geändertes Bild sollte Standard bleiben');
 
+  // 3b. Lob: ohne eigene Aufnahme Thorsten, mit einer eigenen immer die eigene
+  for (let i = 0; i < 10; i++) pruefe(!lobQuelle().eigen, 'Lob ohne Aufnahme sollte Thorsten sein');
+  await datenbank.medienSetzen(zustand.profil, 'lob-2', 'stimme', new Blob(['z'], { type: 'audio/webm' }));
+  await medienLaden();
+  for (let i = 0; i < 10; i++) {
+    const q = lobQuelle();
+    pruefe(q.eigen && q.url.startsWith('blob:'), 'Lob mit eigener Aufnahme sollte eigene sein');
+  }
+
   // 4. Standard: keine eigenen Medien
   await profilAktivieren('standard');
   pruefe(bildHtml(BUCHSTABEN[0]) === '🍎', 'Standard zeigt eigenes Foto');
   pruefe(!medien.b, 'Standard hat eigene Stimme');
+  pruefe(!lobQuelle().eigen, 'Standard sollte Thorsten loben');
 
   // 5. Löschen entfernt Profil und alle Medien
   const weg = { id: 'p-weg', name: 'Weg', erstellt: Date.now() };
@@ -48,7 +58,7 @@
   await datenbank.profilLoeschen('p-weg');
   pruefe((await datenbank.medienVon('p-weg')).length === 0, 'Löschen: Medien übrig');
   pruefe(!(await datenbank.profile()).some((p) => p.id === 'p-weg'), 'Löschen: Profil übrig');
-  pruefe((await datenbank.medienVon(mama.id)).length === 2, 'Löschen hat fremde Medien entfernt');
+  pruefe((await datenbank.medienVon(mama.id)).length === 3, 'Löschen hat fremde Medien entfernt');
 
   // 6. Elternbereich mit Profil "Mama" für den Screenshot
   await profilAktivieren(mama.id);
@@ -57,7 +67,7 @@
   else await elternOeffnen();
 
   const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#000c;color:#fff;font:12px monospace;padding:6px;z-index:9';
+  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:' + (fehler.length ? '#c62828' : '#1b7f3a') + ';color:#fff;font:12px monospace;padding:6px;z-index:9';
   d.textContent = fehler.length ? 'FEHLER: ' + fehler.join(' | ') : 'PROFIL-TESTS OK';
   document.body.appendChild(d);
 })().catch((e) => {

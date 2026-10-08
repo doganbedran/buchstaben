@@ -10,7 +10,8 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `sw.js`, `manifest.webmanifest`, `icons/` – Installation & Offline
 - `bilder/` – eigene Zeichnungen, wo es kein Emoji gibt (Xylophon, Yak)
 - `_test.html` – Test der Spur-Erkennung (unten steht „ALLE TESTS OK“)
-- `_test_profile.html` – Test der Profile (in einem frischen Browserprofil öffnen, unten „PROFIL-TESTS OK“)
+- `_test_profile.html` – Test der Profile inkl. Lob (in einem frischen Browserprofil öffnen, grüne Leiste = OK)
+- `werkzeuge/testseiten_erzeugen.sh` – Testseiten nach Änderungen an `index.html` neu erzeugen
 
 ## Lokal starten
     .venv/bin/python werkzeuge/testserver.py 8765     # oder: python3 -m http.server 8765

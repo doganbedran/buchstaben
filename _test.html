@@ -52,6 +52,30 @@
     </header>
     <div class="eltern-inhalt">
       <div class="karte">
+        <h3>Profil</h3>
+        <p class="hinweis">Ein Profil enthält eigene Fotos und Ihre Stimme.
+          <strong>„Standard“ ist immer da</strong> und kann nicht verändert werden – wenn etwas nicht passt,
+          einfach „Standard“ antippen.</p>
+        <div id="profile" class="profile"></div>
+        <div class="knopf-reihe">
+          <button id="btn-profil-neu" class="text-btn">➕ Neues Profil</button>
+          <button id="btn-profil-umbenennen" class="text-btn">✏️ Umbenennen</button>
+          <button id="btn-profil-loeschen" class="text-btn warnung">🗑️ Löschen</button>
+        </div>
+      </div>
+
+      <div class="karte">
+        <h3>Lob nach dem Nachspuren</h3>
+        <div id="lob" class="anpassen"></div>
+      </div>
+
+      <div class="karte">
+        <h3>Bilder &amp; Stimme anpassen</h3>
+        <div id="anpassen" class="anpassen"></div>
+        <input type="file" id="foto-input" accept="image/*" hidden>
+      </div>
+
+      <div class="karte">
         <h3>Schrift</h3>
         <label class="umschalter">
           <input type="radio" name="schreibweise" value="klein"> kleine Buchstaben (Montessori)
@@ -59,13 +83,6 @@
         <label class="umschalter">
           <input type="radio" name="schreibweise" value="gross"> GROSSE Buchstaben
         </label>
-      </div>
-
-      <div class="karte">
-        <h3>Eigene Stimme</h3>
-        <p class="hinweis">Kinder lernen am besten mit Ihrer Stimme. Sprechen Sie z. B. „mmm … Maus“.
-          Aufnahmen bleiben nur auf diesem Gerät.</p>
-        <div id="aufnahmen" class="aufnahmen"></div>
       </div>
 
       <div class="karte">

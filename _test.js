@@ -50,7 +50,7 @@
   $('#bild').innerHTML = bildHtml(BUCHSTABEN[zustand.index]); $('#fortschritt').textContent = sterneText(1);
   ev('pointerdown', tafelZustand.breite * 0.2, tafelZustand.hoehe * 0.4); ev('pointermove', tafelZustand.breite * 0.22, tafelZustand.hoehe * 0.65); ev('pointerup', 0, 0);
   const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#000c;color:#fff;font:12px monospace;padding:6px;z-index:9';
+  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:' + (ok ? '#1b7f3a' : '#c62828') + ';color:#fff;font:12px monospace;padding:6px;z-index:9';
   d.textContent = (ok ? 'ALLE TESTS OK ' : 'FEHLER: ') + ergebnis.join(' | ');
   document.body.appendChild(d);
 })();
