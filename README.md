@@ -11,6 +11,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `bilder/` – eigene Zeichnungen, wo es kein Emoji gibt (Xylophon, Yak)
 - `_test.html` – Test der Spur-Erkennung (unten steht „ALLE TESTS OK“)
 - `_test_profile.html` – Test der Profile inkl. Lob (in einem frischen Browserprofil öffnen, grüne Leiste = OK)
+- `_test_kinder.html` – Test der Kinder-Profile (frisches Browserprofil; Ansicht per `#wer`, `#home`, `#kind`, `#eltern`)
 - `werkzeuge/testseiten_erzeugen.sh` – Testseiten nach Änderungen an `index.html` neu erzeugen
 
 ## Lokal starten
@@ -19,6 +20,9 @@ Dann http://localhost:8765 öffnen.
 
 ## Elternbereich
 Zahnrad oben rechts **2 Sekunden gedrückt halten**. Dort: Profile, große/kleine Buchstaben, Sterne zurücksetzen.
+
+**Kinder:** Jedes Kind hat Namen, Erkennungsbild (Tier oder Foto), eigene Sterne, eigene Schrift und ein
+zugewiesenes Profil. Mit Kindern startet die App mit „Wer spielt?“. Ohne Kinder gelten die Einstellungen app-weit.
 
 **Profile:** „Standard“ (Thorsten + mitgelieferte Bilder) ist immer da und unveränderlich. Eigene Profile
 enthalten pro Buchstabe optional ein Foto und/oder eine Aufnahme; alles andere kommt aus „Standard“.

@@ -33,12 +33,13 @@ const datenbank = (() => {
   function oeffnen() {
     if (!dbPromise) {
       dbPromise = new Promise((resolve, reject) => {
-        const req = indexedDB.open('lernapp', 2);
+        const req = indexedDB.open('lernapp', 3);
         req.onupgradeneeded = (ev) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('aufnahmen')) db.createObjectStore('aufnahmen');
           if (!db.objectStoreNames.contains('profile')) db.createObjectStore('profile', { keyPath: 'id' });
           if (!db.objectStoreNames.contains('medien')) db.createObjectStore('medien');
+          if (!db.objectStoreNames.contains('kinder')) db.createObjectStore('kinder', { keyPath: 'id' });
           if (ev.oldVersion === 1) aufnahmenUebernehmen(req.transaction);
         };
         req.onsuccess = () => resolve(req.result);
@@ -82,6 +83,10 @@ const datenbank = (() => {
       await aktion('medien', 'readwrite', (s) => s.delete(bereich(id)));
       await aktion('profile', 'readwrite', (s) => s.delete(id));
     },
+    kinder: async () => ((await aktion('kinder', 'readonly', (s) => s.getAll())) || [])
+      .sort((a, b) => a.erstellt - b.erstellt),
+    kindSpeichern: (k) => aktion('kinder', 'readwrite', (s) => s.put(k)),
+    kindLoeschen: (id) => aktion('kinder', 'readwrite', (s) => s.delete(id)),
     medienSetzen: (id, b, art, blob) => aktion('medien', 'readwrite', (s) => s.put(blob, `${id}|${b}|${art}`)),
     medienEntfernen: (id, b, art) => aktion('medien', 'readwrite', (s) => s.delete(`${id}|${b}|${art}`)),
     async medienVon(id) {
@@ -111,7 +116,59 @@ async function medienLaden() {
 
 async function profilAktivieren(id) {
   zustand.profil = id;
-  speicher.schreiben('profil', id);
+  // Mit Kindern gehört das Profil zum Kind (wird dort eingestellt), sonst gilt es für die ganze App
+  if (!kinder.length) speicher.schreiben('profil', id);
+  await medienLaden();
+}
+
+// ---------- Kinder: jedes Kind hat eigene Sterne, Schrift und eigenes Profil ----------
+
+const TIERE = ['🦊', '🐻', '🐰', '🐼', '🦁', '🐸', '🐯', '🐨', '🦄', '🐶', '🐱', '🐵', '🐧', '🐢', '🦋', '🐞'];
+let kinder = [];
+let kindFotos = {};   // Kind-ID -> Objekt-URL des Fotos
+zustand.kind = speicher.lesen('kind', null);
+
+function aktivesKind() {
+  return kinder.find((k) => k.id === zustand.kind) || null;
+}
+
+async function kinderLaden() {
+  Object.values(kindFotos).forEach((url) => URL.revokeObjectURL(url));
+  kindFotos = {};
+  kinder = await datenbank.kinder();
+  kinder.forEach((k) => { if (k.foto) kindFotos[k.id] = URL.createObjectURL(k.foto); });
+}
+
+function kindBildHtml(k) {
+  return kindFotos[k.id]
+    ? `<img class="bild-datei foto" src="${kindFotos[k.id]}" alt="${htmlText(k.name)}">`
+    : k.tier;
+}
+
+// Sterne, Schrift und Profil kommen vom aktiven Kind – ohne Kinder aus den App-weiten Einstellungen
+function einstellungenLaden() {
+  const k = aktivesKind();
+  zustand.schreibweise = k ? k.schreibweise : speicher.lesen('schreibweise', 'klein');
+  zustand.sterne = k ? k.sterne : speicher.lesen('sterne', {});
+  zustand.profil = k ? k.profil : speicher.lesen('profil', STANDARD.id);
+}
+
+function einstellungenSpeichern() {
+  const k = aktivesKind();
+  if (k) {
+    k.schreibweise = zustand.schreibweise;
+    k.sterne = zustand.sterne;
+    return datenbank.kindSpeichern(k);
+  }
+  speicher.schreiben('schreibweise', zustand.schreibweise);
+  speicher.schreiben('sterne', zustand.sterne);
+  return Promise.resolve();
+}
+
+async function kindWaehlen(id) {
+  zustand.kind = id;
+  speicher.schreiben('kind', id);
+  einstellungenLaden();
   await medienLaden();
 }
 
@@ -256,9 +313,17 @@ function zeigen(id, verlauf = true) {
   if (verlauf && id !== 'home') history.pushState({ screen: id }, '');
 }
 
-window.addEventListener('popstate', () => {
+// Zurück-Taste: zum Bildschirm aus dem Verlauf (z. B. vom Kind zurück in den Elternbereich), sonst Startseite
+window.addEventListener('popstate', async () => {
   wiedergabeStoppen();
   stopAufnahme();
+  const ziel = (history.state && history.state.screen) || 'home';
+  if (ziel === 'eltern') {
+    await elternZeichnen();
+    zeigen('eltern', false);
+    return;
+  }
+  if ($('#eltern').classList.contains('active') || $('#kind').classList.contains('active')) await elternVerlassen();
   rasterZeichnen();
   zeigen('home', false);
 });
@@ -273,6 +338,11 @@ function sterneText(n) {
 }
 
 function rasterZeichnen() {
+  // Oben links: wer gerade spielt (Tipp darauf -> "Wer spielt?")
+  const k = aktivesKind();
+  $('#btn-kind').hidden = !k;
+  $('#regenbogen').hidden = !!k;
+  if (k) $('#btn-kind').innerHTML = kindBildHtml(k);
   const grid = $('#grid');
   grid.innerHTML = '';
   BUCHSTABEN.forEach((eintrag, i) => {
@@ -494,7 +564,7 @@ function geschafft() {
   const eintrag = BUCHSTABEN[zustand.index];
   const n = Math.min(MAX_STERNE, (zustand.sterne[eintrag.b] || 0) + 1);
   zustand.sterne[eintrag.b] = n;
-  speicher.schreiben('sterne', zustand.sterne);
+  einstellungenSpeichern();
   $('#fortschritt').textContent = sterneText(n);
 
   glockenspiel();
@@ -590,8 +660,19 @@ async function elternOeffnen() {
 }
 
 async function elternZeichnen() {
+  kinderListeZeichnen();
+  // Schrift und Fortschritt gibt es mit Kindern pro Kind (beim Kind einstellen)
+  $('#karte-schrift').hidden = kinder.length > 0;
+  $('#karte-fortschritt').hidden = kinder.length > 0;
+  $('#profil-kinder-hinweis').hidden = kinder.length === 0;
   await profileZeichnen();
   medienZeichnen();
+}
+
+// Im Elternbereich kann ein anderes Profil zum Bearbeiten gewählt sein: beim Verlassen wieder das des Kindes laden
+async function elternVerlassen() {
+  einstellungenLaden();
+  await medienLaden();
 }
 
 function medienZeichnen() {
@@ -602,17 +683,170 @@ function medienZeichnen() {
 document.querySelectorAll('input[name="schreibweise"]').forEach((r) => {
   r.addEventListener('change', () => {
     zustand.schreibweise = r.value;
-    speicher.schreiben('schreibweise', r.value);
+    einstellungenSpeichern();
     medienZeichnen();
   });
 });
 
 $('#btn-eltern-zurueck').addEventListener('click', () => { stopAufnahme(); zurStartseite(); });
 
+// --- Kinder ---
+
+function kinderListeZeichnen() {
+  const box = $('#kinder-liste');
+  box.innerHTML = '';
+  kinder.forEach((k) => {
+    const sterne = Object.values(k.sterne || {}).reduce((a, b) => a + b, 0);
+    const zeile = document.createElement('button');
+    zeile.className = 'kind-zeile';
+    zeile.innerHTML = `<span class="kind-bild">${kindBildHtml(k)}</span>`
+      + `<span class="w">${htmlText(k.name)}<br><small>${k.schreibweise === 'gross' ? 'GROSSE' : 'kleine'} Buchstaben`
+      + ` · ${sterne} ⭐</small></span><span class="pfeil">✏️</span>`;
+    zeile.addEventListener('click', () => kindBearbeiten(k.id));
+    box.appendChild(zeile);
+  });
+}
+
+$('#btn-kind-neu').addEventListener('click', async () => {
+  const name = (prompt('Wie heißt das Kind?') || '').trim();
+  if (!name) return;
+  const erstesKind = kinder.length === 0;
+  const kind = {
+    id: `k-${Date.now().toString(36)}`,
+    name: name.slice(0, 20),
+    tier: TIERE.find((t) => !kinder.some((k) => k.tier === t)) || TIERE[0],
+    // Das erste Kind übernimmt die bisherigen Sterne und Einstellungen
+    schreibweise: erstesKind ? speicher.lesen('schreibweise', 'klein') : 'klein',
+    sterne: erstesKind ? speicher.lesen('sterne', {}) : {},
+    profil: erstesKind ? speicher.lesen('profil', STANDARD.id) : STANDARD.id,
+    erstellt: Date.now(),
+  };
+  await datenbank.kindSpeichern(kind);
+  if (erstesKind) speicher.schreiben('sterne', {});
+  await kinderLaden();
+  if (!aktivesKind()) { zustand.kind = kind.id; speicher.schreiben('kind', kind.id); }
+  kindBearbeiten(kind.id);
+});
+
+let kindInArbeit = null;
+
+function kindBearbeiten(id) {
+  kindInArbeit = kinder.find((k) => k.id === id);
+  if (!kindInArbeit) return;
+  kindFormularZeichnen();
+  zeigen('kind');
+}
+
+async function kindAendern(fn) {
+  fn(kindInArbeit);
+  await datenbank.kindSpeichern(kindInArbeit);
+  // Neu laden, damit Liste, Fotos und aktives Kind denselben Stand haben
+  await kinderLaden();
+  kindInArbeit = kinder.find((k) => k.id === kindInArbeit.id);
+  if (kindInArbeit.id === zustand.kind) {
+    zustand.schreibweise = kindInArbeit.schreibweise;
+    zustand.sterne = kindInArbeit.sterne;
+  }
+  kindFormularZeichnen();
+}
+
+async function kindFormularZeichnen() {
+  const k = kindInArbeit;
+  $('#kind-titel').textContent = k.name;
+  const name = $('#kind-name');
+  if (document.activeElement !== name) name.value = k.name;
+
+  const tiere = $('#kind-tiere');
+  tiere.innerHTML = '';
+  TIERE.forEach((t) => {
+    const btn = document.createElement('button');
+    btn.className = 'tier' + (!k.foto && k.tier === t ? ' gewaehlt' : '');
+    btn.textContent = t;
+    btn.addEventListener('click', () => kindAendern((kk) => { kk.tier = t; kk.foto = null; }));
+    tiere.appendChild(btn);
+  });
+  $('#btn-kind-foto-weg').hidden = !k.foto;
+
+  document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => { r.checked = r.value === k.schreibweise; });
+
+  const profile = [STANDARD, ...(await datenbank.profile())];
+  const box = $('#kind-profile');
+  box.innerHTML = '';
+  profile.forEach((p) => {
+    const zeile = document.createElement('label');
+    zeile.className = 'umschalter profil-zeile';
+    zeile.innerHTML = `<input type="radio" name="kind-profil" ${p.id === k.profil ? 'checked' : ''}>`
+      + `<span>${p.id === STANDARD.id ? '⭐ ' : ''}${htmlText(p.name)}</span>`;
+    zeile.querySelector('input').addEventListener('change', () => kindAendern((kk) => { kk.profil = p.id; }));
+    box.appendChild(zeile);
+  });
+
+  const sterne = Object.values(k.sterne || {}).reduce((a, b) => a + b, 0);
+  const fertig = BUCHSTABEN.filter((e) => (k.sterne[e.b] || 0) >= MAX_STERNE).length;
+  $('#kind-sterne').textContent =
+    `${sterne} Sterne gesammelt, ${fertig} von ${BUCHSTABEN.length} Buchstaben mit allen ${MAX_STERNE} Sternen.`;
+}
+
+$('#kind-name').addEventListener('change', (e) => {
+  const name = e.target.value.trim().slice(0, 20);
+  if (name) kindAendern((k) => { k.name = name; });
+  else e.target.value = kindInArbeit.name;
+});
+
+document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => {
+  r.addEventListener('change', () => kindAendern((k) => { k.schreibweise = r.value; }));
+});
+
+$('#btn-kind-foto').addEventListener('click', () => fotoWaehlen((blob) => kindAendern((k) => { k.foto = blob; })));
+
+$('#btn-kind-foto-weg').addEventListener('click', () => kindAendern((k) => { k.foto = null; }));
+
+$('#btn-kind-sterne-reset').addEventListener('click', () => {
+  if (!confirm(`Alle Sterne von ${kindInArbeit.name} zurücksetzen?`)) return;
+  kindAendern((k) => { k.sterne = {}; });
+});
+
+$('#btn-kind-loeschen').addEventListener('click', async () => {
+  if (!confirm(`${kindInArbeit.name} mit allen Sternen löschen?`)) return;
+  await datenbank.kindLoeschen(kindInArbeit.id);
+  await kinderLaden();
+  if (!aktivesKind()) {
+    zustand.kind = kinder.length ? kinder[0].id : null;
+    speicher.schreiben('kind', zustand.kind);
+  }
+  history.back();
+});
+
+$('#btn-kind-zurueck').addEventListener('click', () => history.back());
+
+// --- Wer spielt? ---
+
+function werZeichnen() {
+  const box = $('#wer-liste');
+  box.innerHTML = '';
+  kinder.forEach((k) => {
+    const btn = document.createElement('button');
+    btn.className = 'wer-kachel';
+    btn.innerHTML = `<span class="wer-bild">${kindBildHtml(k)}</span><span class="wer-name">${htmlText(k.name)}</span>`;
+    btn.addEventListener('click', async () => {
+      await kindWaehlen(k.id);
+      rasterZeichnen();
+      zeigen('home', false);
+    });
+    box.appendChild(btn);
+  });
+}
+
+$('#btn-kind').addEventListener('click', () => {
+  wiedergabeStoppen();
+  werZeichnen();
+  zeigen('wer', false);
+});
+
 $('#btn-reset').addEventListener('click', () => {
   if (!confirm('Alle Sterne wirklich zurücksetzen?')) return;
   zustand.sterne = {};
-  speicher.schreiben('sterne', {});
+  einstellungenSpeichern();
   elternOeffnen();
 });
 
@@ -679,6 +913,11 @@ $('#btn-profil-loeschen').addEventListener('click', async () => {
   if (!confirm(`Profil „${profil.name}“ mit allen eigenen Fotos und Aufnahmen löschen?`)) return;
   stopAufnahme();
   await datenbank.profilLoeschen(profil.id);
+  // Kinder mit diesem Profil hören wieder den Standard
+  for (const k of kinder.filter((kk) => kk.profil === profil.id)) {
+    k.profil = STANDARD.id;
+    await datenbank.kindSpeichern(k);
+  }
   await profilAktivieren(STANDARD.id);
   elternZeichnen();
 });
@@ -714,7 +953,7 @@ function anpassenZeichnen() {
       + `<button class="mini-btn" data-a="stimme-weg" aria-label="Standard-Stimme" ${m.stimme ? '' : 'disabled'}>↩️</button></span>`
       + '</div>';
     const knopf = (a) => zeile.querySelector(`[data-a=${a}]`);
-    knopf('foto').addEventListener('click', () => fotoWaehlen(eintrag.b));
+    knopf('foto').addEventListener('click', () => buchstabenFotoWaehlen(eintrag.b));
     knopf('bild-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'bild'));
     knopf('rec').addEventListener('click', (e) => aufnehmen(eintrag.b, e.currentTarget));
     knopf('play').addEventListener('click', () => lautAbspielen(eintrag));
@@ -757,25 +996,35 @@ function lobZeichnen() {
   });
 }
 
-let fotoFuer = null;
-function fotoWaehlen(b) {
-  fotoFuer = b;
+// Foto aus Kamera/Galerie; das verkleinerte Foto geht an "fertig" (Buchstabenbild oder Kinderfoto)
+let fotoFertig = null;
+function fotoWaehlen(fertig) {
+  fotoFertig = fertig;
   const input = $('#foto-input');
   input.value = '';
   input.click();
 }
 
-$('#foto-input').addEventListener('change', async (e) => {
-  const datei = e.target.files && e.target.files[0];
-  if (!datei || !fotoFuer) return;
-  try {
-    const blob = await fotoVerkleinern(datei);
-    await datenbank.medienSetzen(zustand.profil, fotoFuer, 'bild', blob);
+function buchstabenFotoWaehlen(b) {
+  const profil = zustand.profil;
+  fotoWaehlen(async (blob) => {
+    await datenbank.medienSetzen(profil, b, 'bild', blob);
     await medienLaden();
     medienZeichnen();
+  });
+}
+
+$('#foto-input').addEventListener('change', async (e) => {
+  const datei = e.target.files && e.target.files[0];
+  if (!datei || !fotoFertig) return;
+  let blob;
+  try {
+    blob = await fotoVerkleinern(datei);
   } catch {
     alert('Das Foto konnte nicht geladen werden.');
+    return;
   }
+  await fotoFertig(blob);
 });
 
 // Quadratisch zuschneiden (Mitte) und auf 512 px verkleinern: spart Speicher, passt in jede Kachel
@@ -843,14 +1092,22 @@ rasterZeichnen();
 
 // Promise, damit Tests auf das Ende des Starts warten können
 const startFertig = (async () => {
-  // Datenbank öffnen (übernimmt ggf. alte Aufnahmen), gelöschtes Profil abfangen, eigene Medien laden
+  // Datenbank öffnen (übernimmt ggf. alte Aufnahmen), Kinder laden, gelöschtes Profil abfangen, Medien laden
   const profile = await datenbank.profile();
+  await kinderLaden();
+  if (zustand.kind && !aktivesKind()) zustand.kind = kinder.length ? kinder[0].id : null;
+  einstellungenLaden();
   if (zustand.profil !== STANDARD.id && !profile.some((p) => p.id === zustand.profil)) {
     zustand.profil = STANDARD.id;
-    speicher.schreiben('profil', STANDARD.id);
+    if (!kinder.length) speicher.schreiben('profil', STANDARD.id);
   }
   await medienLaden();
   rasterZeichnen();
+  // Mit Kindern beginnt die App mit "Wer spielt?"
+  if (kinder.length && $('#home').classList.contains('active')) {
+    werZeichnen();
+    zeigen('wer', false);
+  }
 })();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

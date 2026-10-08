@@ -154,7 +154,14 @@
     </div>
   </section>
 
+  <script>
+  // Stand vor den Kinder-Profilen: Sterne und Schrift app-weit
+  localStorage.setItem("sterne", JSON.stringify({ a: 2 }));
+  localStorage.setItem("schreibweise", JSON.stringify("gross"));
+</script>
   <script src="letters.js"></script>
   <script src="app.js"></script>
+  <script src="_test_kinder.js"></script>
+  <iframe src="/_warten?ms=20000" hidden></iframe>
 </body>
 </html>

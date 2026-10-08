@@ -1,7 +1,7 @@
 // Offline-Cache: Mit Internet immer die neueste Version laden, ohne Internet aus dem Cache.
 importScripts('letters.js');
 
-const CACHE = 'buchstaben-v8';
+const CACHE = 'buchstaben-v9';
 const DATEIEN = [
   './', 'index.html', 'style.css', 'app.js', 'letters.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png',

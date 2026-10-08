@@ -11,10 +11,19 @@
 </head>
 <body>
 
+  <!-- Wer spielt? (nur wenn Kinder angelegt sind) -->
+  <section id="wer" class="screen">
+    <header class="topbar wer-kopf">
+      <h1>🌈</h1>
+    </header>
+    <div id="wer-liste" class="wer-liste"></div>
+  </section>
+
   <!-- Startseite: Buchstaben-Raster -->
   <section id="home" class="screen active">
     <header class="topbar">
-      <h1>🌈</h1>
+      <h1 id="regenbogen">🌈</h1>
+      <button id="btn-kind" class="kind-btn" aria-label="Anderes Kind" hidden></button>
       <button id="btn-eltern" class="icon-btn small" aria-label="Elternbereich (lange drücken)">
         <span>⚙️</span><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg>
       </button>
@@ -52,10 +61,20 @@
     </header>
     <div class="eltern-inhalt">
       <div class="karte">
+        <h3>Kinder</h3>
+        <p class="hinweis">Jedes Kind sammelt eigene Sterne und hat eigene Einstellungen.
+          Sobald ein Kind angelegt ist, fragt die App beim Start „Wer spielt?“.</p>
+        <div id="kinder-liste" class="kinder-liste"></div>
+        <button id="btn-kind-neu" class="text-btn">➕ Kind hinzufügen</button>
+      </div>
+
+      <div class="karte">
         <h3>Profil</h3>
         <p class="hinweis">Ein Profil enthält eigene Fotos und Ihre Stimme.
           <strong>„Standard“ ist immer da</strong> und kann nicht verändert werden – wenn etwas nicht passt,
           einfach „Standard“ antippen.</p>
+        <p class="hinweis" id="profil-kinder-hinweis" hidden>Hier wählen Sie, welches Profil Sie
+          <b>bearbeiten</b>. Welches Profil ein Kind hört und sieht, stellen Sie beim Kind ein.</p>
         <div id="profile" class="profile"></div>
         <div class="knopf-reihe">
           <button id="btn-profil-neu" class="text-btn">➕ Neues Profil</button>
@@ -75,7 +94,7 @@
         <input type="file" id="foto-input" accept="image/*" hidden>
       </div>
 
-      <div class="karte">
+      <div class="karte" id="karte-schrift">
         <h3>Schrift</h3>
         <label class="umschalter">
           <input type="radio" name="schreibweise" value="klein"> kleine Buchstaben (Montessori)
@@ -85,10 +104,52 @@
         </label>
       </div>
 
-      <div class="karte">
+      <div class="karte" id="karte-fortschritt">
         <h3>Fortschritt</h3>
         <p class="hinweis" id="fortschritt-text"></p>
         <button id="btn-reset" class="text-btn warnung">Sterne zurücksetzen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Kind bearbeiten -->
+  <section id="kind" class="screen eltern">
+    <header class="topbar">
+      <button id="btn-kind-zurueck" class="icon-btn" aria-label="Zurück">⬅️</button>
+      <h2 id="kind-titel">Kind</h2>
+      <span></span>
+    </header>
+    <div class="eltern-inhalt">
+      <div class="karte">
+        <h3>Name</h3>
+        <input id="kind-name" class="textfeld" type="text" maxlength="20" autocomplete="off">
+      </div>
+      <div class="karte">
+        <h3>Erkennungsbild</h3>
+        <p class="hinweis">Daran erkennt das Kind sich bei „Wer spielt?“.</p>
+        <div id="kind-tiere" class="tier-auswahl"></div>
+        <div class="knopf-reihe">
+          <button id="btn-kind-foto" class="text-btn">📷 Foto vom Kind</button>
+          <button id="btn-kind-foto-weg" class="text-btn">↩️ Kein Foto</button>
+        </div>
+      </div>
+      <div class="karte">
+        <h3>Schrift</h3>
+        <label class="umschalter"><input type="radio" name="kind-schreibweise" value="klein"> kleine Buchstaben (Montessori)</label>
+        <label class="umschalter"><input type="radio" name="kind-schreibweise" value="gross"> GROSSE Buchstaben</label>
+      </div>
+      <div class="karte">
+        <h3>Stimme &amp; Bilder</h3>
+        <p class="hinweis">Welches Profil dieses Kind hört und sieht.</p>
+        <div id="kind-profile" class="profile"></div>
+      </div>
+      <div class="karte">
+        <h3>Fortschritt</h3>
+        <p class="hinweis" id="kind-sterne"></p>
+        <div class="knopf-reihe">
+          <button id="btn-kind-sterne-reset" class="text-btn">Sterne zurücksetzen</button>
+          <button id="btn-kind-loeschen" class="text-btn warnung">🗑️ Kind löschen</button>
+        </div>
       </div>
     </div>
   </section>
