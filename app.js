@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 21;
+const APP_VERSION = 22;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -364,6 +364,7 @@ function zeigen(id, verlauf = true) {
 // Zurück-Taste: zum Bildschirm aus dem Verlauf (z. B. vom Kind zurück in den Elternbereich), sonst Startseite
 window.addEventListener('popstate', async () => {
   wiedergabeStoppen();
+  clearTimeout(hoerSpiel.timer);
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
   if (ziel === 'eltern') {
@@ -1727,6 +1728,128 @@ async function aufnehmen(knopf, fertig) {
   // Sicherheitsstopp nach 5 Sekunden
   setTimeout(() => { if (r.state === 'recording') r.stop(); }, 5000);
 }
+
+// ---------- Spiel: Ich höre was (Anlaute hören) ----------
+
+const HOER_RUNDEN = 5;
+// Laute, die am Wortanfang gleich oder sehr ähnlich klingen, kommen nie zusammen in eine Runde
+const LAUT_GRUPPE = { v: 'f', c: 'k', q: 'k', x: 'k', 'ä': 'e', y: 'j' };
+const lautGruppe = (b) => LAUT_GRUPPE[b] || b;
+const hoerSpiel = { runde: 0, ziel: null, gesperrt: false, timer: null };
+
+function mischen(liste) {
+  const a = liste.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Ziel + 2 Bilder mit anderem Anlaut; ß hat keinen Anlaut und bleibt draußen
+function hoerRundeWaehlen(vorher = null) {
+  const kandidaten = BUCHSTABEN.filter((e) => e.b !== 'ß');
+  const ziel = zufall(kandidaten.filter((e) => e !== vorher));
+  const andere = [];
+  for (const e of mischen(kandidaten)) {
+    if (andere.length === 2) break;
+    const gruppen = [ziel, ...andere].map((x) => lautGruppe(x.b));
+    if (!gruppen.includes(lautGruppe(e.b))) andere.push(e);
+  }
+  return { ziel, karten: mischen([ziel, ...andere]) };
+}
+
+function hoerLautAbspielen(mitFrage = true) {
+  const datei = dateiName(hoerSpiel.ziel.b);
+  const folge = mitFrage ? [{ url: 'audio/ansage-hoeren.wav' }] : [];
+  folge.push({ url: `audio/${datei}-laut.wav` });
+  return folgeAbspielen(folge, `${hoerSpiel.ziel.laut} … ${hoerSpiel.ziel.laut}`);
+}
+
+function hoerRundenAnzeigen() {
+  $('#hoeren-runden').innerHTML = Array.from({ length: HOER_RUNDEN },
+    (_, i) => `<span class="${i < hoerSpiel.runde ? 'voll' : ''}"></span>`).join('');
+}
+
+function hoerNeueRunde() {
+  const { ziel, karten } = hoerRundeWaehlen(hoerSpiel.ziel);
+  hoerSpiel.ziel = ziel;
+  hoerSpiel.gesperrt = false;
+  hoerRundenAnzeigen();
+  const box = $('#hoeren-karten');
+  box.innerHTML = '';
+  karten.forEach((e) => {
+    const btn = document.createElement('button');
+    btn.className = 'hoer-karte';
+    btn.innerHTML = bildHtml(e);
+    btn.setAttribute('aria-label', e.wort);
+    btn.addEventListener('click', () => hoerKarteGewaehlt(e, btn));
+    box.appendChild(btn);
+  });
+  hoerLautAbspielen();
+}
+
+// Wort zum Bild: eigene Aufnahme des Profils ("mmm … Maus"), sonst Thorstens Wort
+function wortQuelle(e) {
+  const eigene = medien[e.b] && medien[e.b].stimme;
+  return eigene ? { url: URL.createObjectURL(eigene), eigen: true } : { url: `audio/${dateiName(e.b)}-wort.wav` };
+}
+
+function hoerKarteGewaehlt(e, btn) {
+  if (hoerSpiel.gesperrt || btn.classList.contains('falsch')) return;
+  audio();
+  if (e === hoerSpiel.ziel) {
+    hoerSpiel.gesperrt = true;
+    btn.classList.add('richtig');
+    glockenspiel();
+    hoerSpiel.runde++;
+    hoerRundenAnzeigen();
+    folgeAbspielen([wortQuelle(e)], e.wort);
+    clearTimeout(hoerSpiel.timer);
+    hoerSpiel.timer = setTimeout(() => (hoerSpiel.runde >= HOER_RUNDEN ? hoerGeschafft() : hoerNeueRunde()), 1900);
+  } else {
+    // Kein "falsch": Bild wackelt, sein Wort erklingt, dann der gesuchte Laut noch einmal
+    btn.classList.add('falsch');
+    folgeAbspielen([wortQuelle(e), { url: 'audio/ansage-hoeren-nochmal.wav' },
+      { url: `audio/${dateiName(hoerSpiel.ziel.b)}-laut.wav` }], e.wort);
+  }
+}
+
+function hoerGeschafft() {
+  const jubel = $('#hoeren-jubel');
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  glockenspiel();
+  folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
+  hoerSpiel.timer = setTimeout(() => {
+    jubel.classList.remove('zeigen');
+    hoerSpiel.runde = 0;
+    hoerSpiel.ziel = null;
+    hoerNeueRunde();
+  }, 3200);
+}
+
+function hoerSpielStarten() {
+  clearTimeout(hoerSpiel.timer);
+  hoerSpiel.runde = 0;
+  hoerSpiel.ziel = null;
+  zeigen('hoeren');
+  hoerNeueRunde();
+}
+
+$('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.timer); wiedergabeStoppen(); zurStartseite(); });
+$('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
+
+// Spiele-Leiste
+const SPIELE = { hoeren: hoerSpielStarten };
+document.querySelectorAll('.spiel-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    audio();
+    const start = SPIELE[btn.dataset.spiel];
+    if (start) start();
+  });
+});
 
 // ---------- Sichern & Übertragen (Export/Import als eine JSON-Datei) ----------
 

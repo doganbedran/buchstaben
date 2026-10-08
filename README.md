@@ -15,6 +15,8 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `_test_profile.html` – Test der Profile inkl. Lob (in einem frischen Browserprofil öffnen, grüne Leiste = OK)
 - `_test_kinder.html` – Test der Kinder-Profile (frisches Browserprofil; Ansicht per `#wer`, `#home`, `#kind`, `#eltern`)
 - `_test_sichern.html` – Test Sichern & Übertragen (frisches Browserprofil)
+- `_test_hoeren.html` – Test Hör-Spiel
+- `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
 - `werkzeuge/testseiten_erzeugen.sh` – Testseiten nach Änderungen an `index.html` neu erzeugen
 
 ## Lokal starten
@@ -50,3 +52,8 @@ Elternbereich → „Sichern & Übertragen“: alle eigenen Profile (Fotos, Aufn
 Namensaufnahme, Sterne, Einstellungen) als eine JSON-Datei speichern oder teilen (Android-Teilen-Menü)
 und auf einem anderen Gerät einspielen. Einspielen ergänzt bzw. aktualisiert (gleiche ID), löscht nichts.
 Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
+
+## Spiele
+- ✏️ **Nachspuren** – Startseite
+- 👂 **Ich höre was** – Laut hören („mmm …“), passendes Bild von dreien antippen; 5 Runden. Ähnlich klingende
+  Anlaute (f/v, k/c/q/x, e/ä, j/y) nie in derselben Runde, ß ausgenommen. Nutzt `audio/<b>-laut.wav`.

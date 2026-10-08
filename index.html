@@ -28,7 +28,24 @@
         <span>⚙️</span><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg>
       </button>
     </header>
+    <!-- Spiele: große Symbole, die Kinder ohne Lesen verstehen -->
+    <nav class="spiele-leiste" aria-label="Spiele">
+      <button class="spiel-btn aktiv" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
+      <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
+    </nav>
     <div id="grid" class="grid"></div>
+  </section>
+
+  <!-- Spiel: Ich höre was – welches Bild fängt mit dem Laut an? -->
+  <section id="hoeren" class="screen">
+    <header class="topbar">
+      <button id="btn-hoeren-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div id="hoeren-runden" class="runden-punkte"></div>
+      <button id="btn-hoeren-laut" class="icon-btn" aria-label="Nochmal hören">🔊</button>
+    </header>
+    <div class="hoeren-ohr" aria-hidden="true">👂</div>
+    <div id="hoeren-karten" class="hoeren-karten"></div>
+    <div id="hoeren-jubel" class="jubel"><span>🏆</span></div>
   </section>
 
   <!-- Nachspuren -->

@@ -203,6 +203,40 @@ button { font: inherit; color: inherit; cursor: pointer; }
   100% { transform: scale(1.4); opacity: 0; }
 }
 
+/* Spiele-Leiste auf der Startseite */
+.spiele-leiste { display: flex; gap: 10px; justify-content: center; padding: 10px 0 2px; flex: 0 0 auto; overflow-x: auto; }
+.spiel-btn {
+  width: 56px; height: 56px; border-radius: 50%; border: 3px solid transparent;
+  background: var(--papier); box-shadow: var(--schatten); font-size: 1.8rem; flex: 0 0 auto;
+  display: grid; place-items: center;
+}
+.spiel-btn.aktiv { border-color: #1d5fbf; }
+.spiel-btn:active { transform: scale(0.92); }
+
+/* Hör-Spiel */
+.runden-punkte { display: flex; gap: 8px; }
+.runden-punkte span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c7b08a; background: var(--papier); }
+.runden-punkte span.voll { background: #f5c518; border-color: #b07800; }
+.hoeren-ohr { text-align: center; font-size: 3.5rem; margin: 18px 0 6px; animation: lauschen 2.4s ease-in-out infinite; }
+@keyframes lauschen { 50% { transform: scale(1.12) rotate(-6deg); } }
+.hoeren-karten {
+  flex: 1; display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; align-content: center; padding-bottom: 16px;
+  width: 100%; max-width: 720px; margin: 0 auto;
+}
+.hoer-karte {
+  border: none; border-radius: 24px; background: var(--papier); box-shadow: var(--schatten);
+  aspect-ratio: 3 / 4; font-size: clamp(2.6rem, 15vw, 6.5rem); white-space: nowrap;
+  display: grid; place-items: center; transition: transform 0.15s, opacity 0.4s;
+}
+.hoer-karte .bild-datei { height: 1.1em; }
+.hoer-karte:has(.bild-datei + .bild-datei), .hoer-karte.doppelt { font-size: clamp(2rem, 9vw, 4.5rem); }
+.hoer-karte:active { transform: scale(0.95); }
+.hoer-karte.richtig { animation: huepfen 0.7s ease; box-shadow: 0 0 0 6px #1d5fbf; }
+.hoer-karte.falsch { animation: wackeln 0.6s ease; opacity: 0.35; }
+@keyframes huepfen { 30% { transform: translateY(-24px) scale(1.08); } 60% { transform: translateY(0) scale(1); } }
+.hoeren-jubel span, #hoeren-jubel span { font-size: 9rem; }
+
 /* Wer spielt? */
 .wer-kopf { justify-content: center; }
 .wer-liste {
