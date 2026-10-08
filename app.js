@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 20;
+const APP_VERSION = 21;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -299,11 +299,11 @@ function abspielen(quelle) {
 // Was nacheinander gespielt wird. Laut: eigene Aufnahme (aktives Profil) > Audiodatei (Piper).
 // Lob: Lob-Satz, dann der Name des Kindes (nur wenn aufgenommen), dann das Wort.
 // "eigen" = Objekt-URL, die nach dem Abspielen freigegeben wird.
-function wiedergabeFolge(eintrag, lob, kind) {
+function wiedergabeFolge(eintrag, lob, kind, nameSagen = true) {
   const folge = [];
   if (lob) {
     folge.push(lobQuelle());
-    if (kind && kind.nameStimme) folge.push({ url: URL.createObjectURL(kind.nameStimme), eigen: true, name: true });
+    if (nameSagen && kind && kind.nameStimme) folge.push({ url: URL.createObjectURL(kind.nameStimme), eigen: true, name: true });
   }
   const eigene = medien[eintrag.b] && medien[eintrag.b].stimme;
   folge.push(eigene
@@ -328,9 +328,18 @@ async function folgeAbspielen(folge, ersatzText) {
   }
 }
 
+// Name im Lob nur ab und zu (etwa jedes dritte Mal), nie zweimal hintereinander – sonst klingt es künstlich
+const NAME_ANTEIL = 0.35;
+let letztesLobMitName = false;
+function nameImLob() {
+  const ja = !letztesLobMitName && Math.random() < NAME_ANTEIL / (1 - NAME_ANTEIL);
+  letztesLobMitName = ja;
+  return ja;
+}
+
 function lautAbspielen(eintrag, lob = false) {
   const ersatz = lob ? `Super! ${eintrag.wort}` : `${eintrag.laut} … ${eintrag.laut} wie ${eintrag.wort}`;
-  return folgeAbspielen(wiedergabeFolge(eintrag, lob, aktivesKind()), ersatz);
+  return folgeAbspielen(wiedergabeFolge(eintrag, lob, aktivesKind(), lob && nameImLob()), ersatz);
 }
 
 // Einzelnen Lob-Platz anhören: eigene Aufnahme, sonst Thorstens Satz für diesen Platz

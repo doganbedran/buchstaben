@@ -67,6 +67,12 @@
   pruefe(mitName.length === 3 && mitName[1].name && /^lob-\d\.wav$/.test(mitName[0].url.replace('audio/', ''))
     && mitName[2].url.endsWith('a-wort.wav'), `Lob mit Name falsch: ${folgeText(mitName)}`);
   pruefe(!wiedergabeFolge(apfel, false, linaNeu).some((q) => q.name), 'Laut ohne Lob sollte keinen Namen haben');
+  pruefe(!wiedergabeFolge(apfel, true, linaNeu, false).some((q) => q.name), 'nameSagen=false sollte keinen Namen bringen');
+  // Name nur ab und zu: Anteil grob ein Drittel, nie zweimal hintereinander
+  const zuege = Array.from({ length: 3000 }, () => nameImLob());
+  const anteil = zuege.filter(Boolean).length / zuege.length;
+  pruefe(anteil > 0.28 && anteil < 0.42, `Anteil Lob mit Name ${anteil.toFixed(2)} statt ~0,35`);
+  pruefe(!zuege.some((z, i) => z && zuege[i - 1]), 'Name zweimal hintereinander');
   pruefe(!wiedergabeFolge(apfel, true, kinder.find((k) => k.id === emil.id)).some((q) => q.name), 'Emil hört Linas Namen');
   pruefe(!wiedergabeFolge(apfel, true, null).some((q) => q.name), 'Ohne Kind sollte kein Name kommen');
   pruefe((await datenbank.kinder()).find((k) => k.id === lina.id).nameStimme instanceof Blob, 'Namensaufnahme nicht gespeichert');
