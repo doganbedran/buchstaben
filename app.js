@@ -1,5 +1,8 @@
 'use strict';
 
+// Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
+const APP_VERSION = 20;
+
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
 const speicher = {
@@ -1914,4 +1917,20 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
     .then((reg) => reg.update())
     .catch(() => {});
+  // Auch beim Zurückholen aus dem Hintergrund nach Updates suchen (dabei wird die Seite nicht neu geladen)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    navigator.serviceWorker.getRegistration().then((reg) => reg && reg.update()).catch(() => {});
+  });
 }
+
+$('#app-version').textContent = `Version ${APP_VERSION}`;
+
+// Von Hand: Update holen und neu laden (falls ein Gerät hängen geblieben ist)
+$('#btn-update').addEventListener('click', async () => {
+  try {
+    const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update();
+  } catch { /* offline: einfach neu laden */ }
+  location.reload();
+});
