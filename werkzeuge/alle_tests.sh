@@ -19,6 +19,7 @@ LAEUFE=(
   "name|_test_name.html|412,860|90"
   "album|_test_album.html|412,860|90"
   "memory|_test_memory.html|412,860|90"
+  "montessori|_test_montessori.html|412,860|90"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do

@@ -49,6 +49,7 @@ ANSAGEN = {
     'runde-geschafft': 'Alles geschafft! Toll gemacht!',
     'sticker': 'Ein neuer Sticker für dein Album!',
     'memory': 'Finde groß und klein!',
+    'neue-buchstaben': 'Hurra! Neue Buchstaben!',
 }
 
 TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen']

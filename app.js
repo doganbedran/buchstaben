@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 27;
+const APP_VERSION = 28;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -169,6 +169,7 @@ function einstellungenLaden() {
   zustand.sterne = k ? k.sterne : speicher.lesen('sterne', {});
   zustand.profil = k ? k.profil : speicher.lesen('profil', STANDARD.id);
   zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
+  zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', 'alphabet');
 }
 
 function einstellungenSpeichern() {
@@ -177,8 +178,10 @@ function einstellungenSpeichern() {
     k.schreibweise = zustand.schreibweise;
     k.sterne = zustand.sterne;
     k.album = zustand.album;
+    k.reihenfolge = zustand.reihenfolge;
     return datenbank.kindSpeichern(k);
   }
+  speicher.schreiben('reihenfolge', zustand.reihenfolge);
   speicher.schreiben('schreibweise', zustand.schreibweise);
   speicher.schreiben('sterne', zustand.sterne);
   speicher.schreiben('album', zustand.album);
@@ -451,6 +454,33 @@ function sterneText(n) {
   return '⭐'.repeat(n) + '☆'.repeat(MAX_STERNE - n);
 }
 
+// ---------- Montessori-Reihenfolge: Buchstaben nach und nach freischalten ----------
+
+// Gruppen gut hörbarer Laute; die nächste Gruppe öffnet sich, wenn jeder Buchstabe der Gruppe genug Sterne hat
+const MONTESSORI_GRUPPEN = [
+  ['m', 'a', 's', 'l'], ['o', 'i', 'e', 'n'], ['r', 't', 'u', 'f'], ['h', 'd', 'b', 'k'],
+  ['p', 'g', 'w', 'z'], ['j', 'v', 'c', 'q', 'x', 'y'], ['ä', 'ö', 'ü', 'ß'],
+];
+const FREI_AB_STERNEN = 2;
+
+const montessori = () => zustand.reihenfolge === 'montessori';
+
+// Reihenfolge der Buchstaben auf der Startseite (Indizes in BUCHSTABEN)
+function buchstabenReihenfolge() {
+  if (!montessori()) return BUCHSTABEN.map((_, i) => i);
+  return MONTESSORI_GRUPPEN.flat().map((b) => BUCHSTABEN.findIndex((e) => e.b === b));
+}
+
+function freigeschaltet() {
+  if (!montessori()) return new Set(BUCHSTABEN.map((e) => e.b));
+  const frei = new Set();
+  for (const gruppe of MONTESSORI_GRUPPEN) {
+    gruppe.forEach((b) => frei.add(b));
+    if (!gruppe.every((b) => (zustand.sterne[b] || 0) >= FREI_AB_STERNEN)) break;
+  }
+  return frei;
+}
+
 function rasterZeichnen() {
   // Oben links: wer gerade spielt (Tipp darauf -> "Wer spielt?")
   const k = aktivesKind();
@@ -460,15 +490,24 @@ function rasterZeichnen() {
   if (k) $('#btn-kind').innerHTML = kindBildHtml(k);
   const grid = $('#grid');
   grid.innerHTML = '';
-  BUCHSTABEN.forEach((eintrag, i) => {
+  const frei = freigeschaltet();
+  buchstabenReihenfolge().forEach((i) => {
+    const eintrag = BUCHSTABEN[i];
     const n = zustand.sterne[eintrag.b] || 0;
+    const offen = frei.has(eintrag.b);
     const btn = document.createElement('button');
-    btn.className = 'kachel';
-    btn.setAttribute('aria-label', `${eintrag.b} wie ${eintrag.wort}`);
+    btn.className = `kachel${offen ? '' : ' gesperrt'}`;
+    btn.setAttribute('aria-label', offen ? `${eintrag.b} wie ${eintrag.wort}` : `${eintrag.b} – kommt später`);
     btn.innerHTML = `<span class="zeichen">${zeichenHtml(eintrag)}</span>`
-      + `<span class="mini">${bildHtml(eintrag)}</span>`
+      + `<span class="mini">${offen ? bildHtml(eintrag) : '🔒'}</span>`
       + `<span class="punkte">${'⭐'.repeat(n)}</span>`;
-    btn.addEventListener('click', () => buchstabeOeffnen(i));
+    btn.addEventListener('click', () => {
+      if (offen) { buchstabeOeffnen(i); return; }
+      // Gesperrt: kurz wackeln
+      btn.classList.remove('wackeln-kachel');
+      void btn.offsetWidth;
+      btn.classList.add('wackeln-kachel');
+    });
     grid.appendChild(btn);
   });
 }
@@ -1260,6 +1299,7 @@ function geschafft() {
   if (zustand.nameModus) { nameSchrittGeschafft(); return; }
   tafelZustand.geschafft = true;
   const eintrag = BUCHSTABEN[zustand.index];
+  const freiVorher = freigeschaltet().size;
   const n = Math.min(MAX_STERNE, (zustand.sterne[eintrag.b] || 0) + 1);
   zustand.sterne[eintrag.b] = n;
   einstellungenSpeichern();
@@ -1277,14 +1317,21 @@ function geschafft() {
   void jubel.offsetWidth;
   jubel.classList.add('zeigen');
   if (neuerSticker) jubel.classList.add('mit-sticker');
-  setTimeout(() => lautAbspielen(eintrag, true, neuerSticker ? [{ url: 'audio/ansage-sticker.wav' }] : []), 500);
+  // Montessori: hat dieser Stern eine neue Gruppe freigeschaltet?
+  const neueBuchstaben = freigeschaltet().size > freiVorher;
+  jubel.classList.toggle('mit-schloss', neueBuchstaben);
+  const danach = [
+    ...(neuerSticker ? [{ url: 'audio/ansage-sticker.wav' }] : []),
+    ...(neueBuchstaben ? [{ url: 'audio/ansage-neue-buchstaben.wav' }] : []),
+  ];
+  setTimeout(() => lautAbspielen(eintrag, true, danach), 500);
 
   // Danach neu starten, damit das Kind gleich nochmal üben kann
   clearTimeout(tafelZustand.jubelTimer);
   tafelZustand.jubelTimer = setTimeout(() => {
-    jubel.classList.remove('zeigen', 'mit-sticker');
+    jubel.classList.remove('zeigen', 'mit-sticker', 'mit-schloss');
     tafelLeeren();
-  }, neuerSticker ? 3400 : 2600);
+  }, 2600 + (neuerSticker ? 800 : 0) + (neueBuchstaben ? 1200 : 0));
 }
 
 function sterneFliegen() {
@@ -1403,7 +1450,13 @@ $('#btn-weiter').addEventListener('click', () => {
     if (zustand.nameModus.pos < zustand.nameModus.zeichen.length - 1) { zustand.nameModus.pos++; nameSchrittZeigen(); }
     return;
   }
-  buchstabeOeffnen((zustand.index + 1) % BUCHSTABEN.length);
+  const reihe = buchstabenReihenfolge();
+  const frei = freigeschaltet();
+  const pos = reihe.indexOf(zustand.index);
+  for (let schritt = 1; schritt <= reihe.length; schritt++) {
+    const i = reihe[(pos + schritt) % reihe.length];
+    if (frei.has(BUCHSTABEN[i].b)) { buchstabeOeffnen(i); return; }
+  }
 });
 $('#btn-loeschen').addEventListener('click', tafelLeeren);
 $('#btn-laut').addEventListener('click', () => (zustand.nameModus ? nameLautWiederholen() : lautAbspielen(BUCHSTABEN[zustand.index])));
@@ -1450,6 +1503,9 @@ window.addEventListener('resize', () => {
 async function elternOeffnen() {
   document.querySelectorAll('input[name="schreibweise"]').forEach((r) => {
     r.checked = r.value === zustand.schreibweise;
+  });
+  document.querySelectorAll('input[name="reihenfolge"]').forEach((r) => {
+    r.checked = r.value === (zustand.reihenfolge || 'alphabet');
   });
   const gesamt = BUCHSTABEN.reduce((sum, e) => sum + (zustand.sterne[e.b] || 0), 0);
   const fertig = BUCHSTABEN.filter((e) => (zustand.sterne[e.b] || 0) >= MAX_STERNE).length;
@@ -1523,6 +1579,7 @@ $('#btn-kind-neu').addEventListener('click', async () => {
     sterne: erstesKind ? speicher.lesen('sterne', {}) : {},
     profil: erstesKind ? speicher.lesen('profil', STANDARD.id) : STANDARD.id,
     album: erstesKind ? speicher.lesen('album', []) : [],
+    reihenfolge: erstesKind ? speicher.lesen('reihenfolge', 'alphabet') : 'alphabet',
     erstellt: Date.now(),
   };
   await datenbank.kindSpeichern(kind);
@@ -1551,6 +1608,7 @@ async function kindAendern(fn) {
     zustand.schreibweise = kindInArbeit.schreibweise;
     zustand.sterne = kindInArbeit.sterne;
     zustand.album = kindInArbeit.album || [];
+    zustand.reihenfolge = kindInArbeit.reihenfolge || 'alphabet';
   }
   kindFormularZeichnen();
 }
@@ -1573,6 +1631,7 @@ async function kindFormularZeichnen() {
   $('#btn-kind-foto-weg').hidden = !k.foto;
 
   document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => { r.checked = r.value === k.schreibweise; });
+  document.querySelectorAll('input[name="kind-reihenfolge"]').forEach((r) => { r.checked = r.value === (k.reihenfolge || 'alphabet'); });
 
   const profile = [STANDARD, ...(await datenbank.profile())];
   const box = $('#kind-profile');
@@ -1606,6 +1665,17 @@ $('#kind-name').addEventListener('change', (e) => {
 
 document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => {
   r.addEventListener('change', () => kindAendern((k) => { k.schreibweise = r.value; }));
+});
+
+document.querySelectorAll('input[name="kind-reihenfolge"]').forEach((r) => {
+  r.addEventListener('change', () => kindAendern((k) => { k.reihenfolge = r.value; }));
+});
+
+document.querySelectorAll('input[name="reihenfolge"]').forEach((r) => {
+  r.addEventListener('change', () => {
+    zustand.reihenfolge = r.value;
+    einstellungenSpeichern();
+  });
 });
 
 $('#btn-kind-foto').addEventListener('click', () => fotoWaehlen((blob) => kindAendern((k) => { k.foto = blob; })));
@@ -1994,7 +2064,9 @@ const MEMORY_NICHT_ZUSAMMEN = [['i', 'l']];
 function memoryNeu(paare = MEMORY_PAARE) {
   clearTimeout(memory.timer);
   const auswahl = [];
-  for (const b of mischen(MEMORY_BUCHSTABEN)) {
+  const frei = freigeschaltet();
+  const offen = MEMORY_BUCHSTABEN.filter((b) => frei.has(b));
+  for (const b of mischen(offen.length >= paare + 1 ? offen : MEMORY_BUCHSTABEN)) {
     if (auswahl.length === paare) break;
     const konflikt = MEMORY_NICHT_ZUSAMMEN.some((gruppe) => gruppe.includes(b) && gruppe.some((x) => x !== b && auswahl.includes(x)));
     if (!konflikt) auswahl.push(b);
@@ -2138,7 +2210,10 @@ function mischen(liste) {
 // Ziel + 2 Bilder mit anderem Anlaut; ß hat keinen Anlaut und bleibt draußen
 function hoerRundeWaehlen(vorher = null) {
   const kandidaten = BUCHSTABEN.filter((e) => e.b !== 'ß');
-  const ziel = zufall(kandidaten.filter((e) => e !== vorher));
+  // Montessori: gesucht werden nur schon freigeschaltete Laute (die anderen Bilder dürfen beliebig sein)
+  const frei = freigeschaltet();
+  const zielKandidaten = kandidaten.filter((e) => frei.has(e.b) && e !== vorher);
+  const ziel = zufall(zielKandidaten.length ? zielKandidaten : kandidaten.filter((e) => e !== vorher));
   const andere = [];
   for (const e of mischen(kandidaten)) {
     if (andere.length === 2) break;
@@ -2278,6 +2353,7 @@ async function sicherungErstellen() {
       sterne: speicher.lesen('sterne', {}),
       profil: speicher.lesen('profil', STANDARD.id),
       album: speicher.lesen('album', []),
+      reihenfolge: speicher.lesen('reihenfolge', 'alphabet'),
     },
     profile,
     kinder: kinderListe,
@@ -2318,6 +2394,7 @@ async function sicherungEinspielen(s) {
     speicher.schreiben('sterne', s.einstellungen.sterne || {});
     speicher.schreiben('profil', s.einstellungen.profil || STANDARD.id);
     speicher.schreiben('album', s.einstellungen.album || []);
+    speicher.schreiben('reihenfolge', s.einstellungen.reihenfolge || 'alphabet');
   }
   await kinderLaden();
   if (!aktivesKind() && kinder.length) { zustand.kind = kinder[0].id; speicher.schreiben('kind', zustand.kind); }

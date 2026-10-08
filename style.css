@@ -100,6 +100,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .bild-datei { height: 1.15em; width: auto; vertical-align: -0.2em; }
 .bild-datei.foto { width: 1.15em; object-fit: cover; border-radius: 0.18em; }
 
+.kachel.gesperrt { opacity: 0.38; box-shadow: none; }
+.kachel.gesperrt .zeichen { color: #b8a88f !important; }
+.kachel.wackeln-kachel { animation: wackeln 0.5s ease; }
+.karte h3.unter { margin-top: 16px; }
+.jubel.mit-schloss::after {
+  content: '🔓'; position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); font-size: 4rem;
+  animation: sticker-rein 3s ease forwards;
+}
+
 .kachel .punkte { font-size: 0.75rem; letter-spacing: 1px; min-height: 1em; }
 
 /* Farben je Kachel, damit Kinder sie wiedererkennen */
