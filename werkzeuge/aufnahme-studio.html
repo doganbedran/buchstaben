@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aufnahme-Studio</title>
+<!--
+  Aufnahme-Studio für die Sprecher-Stimme der App (nur am eigenen Rechner, nicht Teil der App).
+  Start: Testserver laufen lassen, dann http://localhost:8765/werkzeuge/aufnahme-studio.html öffnen.
+  Pro Wort einmal mit kleinen Pausen sprechen („Ba – na – ne“); das Studio schneidet an den Pausen,
+  gleicht die Lautstärke an und speichert jede Silbe als audio/silbe-<wort>-<nr>.wav (über den Testserver).
+-->
+<style>
+  :root { --papier: #fffaf2; --tinte: #3b3229; --blau: #1d5fbf; --orange: #b8470b; --grau: #8a7d6e; --ok: #1b7f3a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: #f4eee5; color: var(--tinte); display: flex; height: 100vh; }
+  aside { width: 260px; overflow-y: auto; background: var(--papier); border-right: 1px solid #e3d8c6; padding: 10px; }
+  aside h2 { font-size: 0.9rem; color: var(--grau); margin: 14px 4px 6px; }
+  aside button { display: flex; justify-content: space-between; width: 100%; border: none; background: none; padding: 6px 8px;
+    border-radius: 8px; font: inherit; text-align: left; cursor: pointer; }
+  aside button.aktiv { background: #fde9d6; }
+  aside button .fertig { color: var(--ok); }
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 20px; }
+  .bild { font-size: 5rem; line-height: 1; }
+  .bild img { height: 5rem; }
+  .silben { font-size: 3.2rem; font-weight: 700; letter-spacing: 1px; }
+  .silben span { padding: 0 6px; border-radius: 10px; }
+  .silben span.da { color: var(--ok); }
+  .silben .trenner { color: var(--grau); padding: 0; }
+  .knoepfe { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .knoepfe button { font: inherit; font-size: 1.1rem; padding: 12px 18px; border-radius: 14px; border: 2px solid #c7b08a;
+    background: var(--papier); cursor: pointer; }
+  .knoepfe button:disabled { opacity: 0.4; cursor: default; }
+  #btn-aufnahme.laeuft { background: var(--orange); color: #fff; border-color: var(--orange); }
+  #btn-speichern { background: var(--blau); color: #fff; border-color: var(--blau); }
+  .teile { display: flex; gap: 10px; }
+  .teile button { font: inherit; padding: 8px 14px; border-radius: 10px; border: 2px solid var(--blau); background: #fff; cursor: pointer; }
+  canvas { width: min(640px, 90%); height: 90px; background: #fff; border-radius: 12px; }
+  .meldung { min-height: 1.5em; font-size: 1.05rem; text-align: center; }
+  .meldung.warnung { color: var(--orange); }
+  .tipp { color: var(--grau); font-size: 0.9rem; max-width: 560px; text-align: center; }
+</style>
+</head>
+<body>
+<aside id="liste"></aside>
+<main>
+  <div class="bild" id="bild"></div>
+  <div class="silben" id="silben"></div>
+  <canvas id="welle" width="1280" height="180"></canvas>
+  <div class="teile" id="teile"></div>
+  <div class="meldung" id="meldung"></div>
+  <div class="knoepfe">
+    <button id="btn-zurueck">← Zurück</button>
+    <button id="btn-aufnahme">⏺ Aufnehmen <small>(Leertaste)</small></button>
+    <button id="btn-anhoeren" disabled>▶ Anhören <small>(A)</small></button>
+    <button id="btn-speichern" disabled>✓ Speichern &amp; weiter <small>(Enter)</small></button>
+    <button id="btn-weiter">Weiter →</button>
+  </div>
+  <p class="tipp">Silben so sprechen wie beim Klatschen, mit einer kleinen Pause dazwischen: „Ba – na – ne“.
+    Freundlich, nicht zu langsam, immer gleich weit vom Mikrofon. Grün = schon aufgenommen.</p>
+</main>
+<script src="../letters.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
+  document.body.innerHTML = '<p style="margin:40px">Das Aufnahme-Studio funktioniert nur am eigenen Rechner mit dem Testserver.</p>';
+  throw new Error('nur lokal');
+}
+const RATE = 22050;   // wie Thorstens Dateien
+
+// Aufträge: ein Eintrag pro Wort, jede Silbe wird eine Datei
+const bilder = {};
+BUCHSTABEN.forEach((e) => { bilder[e.wort] = e.bild; (e.mehr || []).forEach(([w, b]) => { bilder[w] = b; }); });
+const auftraege = Object.entries(SILBEN)
+  .map(([wort, silben]) => ({ wort, silben, dateien: silben.map((_, i) => silbenDatei(wort, i + 1)) }))
+  .sort((a, b) => a.silben.length - b.silben.length);
+
+const vorhanden = new Set();
+let pos = 0;
+let teile = null;       // geschnittene Silben (Float32Array) der letzten Aufnahme
+let rohdaten = null;
+
+async function pruefen(datei) {
+  try {
+    const r = await fetch('../' + datei, { method: 'HEAD', cache: 'no-store' });
+    if (r.ok) vorhanden.add(datei); else vorhanden.delete(datei);
+  } catch { vorhanden.delete(datei); }
+}
+
+function listeZeichnen() {
+  const el = $('#liste');
+  el.innerHTML = '';
+  let gruppe = 0;
+  auftraege.forEach((a, i) => {
+    if (a.silben.length !== gruppe) {
+      gruppe = a.silben.length;
+      el.insertAdjacentHTML('beforeend', `<h2>${gruppe} Silbe${gruppe > 1 ? 'n' : ''}</h2>`);
+    }
+    const fertig = a.dateien.every((d) => vorhanden.has(d));
+    const b = document.createElement('button');
+    b.className = i === pos ? 'aktiv' : '';
+    b.innerHTML = `<span>${a.silben.join('-')}</span><span class="fertig">${fertig ? '✓' : ''}</span>`;
+    b.onclick = () => gehe(i);
+    el.appendChild(b);
+  });
+  const n = auftraege.flatMap((a) => a.dateien).length;
+  el.insertAdjacentHTML('afterbegin', `<h2>Silben: ${[...vorhanden].length} / ${n}</h2>`);
+}
+
+function anzeigen() {
+  const a = auftraege[pos];
+  const bild = bilder[a.wort] || '';
+  $('#bild').innerHTML = bild.startsWith('bilder/') ? `<img src="../${bild}" alt="">` : bild;
+  $('#silben').innerHTML = a.silben.map((s, i) => `<span class="${vorhanden.has(a.dateien[i]) ? 'da' : ''}">${s}</span>`)
+    .join('<span class="trenner">–</span>');
+  $('#teile').innerHTML = a.dateien.filter((d) => vorhanden.has(d)).length
+    ? a.dateien.map((d, i) => `<button data-url="../${d}">▶ ${a.silben[i]}</button>`).join('') : '';
+  $('#teile').querySelectorAll('button').forEach((b) => { b.onclick = () => new Audio(b.dataset.url + '?' + Date.now()).play(); });
+  teile = null;
+  $('#btn-anhoeren').disabled = true;
+  $('#btn-speichern').disabled = true;
+  meldung('');
+  welleZeichnen(null);
+  listeZeichnen();
+}
+
+function gehe(i) { pos = Math.max(0, Math.min(auftraege.length - 1, i)); anzeigen(); }
+function meldung(text, warnung = false) { const m = $('#meldung'); m.textContent = text; m.className = 'meldung' + (warnung ? ' warnung' : ''); }
+
+// ---------- Aufnahme ----------
+let rec = null;
+let stream = null;
+let startet = false;   // Sperre, solange das Mikrofon noch geöffnet wird (sonst zwei Recorder)
+
+async function aufnahmeUmschalten() {
+  if (rec) { rec.stop(); return; }
+  if (startet) return;
+  startet = true;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false } });
+  } catch { meldung('Kein Mikrofon-Zugriff – bitte im Browser erlauben.', true); return; } finally { startet = false; }
+  const stuecke = [];
+  rec = new MediaRecorder(stream);
+  rec.ondataavailable = (e) => stuecke.push(e.data);
+  rec.onstop = async () => {
+    rec = null;
+    // Mikrofon nach jeder Aufnahme ganz schließen (nicht im Hintergrund offen lassen)
+    stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    $('#btn-aufnahme').classList.remove('laeuft');
+    $('#btn-aufnahme').firstChild.textContent = '⏺ Aufnehmen ';
+    await verarbeiten(new Blob(stuecke));
+  };
+  rec.start();
+  $('#btn-aufnahme').classList.add('laeuft');
+  $('#btn-aufnahme').firstChild.textContent = '⏹ Stopp ';
+  meldung('Aufnahme läuft …');
+}
+
+async function verarbeiten(blob) {
+  const ctx = new AudioContext();
+  let puffer;
+  try { puffer = await ctx.decodeAudioData(await blob.arrayBuffer()); } catch { meldung('Nichts gehört – bitte nochmal.', true); return; } finally { ctx.close(); }
+  rohdaten = await umrechnen(puffer.getChannelData(0), puffer.sampleRate);
+  const soll = auftraege[pos].silben.length;
+  const stuecke = schneiden(rohdaten, soll);
+  welleZeichnen(rohdaten, stuecke);
+  if (stuecke.length !== soll) {
+    teile = null;
+    $('#btn-speichern').disabled = true;
+    $('#btn-anhoeren').disabled = false;
+    meldung(stuecke.length ? `Ich höre ${stuecke.length} Teil${stuecke.length > 1 ? 'e' : ''} statt ${soll} – bitte mit kleinen Pausen nochmal.`
+      : 'Nichts gehört – bitte etwas lauter nochmal.', true);
+    return;
+  }
+  teile = stuecke.map(([a, b]) => aufbereiten(rohdaten.slice(a, b)));
+  $('#btn-speichern').disabled = false;
+  $('#btn-anhoeren').disabled = false;
+  meldung('Gut! Anhören (A), dann speichern (Enter) – oder nochmal aufnehmen (Leertaste).');
+  await anhoeren();
+}
+
+// Auf 22050 Hz umrechnen
+async function umrechnen(daten, rate) {
+  const laenge = Math.ceil(daten.length * RATE / rate);
+  const off = new OfflineAudioContext(1, laenge, RATE);
+  const p = off.createBuffer(1, daten.length, rate);
+  p.copyToChannel(daten, 0);
+  const q = off.createBufferSource();
+  q.buffer = p;
+  q.connect(off.destination);
+  q.start();
+  return (await off.startRendering()).getChannelData(0).slice();
+}
+
+// Laute Abschnitte finden (10-ms-Fenster); kurze Lücken (< 90 ms) gehören zur Silbe
+function schneiden(d, soll) {
+  const fenster = Math.round(RATE * 0.01);
+  const energie = [];
+  for (let i = 0; i < d.length; i += fenster) {
+    let s = 0;
+    for (let j = i; j < Math.min(d.length, i + fenster); j++) s += d[j] * d[j];
+    energie.push(Math.sqrt(s / fenster));
+  }
+  const spitze = Math.max(...energie);
+  if (spitze < 0.01) return [];
+  const schwelle = Math.max(0.006, spitze * 0.1);
+  let abschnitte = [];
+  let start = -1;
+  energie.forEach((e, i) => {
+    if (e >= schwelle && start < 0) start = i;
+    if (e < schwelle && start >= 0) { abschnitte.push([start, i]); start = -1; }
+  });
+  if (start >= 0) abschnitte.push([start, energie.length]);
+  // Kleine Lücken schließen, Klicks (< 60 ms) weglassen
+  const zusammen = [];
+  abschnitte.forEach((a) => {
+    const letzter = zusammen[zusammen.length - 1];
+    if (letzter && a[0] - letzter[1] < 9) letzter[1] = a[1]; else zusammen.push([...a]);
+  });
+  abschnitte = zusammen.filter(([a, b]) => b - a >= 6);
+  // Ränder: 40 ms davor, 90 ms danach (nicht über die Mitte zur nächsten Silbe)
+  return abschnitte.map(([a, b], i) => {
+    const vor = i ? Math.floor((abschnitte[i - 1][1] + a) / 2) : 0;
+    const nach = i < abschnitte.length - 1 ? Math.floor((b + abschnitte[i + 1][0]) / 2) : energie.length;
+    return [Math.max(vor, a - 4) * fenster, Math.min(nach, b + 9) * fenster];
+  });
+}
+
+// Lautstärke angleichen (Spitze 0,9 wie Thorsten) und weich ein-/ausblenden
+function aufbereiten(t) {
+  const spitze = t.reduce((m, x) => Math.max(m, Math.abs(x)), 1e-6);
+  const blende = Math.round(RATE * 0.008);
+  return t.map((x, i) => x / spitze * 0.9 * Math.min(1, i / blende, (t.length - 1 - i) / blende));
+}
+
+function wav(daten) {
+  const buf = new ArrayBuffer(44 + daten.length * 2);
+  const v = new DataView(buf);
+  const text = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); v.setUint32(4, 36 + daten.length * 2, true); text(8, 'WAVE');
+  text(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, RATE, true); v.setUint32(28, RATE * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  text(36, 'data'); v.setUint32(40, daten.length * 2, true);
+  daten.forEach((x, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 32767, true));
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+// Silben so abspielen, wie die Trommel es tut: im Takt von 650 ms
+async function anhoeren() {
+  const stuecke = teile || (rohdaten ? [aufbereiten(rohdaten)] : []);
+  for (const t of stuecke) {
+    const a = new Audio(URL.createObjectURL(wav(t)));
+    a.onended = () => URL.revokeObjectURL(a.src);
+    a.play();
+    await new Promise((r) => setTimeout(r, Math.max(650, t.length / RATE * 1000 + 80)));
+  }
+}
+
+async function speichern() {
+  if (!teile) return;
+  const a = auftraege[pos];
+  for (let i = 0; i < teile.length; i++) {
+    const name = a.dateien[i].replace('audio/', '');
+    const r = await fetch(`/_speichern?datei=${name}`, { method: 'POST', body: wav(teile[i]) });
+    if (!r.ok) { meldung(`Speichern ging nicht (${r.status}) – läuft der Testserver neu gestartet?`, true); return; }
+    vorhanden.add(a.dateien[i]);
+  }
+  // Nächstes Wort, das noch fehlt
+  const naechstes = auftraege.findIndex((x, i) => i > pos && !x.dateien.every((d) => vorhanden.has(d)));
+  gehe(naechstes >= 0 ? naechstes : pos + 1);
+  meldung(`„${a.wort}“ gespeichert.`);
+}
+
+function welleZeichnen(d, stuecke = []) {
+  const c = $('#welle');
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height);
+  if (!d) return;
+  g.fillStyle = '#fde9d6';
+  stuecke.forEach(([a, b]) => g.fillRect(a / d.length * c.width, 0, (b - a) / d.length * c.width, c.height));
+  g.strokeStyle = '#1d5fbf';
+  g.beginPath();
+  const schritt = Math.max(1, Math.floor(d.length / c.width));
+  for (let x = 0; x < c.width; x++) {
+    let m = 0;
+    for (let j = x * schritt; j < (x + 1) * schritt && j < d.length; j++) m = Math.max(m, Math.abs(d[j]));
+    g.moveTo(x, c.height / 2 - m * c.height / 2);
+    g.lineTo(x, c.height / 2 + m * c.height / 2);
+  }
+  g.stroke();
+}
+
+$('#btn-aufnahme').onclick = aufnahmeUmschalten;
+$('#btn-anhoeren').onclick = anhoeren;
+$('#btn-speichern').onclick = speichern;
+$('#btn-zurueck').onclick = () => gehe(pos - 1);
+$('#btn-weiter').onclick = () => gehe(pos + 1);
+document.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  if (e.code === 'Space') { e.preventDefault(); aufnahmeUmschalten(); }
+  if (e.code === 'Enter') { e.preventDefault(); speichern(); }
+  if (e.code === 'KeyA') anhoeren();
+  if (e.code === 'ArrowRight') gehe(pos + 1);
+  if (e.code === 'ArrowLeft') gehe(pos - 1);
+});
+
+(async () => {
+  await Promise.all(auftraege.flatMap((a) => a.dateien).map(pruefen));
+  const erstes = auftraege.findIndex((a) => !a.dateien.every((d) => vorhanden.has(d)));
+  gehe(erstes >= 0 ? erstes : 0);
+})();
+</script>
+</body>
+</html>

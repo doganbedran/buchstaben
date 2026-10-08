@@ -14,6 +14,7 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 
 ## Arbeitsablauf je Änderung
 1. Testserver starten (falls nicht läuft): `.venv/bin/python werkzeuge/testserver.py 8765 &`
+   (nur am Laptop erreichbar; `--lan` dazu, um am Handy im WLAN zu testen)
 2. Änderung bauen; bei neuer Funktion eine Testseite `_test_<name>.js` anlegen und in
    `werkzeuge/testseiten_erzeugen.sh` und `werkzeuge/alle_tests.sh` eintragen.
 3. **`APP_VERSION` in `app.js` und `CACHE` in `sw.js` gemeinsam um 1 erhöhen** (sonst sehen Geräte das Update nicht).
@@ -38,7 +39,8 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 - `sw.js` – Offline-Cache (network-first mit `cache: 'no-cache'`, GitHub Pages cached sonst 10 min)
 - `audio/` – Thorstens Clips: `<b>.wav`, `<b>-wort.wav`, `<b>-laut.wav`, `<b>-2.wav`…, `lob-*.wav`, `ansage-*.wav`
 - `bilder/` – eigene SVGs, wo es kein Emoji gibt (Xylophon, Yak)
-- `werkzeuge/` – `audio_erzeugen.py`, `testserver.py`, `alle_tests.sh`, `testseiten_erzeugen.sh`
+- `werkzeuge/` – `audio_erzeugen.py`, `testserver.py`, `alle_tests.sh`, `testseiten_erzeugen.sh`,
+  `aufnahme-studio.html` (Sprecher-Aufnahmen über den Testserver nach `audio/`, nur `silbe-*.wav`)
 
 ## Daten (nur auf dem Gerät)
 - IndexedDB `lernapp` (Version 3): `profile` (eigene Stimm-/Bildprofile inkl. `woerter`), `medien` (Blobs, Schlüssel

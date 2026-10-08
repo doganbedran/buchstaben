@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 32;
+const APP_VERSION = 33;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -294,10 +294,18 @@ const LOB_SAETZE = ['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Wunderbar!'
 const LOB_PLAETZE = LOB_SAETZE.map((_, i) => `lob-${i + 1}`);
 const zufall = (liste) => liste[Math.floor(Math.random() * liste.length)];
 
+// Nie zweimal hintereinander derselbe Lob-Satz
+let letztesLob = null;
+function lobWaehlen(plaetze) {
+  const auswahl = plaetze.length > 1 ? plaetze.filter((k) => k !== letztesLob) : plaetze;
+  letztesLob = zufall(auswahl);
+  return letztesLob;
+}
+
 function lobQuelle() {
   const eigene = LOB_PLAETZE.filter((k) => medien[k] && medien[k].stimme);
-  if (eigene.length) return { url: URL.createObjectURL(medien[zufall(eigene)].stimme), eigen: true };
-  return { url: `audio/${zufall(LOB_PLAETZE)}.wav`, eigen: false };
+  if (eigene.length) return { url: URL.createObjectURL(medien[lobWaehlen(eigene)].stimme), eigen: true };
+  return { url: `audio/${lobWaehlen(LOB_PLAETZE)}.wav`, eigen: false };
 }
 
 function wiedergabeStoppen() {
@@ -440,6 +448,7 @@ window.addEventListener('popstate', async () => {
   clearTimeout(memory.timerNeu);
   clearTimeout(jagd.timer);
   clearTimeout(legen.timer);
+  silbenTimerStoppen();
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
   if (ziel === 'eltern') {
@@ -453,6 +462,30 @@ window.addEventListener('popstate', async () => {
   rasterZeichnen();
   zeigen('home', false);
 });
+
+// Spiel-Ende: Pokal bleibt stehen, dann großes Haus und kleineres Nochmal.
+// Kein automatisches Weiterspielen – Kinder sollen ein natürliches Ende erleben.
+function spielEnde(id, nochmal) {
+  const screen = $(`#${id}`);
+  let ende = screen.querySelector('.spiel-ende');
+  if (!ende) {
+    ende = document.createElement('div');
+    ende.className = 'spiel-ende';
+    ende.innerHTML = '<button class="ende-home" aria-label="Fertig">🏠</button><button class="ende-nochmal" aria-label="Nochmal">🔁</button>';
+    ende.querySelector('.ende-home').addEventListener('click', () => screen.querySelector('.topbar .icon-btn').click());
+    ende.querySelector('.ende-nochmal').addEventListener('click', () => { audio(); spielEndeWeg(id); ende.nochmal(); });
+    screen.appendChild(ende);
+  }
+  ende.nochmal = nochmal;
+  ende.hidden = false;
+}
+
+function spielEndeWeg(id) {
+  const screen = $(`#${id}`);
+  const ende = screen.querySelector('.spiel-ende');
+  if (ende) ende.hidden = true;
+  screen.querySelector('.jubel').classList.remove('zeigen');
+}
 
 function zurStartseite() {
   if (history.state && history.state.screen) history.back();
@@ -2220,11 +2253,12 @@ function memoryGeschafft() {
   memory.timer = setTimeout(() => {
     folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft!');
   }, 700);
-  memory.timerNeu = setTimeout(() => { jubel.classList.remove('zeigen'); memoryNeu(); }, 3800);
+  memory.timerNeu = setTimeout(() => spielEnde('memory', memoryNeu), 2200);
 }
 
 function memoryStarten() {
   clearTimeout(memory.timerNeu);
+  spielEndeWeg('memory');
   memoryNeu();
   zeigen('memory');
   folgeAbspielen([{ url: 'audio/ansage-memory.wav' }], 'Finde groß und klein!');
@@ -2233,7 +2267,7 @@ function memoryStarten() {
 $('#btn-memory-home').addEventListener('click', () => {
   clearTimeout(memory.timer); clearTimeout(memory.timerNeu); wiedergabeStoppen(); zurStartseite();
 });
-$('#btn-memory-neu').addEventListener('click', () => { clearTimeout(memory.timerNeu); $('#memory-jubel').classList.remove('zeigen'); memoryNeu(); });
+$('#btn-memory-neu').addEventListener('click', () => { clearTimeout(memory.timerNeu); spielEndeWeg('memory'); memoryNeu(); });
 
 // ---------- Buchstaben-Jagd: etwas mit dem Anlaut suchen und fotografieren ----------
 
@@ -2431,11 +2465,12 @@ function legenGeschafft() {
   jubel.classList.add('zeigen');
   glockenspiel();
   folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft!');
-  legen.timer = setTimeout(() => { jubel.classList.remove('zeigen'); legen.runde = 0; legenNeuesWort(); }, 3400);
+  legen.timer = setTimeout(() => spielEnde('legen', () => { legen.runde = 0; legenNeuesWort(); }), 2200);
 }
 
 function legenStarten() {
   legen.runde = 0;
+  spielEndeWeg('legen');
   zeigen('legen');
   legenNeuesWort();
 }
@@ -2599,16 +2634,16 @@ function hoerGeschafft() {
   jubel.classList.add('zeigen');
   glockenspiel();
   folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
-  hoerSpiel.timer = setTimeout(() => {
-    jubel.classList.remove('zeigen');
+  hoerSpiel.timer = setTimeout(() => spielEnde('hoeren', () => {
     hoerSpiel.runde = 0;
     hoerSpiel.ziel = null;
     hoerNeueRunde();
-  }, 3200);
+  }), 2200);
 }
 
 function hoerSpielStarten() {
   clearTimeout(hoerSpiel.timer);
+  spielEndeWeg('hoeren');
   hoerSpiel.runde = 0;
   hoerSpiel.ziel = null;
   zeigen('hoeren');
@@ -2618,8 +2653,317 @@ function hoerSpielStarten() {
 $('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.timer); wiedergabeStoppen(); zurStartseite(); });
 $('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
 
+// ---------- Silben-Trommel: pro Silbe einmal auf die Trommel hauen ----------
+
+// Silbenzahl je Runde: mit 2 beginnen, 1 Silbe nicht direkt nach dem ersten Erfolg, mit einem leichteren Wort enden
+const SILBEN_RUNDEN = [2, 2, 1, 3, 2];
+const SILBEN_VORMACHEN = 2;        // so viele Runden trommelt die App erst vor ("Hör zu! … Jetzt du!")
+const SILBEN_TAKT_VOR = 850;       // ms zwischen den Silben beim Vormachen (zum Nachmachen langsamer)
+const SILBEN_TAKT_BESTAETIGEN = 650;
+const SILBEN_TAKT_ZUSAMMEN = 950;
+const SILBEN_FERTIG_NACH = 2000;   // so lange Pause nach dem letzten Schlag = fertig
+const SILBEN_ZITTERN = 180;        // Schläge kürzer hintereinander zählen nicht (Doppeltipp, zwei Hände)
+const SILBEN_DAUER_MAX = 6000;     // länger ohne Pause trommeln = wildes Trommeln, dann hilft die App
+const silben = {
+  wahl: null, teile: [], runde: 0, versuch: 0, phase: 'aus', schlaege: 0, letzter: 0, start: 0,
+  erinnert: 0, zusammenVorher: false, timer: null, erinnerTimer: null, nummer: 0, vorher: [],
+  bereit: new Set(),   // Wörter, deren Silben-Aufnahmen alle da sind
+};
+
+const warten = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Ohne gesprochene Silben lernt das Kind nur Bumms zählen – das Spiel erscheint erst, wenn Aufnahmen da sind
+async function silbenPruefen() {
+  await Promise.all(Object.entries(SILBEN).map(async ([wort, teile]) => {
+    try {
+      const da = await Promise.all(teile.map((_, i) => fetch(silbenDatei(wort, i + 1)).then((r) => r.ok)));
+      if (da.every(Boolean)) silben.bereit.add(wort);
+    } catch { /* offline und nicht im Cache */ }
+  }));
+  $('.spiel-btn[data-spiel="silben"]').hidden = !silbenGenug();
+}
+
+const silbenGenug = () => [...new Set(SILBEN_RUNDEN)].every((n) => silbenWoerter(n).length >= 2);
+
+// Nur Standard-Wörter mit Aufnahmen; persönliche Wörter und Hauptwörter mit eigenem Foto/eigener Stimme
+// bleiben draußen (dort könnte ein anderes Wort zu sehen oder zu hören sein als die Silben sagen)
+function silbenWoerter(anzahl) {
+  return BUCHSTABEN.flatMap((e) => woerterFuer(e)).filter((w) => {
+    if (w.art === 'eigen' || !SILBEN[w.wort] || !silben.bereit.has(w.wort)) return false;
+    if (w.art === 'haupt' && medien[w.b] && (medien[w.b].bildUrl || medien[w.b].stimme)) return false;
+    return !anzahl || SILBEN[w.wort].length === anzahl;
+  });
+}
+
+// Tiefes "Bumm" ohne Datei (weich ansetzen, sonst klickt es)
+function bumm(laut = 0.6) {
+  const ctx = audio();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(140, t);
+  osc.frequency.exponentialRampToValueAtTime(55, t + 0.25);
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(laut, t + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.32);
+}
+
+// Läuft die Runde noch? (Home, neue Runde oder Zurück-Taste machen alte Abläufe ungültig)
+const silbenAktuell = (nr) => nr === silben.nummer && $('#silben').classList.contains('active');
+
+function silbenTimerStoppen() {
+  clearTimeout(silben.timer);
+  clearTimeout(silben.erinnerTimer);
+  silben.nummer++;
+  silben.phase = 'aus';
+}
+
+// wach = Kind ist dran (volle Farbe, pulsiert bis zum ersten Schlag)
+function trommelZustand(wach) {
+  const t = $('#silben-trommel');
+  t.classList.toggle('wach', wach);
+  t.classList.toggle('wartet', wach);
+}
+
+// Einmal-Animationen: vorher alle entfernen, sonst überdecken sie sich gegenseitig
+function trommelAnimation(klasse) {
+  const t = $('#silben-trommel');
+  t.classList.remove('schlag', 'wackeln', 'aufwachen');
+  void t.offsetWidth;
+  t.classList.add(klasse);
+}
+
+const BOGEN_SVG = '<svg viewBox="0 0 72 40"><path d="M6 8 Q36 52 66 8"/></svg>';
+
+function bogenHinzu(reihe, app = false) {
+  const b = document.createElement('div');
+  b.className = `silben-bogen neu${app ? ' app' : ''}`;
+  b.innerHTML = BOGEN_SVG;
+  b.addEventListener('animationend', () => b.classList.remove('neu', 'leuchtet'));
+  $(reihe).appendChild(b);
+  return b;
+}
+
+function boegenLeeren() { $('#silben-boegen').innerHTML = ''; $('#silben-boegen-app').innerHTML = ''; }
+
+function bogenLeuchten(b) {
+  b.classList.remove('neu', 'leuchtet');
+  void b.offsetWidth;
+  b.classList.add('leuchtet');
+}
+
+function silbenRundenAnzeigen() {
+  $('#silben-runden').innerHTML = SILBEN_RUNDEN.map((_, i) => `<span class="${i < silben.runde ? 'voll' : ''}"></span>`).join('');
+}
+
+// Silbe abspielen, ohne auf das Ende zu warten (der Takt bestimmt das Tempo)
+function silbeSprechen(nr) {
+  const a = new Audio(silbenDatei(silben.wahl.wort, nr));
+  wiedergabe.audio = a;
+  a.play().catch(() => {});
+}
+
+// Die App trommelt das Wort: jede Silbe mit Bumm, Vibration, Stimme und Bogen.
+// boegen = vorhandene Bögen des Kindes (Bestätigen), sonst neue blaue Bögen in der App-Reihe
+async function vortrommeln(nr, { boegen = null, takt = SILBEN_TAKT_VOR } = {}) {
+  wiedergabeStoppen();   // laufende Ansage (z. B. Erinnerung) nicht unter die Silben mischen
+  if (!boegen) $('#silben-boegen-app').innerHTML = '';
+  for (let i = 0; i < silben.teile.length; i++) {
+    if (!silbenAktuell(nr)) return false;
+    const b = boegen ? boegen[i] : bogenHinzu('#silben-boegen-app', true);
+    if (b) bogenLeuchten(b);
+    trommelAnimation('schlag');
+    bumm();
+    vibrieren(25);
+    silbeSprechen(i + 1);
+    await warten(takt);
+  }
+  return silbenAktuell(nr);
+}
+
+async function silbenSagen(nr, folge, text) {
+  await folgeAbspielen(folge, text);
+  return silbenAktuell(nr);
+}
+
+function silbenNeueRunde() {
+  silbenTimerStoppen();
+  let soll = SILBEN_RUNDEN[silben.runde];
+  // Nach einer gemeinsamen Runde nicht schwerer werden
+  if (silben.zusammenVorher && silben.teile.length && soll > silben.teile.length) soll = silben.teile.length;
+  silben.zusammenVorher = false;
+  const auswahl = silbenWoerter(soll).filter((w) => !silben.vorher.includes(w.wort));
+  silben.wahl = zufall(auswahl.length ? auswahl : silbenWoerter(soll));
+  silben.vorher = [...silben.vorher.slice(-4), silben.wahl.wort];
+  silben.teile = SILBEN[silben.wahl.wort];
+  silben.versuch = 0;
+  silben.erinnert = 0;
+  silbenRundenAnzeigen();
+  $('#silben-bild').innerHTML = silben.wahl.bild();
+  $('#silben-bild').setAttribute('aria-label', silben.wahl.wort);
+  silbenVorsprechen(silben.runde === 0);
+}
+
+// Wort ansagen (in den ersten Runden auch vortrommeln), danach wacht die Trommel auf
+async function silbenVorsprechen(mitAnsage) {
+  silbenTimerStoppen();
+  const nr = silben.nummer;
+  boegenLeeren();
+  trommelZustand(false);
+  silben.phase = 'app';
+  const folge = [...(mitAnsage ? [{ url: 'audio/ansage-silben.wav' }] : []), ...silben.wahl.wortAllein()];
+  if (!(await silbenSagen(nr, folge, mitAnsage ? `Trommle das Wort! ${silben.wahl.wort}` : silben.wahl.wort))) return;
+  if (silben.runde < SILBEN_VORMACHEN) {
+    if (!(await silbenSagen(nr, [{ url: 'audio/ansage-silben-hoerzu.wav' }], 'Hör zu!'))) return;
+    if (!(await vortrommeln(nr))) return;
+    if (!(await silbenSagen(nr, [{ url: 'audio/ansage-silben-jetzt-du.wav' }], 'Jetzt du!'))) return;
+  }
+  trommelAufwachen(nr);
+}
+
+function trommelAufwachen(nr) {
+  if (!silbenAktuell(nr)) return;
+  silben.phase = 'trommeln';
+  silben.schlaege = 0;
+  silben.start = 0;
+  $('#silben-boegen').innerHTML = '';
+  trommelZustand(true);
+  trommelAnimation('aufwachen');
+  silbenErinnern(nr);
+}
+
+// Kind trommelt nicht: einmal erinnern, dann einmal vortrommeln – danach still warten, nie selbst weiterschalten
+function silbenErinnern(nr) {
+  clearTimeout(silben.erinnerTimer);
+  if (silben.erinnert >= 2) return;
+  silben.erinnerTimer = setTimeout(async () => {
+    if (!silbenAktuell(nr) || silben.phase !== 'trommeln' || silben.schlaege) return;
+    silben.erinnert++;
+    if (silben.erinnert === 1) {
+      trommelAnimation('wackeln');
+      if (!(await silbenSagen(nr, [{ url: 'audio/ansage-silben-erinnerung.wav' }, ...silben.wahl.wortAllein()], 'Hau auf die Trommel!'))) return;
+      if (silben.phase === 'trommeln' && !silben.schlaege) silbenErinnern(nr);
+    } else {
+      silben.phase = 'app';
+      trommelZustand(false);
+      if (!(await vortrommeln(nr))) return;
+      if (!(await silbenSagen(nr, [{ url: 'audio/ansage-silben-jetzt-du.wav' }], 'Jetzt du!'))) return;
+      trommelAufwachen(nr);
+    }
+  }, silben.erinnert === 0 ? 6000 : 8000);
+}
+
+function trommelGeschlagen() {
+  audio();
+  if (silben.phase === 'zusammen') { trommelAnimation('schlag'); bumm(0.35); vibrieren(25); return; }
+  // Noch nicht dran: leise federn, damit die Trommel nicht "kaputt" wirkt, aber nichts zählt
+  if (silben.phase !== 'trommeln') { trommelAnimation('schlag'); bumm(0.12); return; }
+  const jetzt = performance.now();
+  if (silben.letzter && jetzt - silben.letzter < SILBEN_ZITTERN) return;
+  silben.letzter = jetzt;
+  clearTimeout(silben.erinnerTimer);
+  $('#silben-trommel').classList.remove('wartet');
+  trommelAnimation('schlag');
+  bumm();
+  vibrieren(25);
+  if (!silben.start) silben.start = jetzt;
+  // Wildes Trommeln darf klingen, aber höchstens Silbenzahl + 2 Bögen
+  if (silben.schlaege < Math.min(silben.teile.length + 2, 6)) { silben.schlaege++; bogenHinzu('#silben-boegen'); }
+  clearTimeout(silben.timer);
+  if (jetzt - silben.start > SILBEN_DAUER_MAX) { silbenAuswerten(); return; }
+  silben.timer = setTimeout(silbenAuswerten, SILBEN_FERTIG_NACH);
+}
+
+async function silbenAuswerten() {
+  clearTimeout(silben.timer);
+  const nr = silben.nummer;
+  silben.phase = 'app';
+  trommelZustand(false);
+  if (silben.schlaege === silben.teile.length) {
+    // Richtig: die App spricht die Silben zu den Bögen des Kindes, dann Lob
+    if (!(await vortrommeln(nr, { boegen: [...document.querySelectorAll('#silben-boegen .silben-bogen')], takt: SILBEN_TAKT_BESTAETIGEN }))) return;
+    silbenRundeGeschafft(nr, false);
+    return;
+  }
+  // Kein "falsch": Bögen des Kindes werden blass und bleiben stehen, darüber trommelt die App vor – zum Vergleichen
+  document.querySelectorAll('#silben-boegen .silben-bogen').forEach((b) => b.classList.add('blass'));
+  await warten(500);
+  if (!silbenAktuell(nr)) return;
+  if (silben.versuch === 0) {
+    silben.versuch = 1;
+    if (!(await silbenSagen(nr, [{ url: 'audio/ansage-silben-hoermal.wav' }], 'Hör mal, so geht es.'))) return;
+    if (!(await vortrommeln(nr))) return;
+    if (!(await silbenSagen(nr, [{ url: 'audio/ansage-silben-jetzt-du.wav' }], 'Jetzt du!'))) return;
+    trommelAufwachen(nr);
+    return;
+  }
+  // Zweites Mal daneben: gemeinsam langsam trommeln; der Punkt steht für die erlebte Runde, das Lob ist ein anderes
+  if (!(await silbenSagen(nr, [{ url: 'audio/ansage-silben-zusammen.wav' }], 'Wir trommeln zusammen!'))) return;
+  $('#silben-boegen').innerHTML = '';
+  silben.phase = 'zusammen';
+  trommelZustand(true);
+  $('#silben-trommel').classList.remove('wartet');
+  if (!(await vortrommeln(nr, { takt: SILBEN_TAKT_ZUSAMMEN }))) return;
+  silben.phase = 'app';
+  trommelZustand(false);
+  silben.zusammenVorher = true;
+  silbenRundeGeschafft(nr, true);
+}
+
+async function silbenRundeGeschafft(nr, zusammen) {
+  silben.runde++;
+  silbenRundenAnzeigen();
+  if (!zusammen) glockenspiel();
+  await warten(300);
+  const folge = zusammen ? [{ url: 'audio/ansage-silben-zusammen-geschafft.wav' }, ...silben.wahl.wortAllein()]
+    : [lobQuelle(), ...silben.wahl.wortAllein()];
+  if (!(await silbenSagen(nr, folge, zusammen ? 'Zusammen geschafft!' : `Super! ${silben.wahl.wort}`))) return;
+  silben.timer = setTimeout(() => {
+    if (!silbenAktuell(nr)) return;
+    if (silben.runde >= SILBEN_RUNDEN.length) silbenGeschafft(); else silbenNeueRunde();
+  }, 900);
+}
+
+function silbenGeschafft() {
+  const jubel = $('#silben-jubel');
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  glockenspiel();
+  folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft!');
+  silben.timer = setTimeout(() => spielEnde('silben', () => { silben.runde = 0; silbenNeueRunde(); }), 2200);
+}
+
+function silbenStarten() {
+  silben.runde = 0;
+  silben.teile = [];
+  silben.zusammenVorher = false;
+  spielEndeWeg('silben');
+  zeigen('silben');
+  silbenNeueRunde();
+}
+
+$('#silben-trommel').addEventListener('pointerdown', (e) => { e.preventDefault(); trommelGeschlagen(); });
+$('#silben-trommel').addEventListener('contextmenu', (e) => e.preventDefault());
+$('#btn-silben-home').addEventListener('click', () => { silbenTimerStoppen(); wiedergabeStoppen(); zurStartseite(); });
+// Wort nochmal hören: laufender Versuch beginnt von vorn (nicht, während die App selbst spricht oder trommelt)
+const silbenWortNochmal = () => { if (silben.phase === 'trommeln') { audio(); silbenVorsprechen(false); } };
+$('#btn-silben-wort').addEventListener('click', silbenWortNochmal);
+$('#silben-bild').addEventListener('click', silbenWortNochmal);
+// App im Hintergrund: keine Erinnerung ins Leere; zurück: wieder freundlich warten
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clearTimeout(silben.erinnerTimer);
+  else if (silben.phase === 'trommeln' && !silben.schlaege && silbenAktuell(silben.nummer)) silbenErinnern(silben.nummer);
+});
+silbenPruefen();
+
 // Spiele-Leiste
-const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
+const SPIELE = { hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();

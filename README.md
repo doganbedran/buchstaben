@@ -17,6 +17,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `_test_sichern.html` – Test Sichern & Übertragen (frisches Browserprofil)
 - `_test_hoeren.html` – Test Hör-Spiel
 - `_test_legen.html` – Test Wörter legen
+- `_test_silben.html` – Test Silben-Trommel
 - `_test_jagd.html` – Test Buchstaben-Jagd
 - `_test_farben.html` – Test Fingerfarben
 - `_test_montessori.html` – Test Montessori-Reihenfolge
@@ -72,6 +73,16 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 - 📒 **Sticker-Album** – pro geschafftem Buchstaben ein Sticker des gezeigten Wortes, Album pro Kind
 - 👂 **Ich höre was** – Laut hören („mmm …“), passendes Bild von dreien antippen; 5 Runden. Ähnlich klingende
   Anlaute (f/v, k/c/q/x, e/ä, j/y) nie in derselben Runde, ß ausgenommen. Nutzt `audio/<b>-laut.wav`.
+- 🥁 **Silben-Trommel** – Wort hören, pro Silbe einmal auf die Trommel hauen (Silbenbögen erscheinen); die App
+  spricht danach die Silben zu den Bögen. 5 Runden (2, 1, 2, 3, 3 Silben). Daneben: App trommelt vor, Kind nochmal;
+  beim zweiten Mal gemeinsam. Wörter und Trennung in `SILBEN` (`letters.js`), Aufnahmen `audio/silbe-<wort>-<nr>.wav`
+  (fehlt eine, trommelt die App ohne Stimme).
+
+## Aufnahme-Studio (Sprecher-Stimme)
+Testserver starten, dann http://localhost:8765/werkzeuge/aufnahme-studio.html öffnen (Mikrofon erlauben).
+Pro Wort einmal mit kleinen Pausen sprechen („Ba – na – ne“), Leertaste = Aufnahme an/aus, A = anhören,
+Enter = speichern. Das Studio schneidet an den Pausen, gleicht die Lautstärke an und speichert über den
+Testserver (`POST /_speichern`, nur vom eigenen Rechner) nach `audio/`. Grün = schon aufgenommen.
 
 ## Wörter
 Jeder Buchstabe hat einen Wort-Vorrat: Hauptwort (`wort`/`bild`), weitere Standard-Wörter (`mehr` in `letters.js`,

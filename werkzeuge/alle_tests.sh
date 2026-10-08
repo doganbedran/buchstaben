@@ -23,6 +23,9 @@ LAEUFE=(
   "farben|_test_farben.html|412,860|90"
   "jagd|_test_jagd.html|412,860|90"
   "legen|_test_legen.html|412,860|90"
+  "silben|_test_silben.html|412,860|90"
+  "silben-tab|_test_silben.html|1280,800|90"
+  "silben-klein|_test_silben.html|360,640|90"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do

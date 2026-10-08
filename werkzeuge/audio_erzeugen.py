@@ -52,6 +52,13 @@ ANSAGEN = {
     'neue-buchstaben': 'Hurra! Neue Buchstaben!',
     'jagd': 'Finde etwas, das so anfängt!',
     'legen': 'Leg das Wort!',
+    'silben': 'Trommle das Wort!',
+    'silben-erinnerung': 'Hau auf die Trommel!',
+    'silben-hoermal': 'Hör mal, so geht es.',
+    'silben-jetzt-du': 'Jetzt du!',
+    'silben-zusammen': 'Wir trommeln zusammen!',
+    'silben-hoerzu': 'Hör zu!',
+    'silben-zusammen-geschafft': 'Zusammen geschafft!',
 }
 
 TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen']

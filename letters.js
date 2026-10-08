@@ -41,3 +41,18 @@ const BUCHSTABEN = [
 function dateiName(b) {
   return { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' }[b] || b;
 }
+
+// Silben-Trommel: nur Wörter mit eindeutigen Sprechsilben (nicht Orange, Pinguin, Erdbeere, Clown …).
+// Aufnahme je Silbe in audio/silbe-<wort>-<nr>.wav; fehlt eine Datei, trommelt die App ohne Stimme.
+const SILBEN = {
+  Ball: ['Ball'], 'Bär': ['Bär'], Fisch: ['Fisch'], Hund: ['Hund'], Haus: ['Haus'], Kuh: ['Kuh'],
+  Maus: ['Maus'], Mond: ['Mond'], Pilz: ['Pilz'], Fuchs: ['Fuchs'], Wal: ['Wal'], Zug: ['Zug'],
+  Affe: ['Af', 'fe'], Ente: ['En', 'te'], Hase: ['Ha', 'se'], Igel: ['I', 'gel'], 'Löwe': ['Lö', 'we'],
+  Lama: ['La', 'ma'], 'Käse': ['Kä', 'se'], Nase: ['Na', 'se'], Pizza: ['Piz', 'za'], Jacke: ['Ja', 'cke'],
+  Dino: ['Di', 'no'], Gurke: ['Gur', 'ke'], Sonne: ['Son', 'ne'], Sofa: ['So', 'fa'], Katze: ['Kat', 'ze'],
+  Vogel: ['Vo', 'gel'], Wolke: ['Wol', 'ke'], Tiger: ['Ti', 'ger'],
+  Banane: ['Ba', 'na', 'ne'], Rakete: ['Ra', 'ke', 'te'], Gitarre: ['Gi', 'tar', 're'], Elefant: ['E', 'le', 'fant'],
+  Ameise: ['A', 'mei', 'se'], Oktopus: ['Ok', 'to', 'pus'], Tomate: ['To', 'ma', 'te'], Zitrone: ['Zi', 'tro', 'ne'],
+};
+
+const silbenDatei = (wort, nr) => `audio/silbe-${[...wort.toLowerCase()].map(dateiName).join('')}-${nr}.wav`;
