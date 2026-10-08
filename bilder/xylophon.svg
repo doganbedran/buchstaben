@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Rahmen -->
+  <path d="M14 52 L114 40 L114 96 L14 108 Z" fill="#8d5a3b"/>
+  <path d="M14 52 L114 40" stroke="#6e4329" stroke-width="4" stroke-linecap="round"/>
+  <path d="M14 108 L114 96" stroke="#6e4329" stroke-width="4" stroke-linecap="round"/>
+  <!-- Klangstäbe, von lang (links) nach kurz (rechts) -->
+  <g stroke="#00000022" stroke-width="1.5">
+    <rect x="18"  y="40" width="13" height="80" rx="4" fill="#e8463c"/>
+    <rect x="34"  y="42" width="13" height="72" rx="4" fill="#f28c38"/>
+    <rect x="50"  y="44" width="13" height="64" rx="4" fill="#f5c518"/>
+    <rect x="66"  y="46" width="13" height="56" rx="4" fill="#4caf50"/>
+    <rect x="82"  y="48" width="13" height="48" rx="4" fill="#3d8fd1"/>
+    <rect x="98"  y="50" width="13" height="40" rx="4" fill="#9b59b6"/>
+  </g>
+  <!-- Nieten -->
+  <g fill="#ffffffcc">
+    <circle cx="24.5" cy="47" r="2"/><circle cx="24.5" cy="112" r="2"/>
+    <circle cx="40.5" cy="49" r="2"/><circle cx="40.5" cy="107" r="2"/>
+    <circle cx="56.5" cy="51" r="2"/><circle cx="56.5" cy="101" r="2"/>
+    <circle cx="72.5" cy="53" r="2"/><circle cx="72.5" cy="95" r="2"/>
+    <circle cx="88.5" cy="55" r="2"/><circle cx="88.5" cy="89" r="2"/>
+    <circle cx="104.5" cy="57" r="2"/><circle cx="104.5" cy="83" r="2"/>
+  </g>
+  <!-- Schlägel -->
+  <line x1="44" y1="8" x2="62" y2="40" stroke="#c49a6c" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="64" cy="42" r="7" fill="#e8463c"/>
+  <line x1="98" y1="10" x2="84" y2="44" stroke="#c49a6c" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="83" cy="46" r="7" fill="#3d8fd1"/>
+</svg>

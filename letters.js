@@ -1,23 +1,24 @@
 // Deutsches Alphabet mit Anlaut-Wort und Bild (Emoji): a–z, danach ä, ö, ü, ß.
 // "laut" ist das, was die Sprachausgabe als Notlösung spricht (Montessori: Laut statt Buchstabenname).
-// Bei x und ß gibt es kein kindgerechtes Wort mit dem Laut am Anfang – dort steckt er im Wort.
+// Beim ß gibt es kein Wort mit dem Laut am Anfang – dort steckt er im Wort.
+// "bild" ist ein Emoji oder eine Datei in bilder/ (wo es kein passendes Emoji gibt).
 const BUCHSTABEN = [
   { b: 'a', wort: 'Apfel',    bild: '🍎', laut: 'a' },
   { b: 'b', wort: 'Banane',   bild: '🍌', laut: 'ba' },
   { b: 'c', wort: 'Computer', bild: '💻', laut: 'ko' },
-  { b: 'd', wort: 'Dino',     bild: '🦕', laut: 'di' },
-  { b: 'e', wort: 'Ente',     bild: '🦆', laut: 'e' },
+  { b: 'd', wort: 'Delphin',  bild: '🐬', laut: 'de' },
+  { b: 'e', wort: 'Elefant',  bild: '🐘', laut: 'e' },
   { b: 'f', wort: 'Fisch',    bild: '🐟', laut: 'fff' },
-  { b: 'g', wort: 'Gurke',    bild: '🥒', laut: 'gu' },
+  { b: 'g', wort: 'Gitarre',  bild: '🎸', laut: 'gi' },
   { b: 'h', wort: 'Hund',     bild: '🐶', laut: 'hu' },
   { b: 'i', wort: 'Igel',     bild: '🦔', laut: 'i' },
   { b: 'j', wort: 'Jacke',    bild: '🧥', laut: 'ja' },
   { b: 'k', wort: 'Katze',    bild: '🐱', laut: 'ka' },
   { b: 'l', wort: 'Löwe',     bild: '🦁', laut: 'lll' },
   { b: 'm', wort: 'Maus',     bild: '🐭', laut: 'mmm' },
-  { b: 'n', wort: 'Nase',     bild: '👃', laut: 'nnn' },
+  { b: 'n', wort: 'Nashorn',  bild: '🦏', laut: 'nnn' },
   { b: 'o', wort: 'Oktopus',  bild: '🐙', laut: 'o' },
-  { b: 'p', wort: 'Pinguin',  bild: '🐧', laut: 'pi' },
+  { b: 'p', wort: 'Pilz',     bild: '🍄', laut: 'pi' },
   { b: 'q', wort: 'Qualle',   bild: '🪼', laut: 'kwa' },
   { b: 'r', wort: 'Rakete',   bild: '🚀', laut: 'rrr' },
   { b: 's', wort: 'Sonne',    bild: '☀️', laut: 'sss' },
@@ -25,8 +26,8 @@ const BUCHSTABEN = [
   { b: 'u', wort: 'Uhr',      bild: '⏰', laut: 'u' },
   { b: 'v', wort: 'Vogel',    bild: '🐦', laut: 'fff' },
   { b: 'w', wort: 'Wal',      bild: '🐳', laut: 'www' },
-  { b: 'x', wort: 'Taxi',     bild: '🚕', laut: 'ks' },
-  { b: 'y', wort: 'Yo-Yo',    bild: '🪀', laut: 'jo' },
+  { b: 'x', wort: 'Xylophon', bild: 'bilder/xylophon.svg', laut: 'ks' },
+  { b: 'y', wort: 'Yak',      bild: 'bilder/yak.svg', laut: 'ja' },
   { b: 'z', wort: 'Zebra',    bild: '🦓', laut: 'ze' },
   { b: 'ä', wort: 'Äpfel',    bild: '🍎🍏', laut: 'ä' },
   { b: 'ö', wort: 'Öl',       bild: '🛢️', laut: 'ö' },

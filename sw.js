@@ -1,11 +1,12 @@
 // Offline-Cache: Mit Internet immer die neueste Version laden, ohne Internet aus dem Cache.
 importScripts('letters.js');
 
-const CACHE = 'buchstaben-v5';
+const CACHE = 'buchstaben-v6';
 const DATEIEN = [
   './', 'index.html', 'style.css', 'app.js', 'letters.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png',
   ...[1, 2, 3, 4, 5].map((i) => `audio/lob-${i}.wav`),
+  ...BUCHSTABEN.filter(({ bild }) => bild.startsWith('bilder/')).map(({ bild }) => bild),
   ...BUCHSTABEN.flatMap(({ b }) => [`audio/${dateiName(b)}.wav`, `audio/${dateiName(b)}-wort.wav`]),
 ];
 

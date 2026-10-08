@@ -23,14 +23,14 @@ STIMMEN = PROJEKT / '.stimmen'
 
 # Anlaut in Lautschrift (espeak/IPA). ː verlängert Dauerlaute, ə macht Klinger hörbar ("bə", nicht "Be").
 LAUTE = {
-    'a': 'aː', 'ä': 'ɛː', 'b': 'bə', 'c': 'kə', 'd': 'də', 'e': 'ɛː', 'f': 'fːː', 'g': 'ɡə', 'h': 'hə', 'i': 'iː',
+    'a': 'aː', 'ä': 'ɛː', 'b': 'bə', 'c': 'kə', 'd': 'də', 'e': 'eː', 'f': 'fːː', 'g': 'ɡə', 'h': 'hə', 'i': 'iː',
     'j': 'jə', 'k': 'kə', 'l': 'lːː', 'm': 'mːː', 'n': 'nːː', 'o': 'ɔː', 'ö': 'øː', 'p': 'pə', 'q': 'kvə',
     'r': 'ʁːː', 's': 'zːː', 'ß': 'sːː', 't': 'tə', 'u': 'uː', 'ü': 'yː', 'v': 'fːː', 'w': 'vːː',
     'x': 'ksː', 'y': 'jə', 'z': 'tsə',
 }
 
 # Aussprache-Hilfe, wo die Schreibweise die Sprachsynthese verwirrt
-SPRECHEN = {'Yo-Yo': 'Jojo', 'Computer': 'Kompjuter'}
+SPRECHEN = {'Computer': 'Kompjuter'}
 
 DATEINAMEN = {'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss'}
 

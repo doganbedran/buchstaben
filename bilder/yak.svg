@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Beine -->
+  <g fill="#4a3426">
+    <rect x="34" y="88" width="11" height="28" rx="4"/>
+    <rect x="52" y="90" width="11" height="26" rx="4"/>
+    <rect x="80" y="90" width="11" height="26" rx="4"/>
+    <rect x="96" y="88" width="11" height="28" rx="4"/>
+  </g>
+  <g fill="#2e2018">
+    <rect x="34" y="111" width="11" height="6" rx="2"/><rect x="52" y="111" width="11" height="6" rx="2"/>
+    <rect x="80" y="111" width="11" height="6" rx="2"/><rect x="96" y="111" width="11" height="6" rx="2"/>
+  </g>
+  <!-- Schwanz -->
+  <path d="M112 62 C122 70 122 84 116 92" stroke="#5b4030" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Zotteliger Körper -->
+  <ellipse cx="72" cy="66" rx="44" ry="30" fill="#6b4a36"/>
+  <path d="M30 78 L34 98 L40 84 L46 100 L52 85 L58 101 L64 86 L70 101 L76 86 L82 101 L88 85 L94 100 L100 84 L106 97 L112 76 Z" fill="#6b4a36"/>
+  <!-- Buckel -->
+  <ellipse cx="54" cy="42" rx="22" ry="12" fill="#7a5640"/>
+  <!-- Kopf -->
+  <ellipse cx="30" cy="62" rx="20" ry="18" fill="#7a5640"/>
+  <!-- Stirnfransen -->
+  <path d="M13 54 Q20 40 30 44 Q40 40 47 54 L42 52 L38 58 L34 51 L30 58 L26 51 L22 58 L18 52 Z" fill="#5b4030"/>
+  <!-- Hörner -->
+  <path d="M15 50 C6 44 4 34 12 28" stroke="#f3e6c8" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M45 50 C54 44 56 34 48 28" stroke="#f3e6c8" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- Schnauze -->
+  <ellipse cx="30" cy="73" rx="12" ry="8" fill="#b08a6e"/>
+  <circle cx="25" cy="73" r="2" fill="#3a2a20"/><circle cx="35" cy="73" r="2" fill="#3a2a20"/>
+  <!-- Augen -->
+  <circle cx="22" cy="61" r="3.5" fill="#fff"/><circle cx="38" cy="61" r="3.5" fill="#fff"/>
+  <circle cx="22.8" cy="61.5" r="2" fill="#1e1612"/><circle cx="38.8" cy="61.5" r="2" fill="#1e1612"/>
+</svg>

@@ -22,6 +22,13 @@ const zustand = {
 
 const MAX_STERNE = 3;
 
+// Bild als Emoji oder als Bilddatei (für Wörter ohne passendes Emoji)
+function bildHtml(eintrag) {
+  return eintrag.bild.startsWith('bilder/')
+    ? `<img class="bild-datei" src="${eintrag.bild}" alt="${eintrag.wort}">`
+    : eintrag.bild;
+}
+
 function zeichen(eintrag) {
   if (zustand.schreibweise !== 'gross') return eintrag.b;
   // 'ß'.toUpperCase() ergäbe "SS" – das große Eszett ist ein eigenes Zeichen
@@ -191,7 +198,7 @@ function rasterZeichnen() {
     btn.className = 'kachel';
     btn.setAttribute('aria-label', `${eintrag.b} wie ${eintrag.wort}`);
     btn.innerHTML = `<span class="zeichen">${zeichen(eintrag)}</span>`
-      + `<span class="mini">${eintrag.bild}</span>`
+      + `<span class="mini">${bildHtml(eintrag)}</span>`
       + `<span class="punkte">${'⭐'.repeat(n)}</span>`;
     btn.addEventListener('click', () => buchstabeOeffnen(i));
     grid.appendChild(btn);
@@ -410,7 +417,7 @@ function geschafft() {
   glockenspiel();
   sterneFliegen();
   const jubel = $('#jubel');
-  $('#jubel-bild').textContent = eintrag.bild;
+  $('#jubel-bild').innerHTML = bildHtml(eintrag);
   jubel.classList.remove('zeigen');
   void jubel.offsetWidth;
   jubel.classList.add('zeigen');
@@ -444,7 +451,7 @@ function sterneFliegen() {
 function buchstabeOeffnen(i) {
   zustand.index = i;
   const eintrag = BUCHSTABEN[i];
-  $('#bild').textContent = eintrag.bild;
+  $('#bild').innerHTML = bildHtml(eintrag);
   $('#fortschritt').textContent = sterneText(zustand.sterne[eintrag.b] || 0);
   if (!$('#trace').classList.contains('active')) zeigen('trace');
   // Layout erst nach dem Anzeigen messen
@@ -562,7 +569,7 @@ async function aufnahmenListe() {
     zeile.className = 'aufnahme-zeile';
     const hat = vorhanden.has(eintrag.b);
     zeile.innerHTML = `<span class="z">${zeichen(eintrag)}</span>`
-      + `<span class="w">${eintrag.bild} ${eintrag.wort}<br><small>${hat ? 'eigene Stimme' : 'Computerstimme'}</small></span>`
+      + `<span class="w">${bildHtml(eintrag)} ${eintrag.wort}<br><small>${hat ? 'eigene Stimme' : 'Computerstimme'}</small></span>`
       + '<button class="mini-btn" data-a="rec" aria-label="Aufnehmen">🎙️</button>'
       + '<button class="mini-btn" data-a="play" aria-label="Anhören">▶️</button>'
       + `<button class="mini-btn" data-a="del" aria-label="Löschen" ${hat ? '' : 'disabled'}>🗑️</button>`;

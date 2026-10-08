@@ -46,8 +46,8 @@
   });
   zustand.schreibweise = 'klein';
   // Für den Screenshot: "m" halb nachgespurt zeigen
-  zustand.index = BUCHSTABEN.findIndex((e) => e.b === 'm'); zeigen('trace', false); tafelAufbauen();
-  $('#bild').textContent = BUCHSTABEN[zustand.index].bild; $('#fortschritt').textContent = sterneText(1);
+  zustand.index = BUCHSTABEN.findIndex((e) => e.b === 'y'); zeigen('trace', false); tafelAufbauen();
+  $('#bild').innerHTML = bildHtml(BUCHSTABEN[zustand.index]); $('#fortschritt').textContent = sterneText(1);
   ev('pointerdown', tafelZustand.breite * 0.2, tafelZustand.hoehe * 0.4); ev('pointermove', tafelZustand.breite * 0.22, tafelZustand.hoehe * 0.65); ev('pointerup', 0, 0);
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#000c;color:#fff;font:12px monospace;padding:6px;z-index:9';
