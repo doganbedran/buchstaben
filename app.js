@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 29;
+const APP_VERSION = 30;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -171,6 +171,7 @@ function einstellungenLaden() {
   zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
   zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', 'alphabet');
   zustand.farbe = k ? (k.farbe || 'bunt') : speicher.lesen('farbe', 'bunt');
+  zustand.funde = k ? (k.funde || []) : speicher.lesen('funde', []);
 }
 
 function einstellungenSpeichern() {
@@ -181,8 +182,10 @@ function einstellungenSpeichern() {
     k.album = zustand.album;
     k.reihenfolge = zustand.reihenfolge;
     k.farbe = zustand.farbe;
+    k.funde = zustand.funde;
     return datenbank.kindSpeichern(k);
   }
+  speicher.schreiben('funde', zustand.funde);
   speicher.schreiben('reihenfolge', zustand.reihenfolge);
   speicher.schreiben('farbe', zustand.farbe);
   speicher.schreiben('schreibweise', zustand.schreibweise);
@@ -435,6 +438,7 @@ window.addEventListener('popstate', async () => {
   clearTimeout(hoerSpiel.timer);
   clearTimeout(memory.timer);
   clearTimeout(memory.timerNeu);
+  clearTimeout(jagd.timer);
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
   if (ziel === 'eltern') {
@@ -656,6 +660,7 @@ function tafelAufbauen() {
 }
 
 function tafelLeeren() {
+  funken = [];
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   tafelZustand.geschafft = false;
@@ -695,12 +700,25 @@ function spurFarbe(strecke = 0) {
   return f;
 }
 
-// Glitzer: ab und zu ein kleiner weißer Funken auf der Spur
+// Glitzer: ab und zu ein kleiner weißer Funken auf der Spur. Die Funken werden gemerkt und nach jedem
+// Spurstück in der Nähe neu gesetzt – sonst würde die weitergemalte Spur sie gleich wieder übermalen.
+let funken = [];
+
 function funkeln(p) {
-  if (zustand.farbe !== 'glitzer' || Math.random() > 0.35) return;
-  const r = 2 + Math.random() * 3;
-  const x = p.x + (Math.random() - 0.5) * tafelZustand.linienbreite * 0.7;
-  const y = p.y + (Math.random() - 0.5) * tafelZustand.linienbreite * 0.7;
+  if (zustand.farbe !== 'glitzer') return;
+  if (Math.random() < 0.35) {
+    funken.push({
+      x: p.x + (Math.random() - 0.5) * tafelZustand.linienbreite * 0.7,
+      y: p.y + (Math.random() - 0.5) * tafelZustand.linienbreite * 0.7,
+      r: 2 + Math.random() * 3,
+    });
+    if (funken.length > 400) funken.shift();
+  }
+  const nah = tafelZustand.linienbreite * 2;
+  funken.forEach((f) => { if (Math.abs(f.x - p.x) < nah && Math.abs(f.y - p.y) < nah) funkenMalen(f); });
+}
+
+function funkenMalen({ x, y, r }) {
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
   ctx.beginPath();
   ctx.moveTo(x, y - r * 2); ctx.lineTo(x + r * 0.5, y - r * 0.5); ctx.lineTo(x + r * 2, y);
@@ -1017,6 +1035,7 @@ function strichFertig() {
 }
 
 function spurenNeuZeichnen() {
+  funken = [];
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (const punkte of gefuehrt.spuren) {
@@ -1641,10 +1660,14 @@ $('#btn-kind-neu').addEventListener('click', async () => {
     album: erstesKind ? speicher.lesen('album', []) : [],
     reihenfolge: erstesKind ? speicher.lesen('reihenfolge', 'alphabet') : 'alphabet',
     farbe: erstesKind ? speicher.lesen('farbe', 'bunt') : 'bunt',
+    funde: erstesKind ? speicher.lesen('funde', []) : [],
     erstellt: Date.now(),
   };
   await datenbank.kindSpeichern(kind);
-  if (erstesKind) { speicher.schreiben('sterne', {}); speicher.schreiben('album', []); }
+  if (erstesKind) {
+    speicher.schreiben('sterne', {}); speicher.schreiben('album', []); speicher.schreiben('funde', []);
+    await fundeUmziehen('ohne', kind.id);   // Fotos der Buchstaben-Jagd gehören jetzt dem Kind
+  }
   await kinderLaden();
   if (!aktivesKind()) { zustand.kind = kind.id; speicher.schreiben('kind', kind.id); }
   kindBearbeiten(kind.id);
@@ -1671,6 +1694,7 @@ async function kindAendern(fn) {
     zustand.album = kindInArbeit.album || [];
     zustand.reihenfolge = kindInArbeit.reihenfolge || 'alphabet';
     zustand.farbe = kindInArbeit.farbe || 'bunt';
+    zustand.funde = kindInArbeit.funde || [];
   }
   kindFormularZeichnen();
 }
@@ -1763,6 +1787,7 @@ $('#btn-kind-sterne-reset').addEventListener('click', () => {
 $('#btn-kind-loeschen').addEventListener('click', async () => {
   if (!confirm(`${kindInArbeit.name} mit allen Sternen löschen?`)) return;
   await datenbank.kindLoeschen(kindInArbeit.id);
+  await datenbank.profilLoeschen(`fund-${kindInArbeit.id}`);   // Fotos/Aufnahmen der Buchstaben-Jagd
   await kinderLaden();
   if (!aktivesKind()) {
     zustand.kind = kinder.length ? kinder[0].id : null;
@@ -2209,6 +2234,107 @@ $('#btn-memory-home').addEventListener('click', () => {
 });
 $('#btn-memory-neu').addEventListener('click', () => { clearTimeout(memory.timerNeu); $('#memory-jubel').classList.remove('zeigen'); memoryNeu(); });
 
+// ---------- Buchstaben-Jagd: etwas mit dem Anlaut suchen und fotografieren ----------
+
+// Buchstaben, für die man zu Hause gut etwas findet
+const JAGD_BUCHSTABEN = BUCHSTABEN.map((e) => e.b).filter((b) => !'cqvxyäöüß'.includes(b));
+const jagd = { b: null, foto: null, stimme: null, timer: null };
+let fundUrls = [];
+
+const fundBesitzer = () => (aktivesKind() ? aktivesKind().id : 'ohne');
+
+// Fotos/Aufnahmen der Funde: { fundId: { bildUrl, stimme } }
+async function fundMedienLaden() {
+  fundUrls.forEach((u) => URL.revokeObjectURL(u));
+  fundUrls = [];
+  const ergebnis = {};
+  for (const { schluessel, blob } of await datenbank.medienVon(`fund-${fundBesitzer()}`)) {
+    const [, id, art] = schluessel.split('|');
+    const m = ergebnis[id] || (ergebnis[id] = {});
+    if (art === 'bild') { m.bildUrl = URL.createObjectURL(blob); fundUrls.push(m.bildUrl); } else m.stimme = blob;
+  }
+  return ergebnis;
+}
+
+async function fundeUmziehen(von, nach) {
+  for (const { schluessel, blob } of await datenbank.medienVon(`fund-${von}`)) {
+    await datenbank.medienRoh(schluessel.replace(`fund-${von}|`, `fund-${nach}|`), blob);
+  }
+  await datenbank.profilLoeschen(`fund-${von}`);
+}
+
+function jagdNeuerBuchstabe() {
+  clearTimeout(jagd.timer);
+  const frei = freigeschaltet();
+  const moeglich = JAGD_BUCHSTABEN.filter((b) => frei.has(b) && b !== jagd.b);
+  jagd.b = zufall(moeglich.length ? moeglich : JAGD_BUCHSTABEN.filter((b) => b !== jagd.b));
+  jagd.foto = null;
+  jagd.stimme = null;
+  const e = BUCHSTABEN.find((x) => x.b === jagd.b);
+  $('#jagd-buchstabe').innerHTML = strichSvg(zeichen(e), [-26, 148], 70);
+  $('#jagd-buchstabe').hidden = false;
+  $('#jagd-foto').hidden = true;
+  $('#btn-jagd-stimme').hidden = true;
+  $('#btn-jagd-fertig').hidden = true;
+  jagdAnsage();
+}
+
+function jagdAnsage() {
+  folgeAbspielen([{ url: 'audio/ansage-jagd.wav' }, { url: `audio/${dateiName(jagd.b)}-laut.wav` }], 'Finde etwas, das so anfängt!');
+}
+
+function jagdFotoGesetzt(blob) {
+  jagd.foto = blob;
+  const url = URL.createObjectURL(blob);
+  fundUrls.push(url);
+  $('#jagd-foto').innerHTML = `<img src="${url}" alt="">`;
+  $('#jagd-foto').hidden = false;
+  $('#jagd-buchstabe').hidden = true;
+  $('#btn-jagd-stimme').hidden = false;
+  $('#btn-jagd-fertig').hidden = false;
+}
+
+function jagdStimmeGesetzt(blob) {
+  jagd.stimme = blob;
+  folgeAbspielen([{ url: `audio/${dateiName(jagd.b)}-laut.wav` }, blobQuelle(blob)]);
+}
+
+async function jagdSpeichern() {
+  if (!jagd.foto) return;
+  const id = Date.now().toString(36);
+  const besitzer = `fund-${fundBesitzer()}`;
+  await datenbank.medienSetzen(besitzer, id, 'bild', jagd.foto);
+  if (jagd.stimme) await datenbank.medienSetzen(besitzer, id, 'stimme', jagd.stimme);
+  zustand.funde = [...(zustand.funde || []), { id, b: jagd.b, zeit: Date.now() }];
+  await einstellungenSpeichern();
+  // Jubel mit dem Foto, Lob, Laut und (falls aufgenommen) dem Wort
+  const jubel = $('#jagd-jubel');
+  $('#jagd-jubel-bild').innerHTML = $('#jagd-foto').innerHTML;
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  glockenspiel();
+  folgeAbspielen([lobQuelle(), { url: `audio/${dateiName(jagd.b)}-laut.wav` }, ...(jagd.stimme ? [blobQuelle(jagd.stimme)] : [])], 'Super!');
+  jagd.timer = setTimeout(() => { jubel.classList.remove('zeigen'); jagdNeuerBuchstabe(); }, 3600);
+}
+
+function jagdStarten() {
+  zeigen('jagd');
+  jagdNeuerBuchstabe();
+}
+
+$('#btn-jagd-home').addEventListener('click', () => { clearTimeout(jagd.timer); stopAufnahme(); wiedergabeStoppen(); zurStartseite(); });
+$('#btn-jagd-laut').addEventListener('click', () => { audio(); jagdAnsage(); });
+$('#btn-jagd-neu').addEventListener('click', () => { $('#jagd-jubel').classList.remove('zeigen'); jagdNeuerBuchstabe(); });
+$('#btn-jagd-foto').addEventListener('click', () => { const i = $('#jagd-input'); i.value = ''; i.click(); });
+$('#jagd-input').addEventListener('change', async (e) => {
+  const datei = e.target.files && e.target.files[0];
+  if (!datei) return;
+  try { jagdFotoGesetzt(await fotoVerkleinern(datei)); } catch { alert('Das Foto konnte nicht geladen werden.'); }
+});
+$('#btn-jagd-stimme').addEventListener('click', (e) => aufnehmen(e.currentTarget, async (blob) => jagdStimmeGesetzt(blob)));
+$('#btn-jagd-fertig').addEventListener('click', jagdSpeichern);
+
 // ---------- Sticker-Album ----------
 
 const stickerSchluessel = (b, wort) => `${b}|${wort}`;
@@ -2227,12 +2353,31 @@ function alleSticker() {
   return BUCHSTABEN.flatMap((e) => woerterFuer(e).map((w) => ({ e, w, key: stickerSchluessel(e.b, w.wort) })));
 }
 
-function albumZeichnen() {
+function albumZeichnen(fundMedien = {}) {
   const alle = alleSticker();
   const gesammelt = new Set(zustand.album || []);
   $('#album-zahl').textContent = `${alle.filter((s) => gesammelt.has(s.key)).length} / ${alle.length}`;
   const raster = $('#album-raster');
   raster.innerHTML = '';
+  // Oben: Fotos aus der Buchstaben-Jagd
+  const funde = (zustand.funde || []).filter((f) => fundMedien[f.id] && fundMedien[f.id].bildUrl);
+  if (funde.length) {
+    raster.insertAdjacentHTML('beforeend', '<div class="album-abschnitt">🔍</div>');
+    // Eigene Reihe mit fester Kachelgröße (im Raster würde die Zeilenhöhe der Fotos falsch berechnet)
+    const reihe = document.createElement('div');
+    reihe.className = 'album-funde';
+    raster.appendChild(reihe);
+    funde.slice().reverse().forEach((f) => {
+      const m = fundMedien[f.id];
+      const e = BUCHSTABEN.find((x) => x.b === f.b) || BUCHSTABEN[0];
+      const el = document.createElement('button');
+      el.className = 'sticker hat fund';
+      el.innerHTML = `<img src="${m.bildUrl}" alt=""><small>${zeichen(e)}</small>`;
+      el.addEventListener('click', () => folgeAbspielen([{ url: `audio/${dateiName(f.b)}-laut.wav` }, ...(m.stimme ? [blobQuelle(m.stimme)] : [])]));
+      reihe.appendChild(el);
+    });
+    raster.insertAdjacentHTML('beforeend', '<div class="album-abschnitt">📒</div>');
+  }
   alle.forEach(({ e, w, key }) => {
     const hat = gesammelt.has(key);
     const el = document.createElement('button');
@@ -2245,8 +2390,8 @@ function albumZeichnen() {
   });
 }
 
-function albumOeffnen() {
-  albumZeichnen();
+async function albumOeffnen() {
+  albumZeichnen(await fundMedienLaden());
   zeigen('album');
 }
 
@@ -2365,7 +2510,7 @@ $('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.t
 $('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
 
 // Spiele-Leiste
-const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, memory: memoryStarten, album: albumOeffnen };
+const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();
@@ -2417,9 +2562,12 @@ async function sicherungErstellen() {
       album: speicher.lesen('album', []),
       reihenfolge: speicher.lesen('reihenfolge', 'alphabet'),
       farbe: speicher.lesen('farbe', 'bunt'),
+      funde: speicher.lesen('funde', []),
     },
     profile,
     kinder: kinderListe,
+    funde: await Promise.all(medienAlle.filter((m) => m.schluessel.startsWith('fund-'))
+      .map(async (m) => ({ schluessel: m.schluessel, daten: await blobZuText(m.blob) }))),
   };
 }
 
@@ -2451,8 +2599,12 @@ async function sicherungEinspielen(s) {
       sterne: k.sterne || {},
     });
   }
+  for (const f of s.funde || []) {
+    if (typeof f.schluessel === 'string' && f.schluessel.startsWith('fund-')) await datenbank.medienRoh(f.schluessel, await textZuBlob(f.daten));
+  }
   // App-weite Einstellungen nur auf einem frischen Gerät übernehmen (sonst nichts überschreiben)
   if (warFrisch && s.einstellungen) {
+    speicher.schreiben('funde', s.einstellungen.funde || []);
     speicher.schreiben('schreibweise', s.einstellungen.schreibweise || 'klein');
     speicher.schreiben('sterne', s.einstellungen.sterne || {});
     speicher.schreiben('profil', s.einstellungen.profil || STANDARD.id);

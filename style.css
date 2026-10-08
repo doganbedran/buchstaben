@@ -243,6 +243,29 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .memory-karte.paar .innen { animation: paar-huepfen 0.6s ease 0.45s; }
 @keyframes paar-huepfen { 50% { transform: rotateY(180deg) scale(1.08); } }
 
+/* Buchstaben-Jagd */
+.jagd-inhalt { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.jagd-buchstabe {
+  width: min(56vw, 260px); aspect-ratio: 1; border-radius: 32px; background: var(--papier); box-shadow: var(--schatten);
+  display: grid; place-items: center; color: #1d5fbf; animation: lauschen 2.4s ease-in-out infinite;
+}
+.jagd-buchstabe .zeichen-svg { height: 80%; width: auto; }
+.jagd-foto img { width: min(56vw, 260px); aspect-ratio: 1; object-fit: cover; border-radius: 28px; box-shadow: var(--schatten); display: block; }
+.jagd-knoepfe { display: flex; gap: 18px; }
+.gross-btn {
+  width: 84px; height: 84px; border-radius: 50%; border: none; background: var(--papier); box-shadow: var(--schatten);
+  font-size: 2.6rem; display: grid; place-items: center;
+}
+.gross-btn:active { transform: scale(0.92); }
+.gross-btn.gruen { background: #e3f3e3; }
+.gross-btn.aktiv { background: var(--rot); animation: pulsieren 1s infinite; }
+.jagd-hinweis { color: var(--leise); font-size: 0.85rem; text-align: center; max-width: 320px; margin: 0; font-family: system-ui, sans-serif; }
+.album-abschnitt { grid-column: 1 / -1; font-size: 1.6rem; margin: 6px 0 -2px; }
+.album-funde { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; }
+.fund { width: 84px; height: 84px; border-radius: 18px !important; overflow: hidden; padding: 0; flex: 0 0 auto; }
+.fund img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fund small { z-index: 1; }
+
 /* Sticker-Album */
 .album-titel { font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .album-titel span { font-size: 1.2rem; color: var(--leise); }

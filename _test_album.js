@@ -36,6 +36,7 @@
 
   // 2. Album-Ansicht
   document.querySelector('.spiel-btn[data-spiel="album"]').click();
+  await warte(300);   // Album lädt zuerst die Fotos der Buchstaben-Jagd
   const gesamt = alleSticker().length;
   pruefe($('#album').classList.contains('active'), 'Album nicht geöffnet');
   pruefe($('#album-zahl').textContent === `2 / ${gesamt}`, `Zähler: ${$('#album-zahl').textContent}`);
@@ -59,7 +60,7 @@
 
   // Ansicht: Album von Lina
   await kindWaehlen(lina.id);
-  albumOeffnen();
+  await albumOeffnen();
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;color:#fff;font:12px monospace;padding:6px;z-index:9;background:'
     + (fehler.length ? '#c62828' : '#1b7f3a');
