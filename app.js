@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -439,6 +439,7 @@ window.addEventListener('popstate', async () => {
   clearTimeout(memory.timer);
   clearTimeout(memory.timerNeu);
   clearTimeout(jagd.timer);
+  clearTimeout(legen.timer);
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
   if (ziel === 'eltern') {
@@ -2335,6 +2336,114 @@ $('#jagd-input').addEventListener('change', async (e) => {
 $('#btn-jagd-stimme').addEventListener('click', (e) => aufnehmen(e.currentTarget, async (blob) => jagdStimmeGesetzt(blob)));
 $('#btn-jagd-fertig').addEventListener('click', jagdSpeichern);
 
+// ---------- Wörter legen (bewegliches Alphabet) ----------
+
+// Nur lautgetreue Wörter: so geschrieben, wie man sie hört (kein sch/ch/ei/au, kein stummes h)
+const LEGEN_NICHT = ['Uhr', 'Ohr', 'Kuh', 'Ähre', 'Fuß'];
+const LEGEN_RUNDEN = 3;
+const legen = { wahl: null, buchstaben: [], pos: 0, runde: 0, steine: [], timer: null, vorher: [] };
+
+function lautgetreu(wort) {
+  const w = wort.toLowerCase();
+  return /^[a-zäöüß]+$/.test(w) && !['sch', 'ch', 'ei', 'eu', 'ie', 'au', 'äu', 'ck', 'qu'].some((x) => w.includes(x))
+    && ![...w].some((c) => 'cvxyß'.includes(c));
+}
+
+function legenWoerter() {
+  return BUCHSTABEN.flatMap((e) => woerterFuer(e)).filter((w) => {
+    if (w.art === 'eigen') return w.wort.length >= 2 && w.wort.length <= 6 && /^[a-zäöüß]+$/i.test(w.wort) && w.wortAllein().length;
+    return w.wort.length >= 3 && w.wort.length <= 4 && lautgetreu(w.wort) && !LEGEN_NICHT.includes(w.wort);
+  });
+}
+
+// So, wie das Kind schreibt: GROSS oder klein (Montessori: klein)
+const legenZeichen = (b) => (zustand.schreibweise === 'gross' ? grossVon(b) : b);
+
+function legenNeuesWort() {
+  clearTimeout(legen.timer);
+  const auswahl = legenWoerter().filter((w) => !legen.vorher.includes(w.wort));
+  legen.wahl = zufall(auswahl.length ? auswahl : legenWoerter());
+  legen.vorher = [...legen.vorher.slice(-4), legen.wahl.wort];
+  legen.buchstaben = [...legen.wahl.wort.toLowerCase()];
+  legen.pos = 0;
+  // Steine: alle Buchstaben des Wortes + 2 andere
+  const andere = mischen(BUCHSTABEN.map((e) => e.b).filter((b) => !legen.buchstaben.includes(b) && !'cqvxyß'.includes(b))).slice(0, 2);
+  legen.steine = mischen([...legen.buchstaben, ...andere]).map((b, i) => ({ b, i, weg: false }));
+  legenZeichnen();
+  folgeAbspielen([{ url: 'audio/ansage-legen.wav' }, ...legen.wahl.wortAllein()], 'Leg das Wort!');
+}
+
+function legenZeichnen() {
+  $('#legen-runden').innerHTML = Array.from({ length: LEGEN_RUNDEN }, (_, i) => `<span class="${i < legen.runde ? 'voll' : ''}"></span>`).join('');
+  $('#legen-bild').innerHTML = legen.wahl.bild();
+  const felder = $('#legen-felder');
+  felder.innerHTML = '';
+  legen.buchstaben.forEach((b, i) => {
+    const feld = document.createElement('button');
+    feld.className = `legen-feld${i < legen.pos ? ' voll' : ''}${i === legen.pos ? ' naechstes' : ''}`;
+    feld.innerHTML = i < legen.pos ? strichSvg(legenZeichen(b), [-26, 148], 40) : '';
+    feld.setAttribute('aria-label', i < legen.pos ? b : 'leeres Feld');
+    // Tipp aufs nächste leere Feld: den gesuchten Laut hören
+    if (i === legen.pos) feld.addEventListener('click', () => folgeAbspielen([{ url: `audio/${dateiName(b)}-laut.wav` }]));
+    felder.appendChild(feld);
+  });
+  const steine = $('#legen-steine');
+  steine.innerHTML = '';
+  legen.steine.forEach((st) => {
+    const btn = document.createElement('button');
+    btn.className = `legen-stein${st.weg ? ' weg' : ''}`;
+    btn.innerHTML = strichSvg(legenZeichen(st.b), [-26, 148], 40);
+    btn.setAttribute('aria-label', st.b);
+    btn.addEventListener('click', () => legenSteinGetippt(st, btn));
+    steine.appendChild(btn);
+  });
+}
+
+function legenSteinGetippt(st, btn) {
+  if (st.weg || legen.pos >= legen.buchstaben.length) return;
+  audio();
+  if (st.b !== legen.buchstaben[legen.pos]) {
+    btn.classList.remove('falsch');
+    void btn.offsetWidth;
+    btn.classList.add('falsch');
+    folgeAbspielen([{ url: `audio/${dateiName(st.b)}-laut.wav` }]);
+    return;
+  }
+  st.weg = true;
+  legen.pos++;
+  if (legen.pos < legen.buchstaben.length) {
+    folgeAbspielen([{ url: `audio/${dateiName(st.b)}-laut.wav` }]);
+    legenZeichnen();
+    return;
+  }
+  // Wort fertig
+  legen.runde++;
+  legenZeichnen();
+  glockenspiel();
+  folgeAbspielen([lobQuelle(), ...legen.wahl.wortAllein()], `Super! ${legen.wahl.wort}`);
+  legen.timer = setTimeout(() => (legen.runde >= LEGEN_RUNDEN ? legenGeschafft() : legenNeuesWort()), 2600);
+}
+
+function legenGeschafft() {
+  const jubel = $('#legen-jubel');
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  glockenspiel();
+  folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft!');
+  legen.timer = setTimeout(() => { jubel.classList.remove('zeigen'); legen.runde = 0; legenNeuesWort(); }, 3400);
+}
+
+function legenStarten() {
+  legen.runde = 0;
+  zeigen('legen');
+  legenNeuesWort();
+}
+
+$('#btn-legen-home').addEventListener('click', () => { clearTimeout(legen.timer); wiedergabeStoppen(); zurStartseite(); });
+$('#btn-legen-wort').addEventListener('click', () => { audio(); folgeAbspielen(legen.wahl.wortAllein()); });
+$('#legen-bild').addEventListener('click', () => { audio(); folgeAbspielen(legen.wahl.wortAllein()); });
+
 // ---------- Sticker-Album ----------
 
 const stickerSchluessel = (b, wort) => `${b}|${wort}`;
@@ -2510,7 +2619,7 @@ $('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.t
 $('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
 
 // Spiele-Leiste
-const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, album: albumOeffnen };
+const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();

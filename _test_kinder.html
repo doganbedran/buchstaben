@@ -35,6 +35,7 @@
       <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
       <button class="spiel-btn" data-spiel="memory" aria-label="Groß und klein">🧩</button>
       <button class="spiel-btn" data-spiel="jagd" aria-label="Buchstaben-Jagd">🔍</button>
+      <button class="spiel-btn" data-spiel="legen" aria-label="Wörter legen">🔤</button>
       <button class="spiel-btn" data-spiel="album" aria-label="Sticker-Album">📒</button>
     </nav>
     <div id="grid" class="grid"></div>
@@ -111,6 +112,21 @@
     </div>
     <input type="file" id="jagd-input" accept="image/*" capture="environment" hidden>
     <div id="jagd-jubel" class="jubel"><span id="jagd-jubel-bild"></span></div>
+  </section>
+
+  <!-- Wörter legen (bewegliches Alphabet) -->
+  <section id="legen" class="screen">
+    <header class="topbar">
+      <button id="btn-legen-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div id="legen-runden" class="runden-punkte"></div>
+      <button id="btn-legen-wort" class="icon-btn" aria-label="Wort anhören">🔊</button>
+    </header>
+    <div class="legen-inhalt">
+      <button id="legen-bild" class="legen-bild" aria-label="Wort anhören"></button>
+      <div id="legen-felder" class="legen-felder"></div>
+      <div id="legen-steine" class="legen-steine"></div>
+    </div>
+    <div id="legen-jubel" class="jubel"><span>🏆</span></div>
   </section>
 
   <!-- Sticker-Album -->

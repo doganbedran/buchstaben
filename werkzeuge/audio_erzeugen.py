@@ -51,6 +51,7 @@ ANSAGEN = {
     'memory': 'Finde groß und klein!',
     'neue-buchstaben': 'Hurra! Neue Buchstaben!',
     'jagd': 'Finde etwas, das so anfängt!',
+    'legen': 'Leg das Wort!',
 }
 
 TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen']

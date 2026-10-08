@@ -22,6 +22,7 @@ LAEUFE=(
   "montessori|_test_montessori.html|412,860|90"
   "farben|_test_farben.html|412,860|90"
   "jagd|_test_jagd.html|412,860|90"
+  "legen|_test_legen.html|412,860|90"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do
