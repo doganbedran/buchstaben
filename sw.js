@@ -1,7 +1,7 @@
 // Offline-Cache: Mit Internet immer die neueste Version laden, ohne Internet aus dem Cache.
 importScripts('letters.js');
 
-const CACHE = 'buchstaben-v4';
+const CACHE = 'buchstaben-v5';
 const DATEIEN = [
   './', 'index.html', 'style.css', 'app.js', 'letters.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png',
@@ -23,10 +23,13 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const eigeneSeite = new URL(e.request.url).origin === location.origin;
+  // cache: 'no-cache' umgeht den 10-Minuten-Browsercache von GitHub Pages (fragt per ETag nach, meist nur "304")
+  const anfrage = eigeneSeite ? fetch(e.request.url, { cache: 'no-cache' }) : fetch(e.request);
   e.respondWith(
-    fetch(e.request)
+    anfrage
       .then((antwort) => {
-        if (antwort.ok && new URL(e.request.url).origin === location.origin) {
+        if (antwort.ok && eigeneSeite) {
           const kopie = antwort.clone();
           caches.open(CACHE).then((c) => c.put(e.request, kopie));
         }
