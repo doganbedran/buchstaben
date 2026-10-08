@@ -23,6 +23,13 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 6. Dem User kurz auf Deutsch berichten: was neu ist, was getestet wurde, was nur auf dem echten Handy prüfbar ist
    (Kamera, Mikrofon, Vibration, Finger).
 
+## Team und Abläufe (`.claude/`)
+- Rollen in `.claude/agents/`: `paedagogin`, `bildungsplan` (Berlin + Bayern/Sachsen + Studienlage), `kinderpsychologin`,
+  `ux-kinder`, `testerin`, `reviewer`, `datenschutz`, `kinder-tester` – Befunde jeweils als Muss / Sollte / Idee.
+- `/neuer-inhalt` – größere Inhalte mit dem ganzen Team (Ideen → Gestaltung → Bauen → Prüfen → Veröffentlichen → Checkliste).
+- `/veroeffentlichen` – Version + Cache, alle Tests, Commit, Push, Live-Prüfung, Bericht.
+- Kleine Korrekturen ohne Team; echte Beobachtungen der Kinder haben Vorrang vor dem virtuellen Team.
+
 ## Struktur
 - `index.html`, `style.css`, `app.js` – die ganze App (keine Build-Schritte, keine Abhängigkeiten)
 - `letters.js` – Alphabet: `wort`/`bild`/`laut` + weitere Wörter `mehr`; `dateiName()` (ä→ae, ö→oe, ü→ue, ß→ss)
