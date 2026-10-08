@@ -453,14 +453,28 @@ function maske(art) {
   return bits;
 }
 
+const vorlage = $('#vorlage');
+const vorlageCtx = vorlage.getContext('2d');
+
 function tafelAufbauen() {
   const rect = canvas.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
+  // Ein noch laufender Jubel vom vorigen Buchstaben darf die neue Tafel nicht leeren
+  clearTimeout(tafelZustand.jubelTimer);
+  $('#jubel').classList.remove('zeigen');
   const dpr = window.devicePixelRatio || 1;
   tafelZustand.breite = rect.width;
   tafelZustand.hoehe = rect.height;
-  canvas.width = Math.round(rect.width * dpr);
-  canvas.height = Math.round(rect.height * dpr);
+  canvas.width = vorlage.width = Math.round(rect.width * dpr);
+  canvas.height = vorlage.height = Math.round(rect.height * dpr);
+
+  // Buchstaben mit Strichdaten: geführtes Nachspuren Strich für Strich
+  if (STRICHE[text()]) {
+    strichLayout(STRICHE[text()], rect.width, rect.height);
+    tafelLeeren();
+    return;
+  }
+  gefuehrt.aktiv = false;
 
   tafelZustand.schrift = buchstabenLayout(text(), rect.width, rect.height);
   // Spurbreite etwas dicker als der Buchstabenstrich (wächst mit), mindestens fingerbreit
@@ -477,15 +491,27 @@ function tafelAufbauen() {
 }
 
 function tafelLeeren() {
-  const dpr = canvas.width / (tafelZustand.breite || 1);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  buchstabeMalen(ctx, tafelZustand.schrift, dpr, 'vorlage');
-  spurCtx.clearRect(0, 0, pruef.spur.width, pruef.spur.height);
   tafelZustand.geschafft = false;
+  if (gefuehrt.aktiv) {
+    gefuehrt.nr = 0;
+    gefuehrt.fortschritt = 0;
+    gefuehrt.spuren = [];
+    gefuehrt.versuch = null;
+    vorlageZeichnen();
+    return;
+  }
+  startpunktZeigen(null);
+  const dpr = canvas.width / (tafelZustand.breite || 1);
+  vorlageCtx.setTransform(1, 0, 0, 1, 0, 0);
+  vorlageCtx.clearRect(0, 0, vorlage.width, vorlage.height);
+  buchstabeMalen(vorlageCtx, tafelZustand.schrift, dpr, 'vorlage');
+  spurCtx.clearRect(0, 0, pruef.spur.width, pruef.spur.height);
 }
 
 const SPUR_FARBEN = ['#f28c38', '#3d8fd1', '#4caf50', '#9b59b6', '#e0567c', '#e6a700'];
+const spurFarbe = () => SPUR_FARBEN[zustand.index % SPUR_FARBEN.length];
 
 function linie(von, bis) {
   const dpr = canvas.width / tafelZustand.breite;
@@ -493,11 +519,12 @@ function linie(von, bis) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.lineWidth = tafelZustand.linienbreite;
-  ctx.strokeStyle = SPUR_FARBEN[zustand.index % SPUR_FARBEN.length];
+  ctx.strokeStyle = spurFarbe();
   ctx.beginPath();
   ctx.moveTo(von.x, von.y);
   ctx.lineTo(bis.x, bis.y);
   ctx.stroke();
+  if (gefuehrt.aktiv) return;
 
   const s = pruef.skala;
   spurCtx.lineCap = 'round';
@@ -523,6 +550,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const p = punkt(e);
   tafelZustand.letzter = p;
   linie(p, p);
+  if (gefuehrt.aktiv) gefuehrtStart(p);
 });
 
 canvas.addEventListener('pointermove', (e) => {
@@ -533,6 +561,7 @@ canvas.addEventListener('pointermove', (e) => {
     const p = punkt(ev);
     linie(tafelZustand.letzter, p);
     tafelZustand.letzter = p;
+    if (gefuehrt.aktiv) gefuehrtBewegung(p);
   }
 });
 
@@ -540,10 +569,240 @@ function strichEnde(e) {
   if (e.pointerId !== tafelZustand.pointerId) return;
   tafelZustand.pointerId = null;
   tafelZustand.letzter = null;
-  pruefen();
+  if (gefuehrt.aktiv) gefuehrtEnde();
+  else pruefen();
 }
 canvas.addEventListener('pointerup', strichEnde);
 canvas.addEventListener('pointercancel', strichEnde);
+
+// ---------- Geführtes Nachspuren: Strich für Strich in Schreibrichtung ----------
+
+const STRICH_BREITE = 12;   // Strichbreite der Vorlage in Einheiten des Vierlinien-Systems
+const gefuehrt = {
+  aktiv: false,
+  pfade: [],        // pro Strich: { p: [{x,y}], l: [Bogenlänge bis Punkt i], L: Gesamtlänge } in Bildschirm-Pixeln
+  linien: {},       // y-Position von Ober-, Mittel-, Grund- und Unterlinie
+  breite: 0,        // Strichbreite der Vorlage in Pixeln
+  nr: 0,            // aktueller Strich
+  fortschritt: 0,   // wie weit der aktuelle Strich schon nachgefahren ist (Pixel entlang des Strichs)
+  versuch: null,    // aktueller Fingerstrich: { punkte, folgt, startFortschritt }
+  spuren: [],       // gültige Fingerstriche (bleiben sichtbar)
+};
+
+function strichLayout(daten, breite, hoehe) {
+  const alle = daten.flat();
+  const xs = alle.map((p) => p[0]), ys = alle.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const rand = STRICH_BREITE;
+  const kante = Math.min(breite, hoehe) * 0.74;
+  const f = Math.min(kante / (maxX - minX + 2 * rand), kante / (maxY - minY + 2 * rand));
+  const ox = breite / 2 - ((minX + maxX) / 2) * f;
+  const oy = hoehe / 2 - ((minY + maxY) / 2) * f;
+  gefuehrt.aktiv = true;
+  gefuehrt.breite = STRICH_BREITE * f;
+  gefuehrt.linien = { oben: oy, mitte: oy + 50 * f, grund: oy + 100 * f, unten: oy + 140 * f, mitUnterlinie: maxY > 100 };
+  gefuehrt.pfade = daten.map((punkte) => {
+    const p = punkte.map(([x, y]) => ({ x: ox + x * f, y: oy + y * f }));
+    const l = [0];
+    for (let i = 1; i < p.length; i++) l.push(l[i - 1] + Math.hypot(p[i].x - p[i - 1].x, p[i].y - p[i - 1].y));
+    return { p, l, L: l[l.length - 1] };
+  });
+  tafelZustand.linienbreite = Math.max(22, gefuehrt.breite * 1.15);
+}
+
+// Punkt auf dem Strich nach s Pixeln
+function punktBei(pfad, s) {
+  s = Math.max(0, Math.min(pfad.L, s));
+  let i = 1;
+  while (i < pfad.p.length - 1 && pfad.l[i] < s) i++;
+  const a = pfad.p[i - 1], b = pfad.p[i];
+  const t = (s - pfad.l[i - 1]) / ((pfad.l[i] - pfad.l[i - 1]) || 1);
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+// Nächster Punkt auf dem Strich, nur im Bereich [von, bis] (damit z. B. beim Kreis nicht zum Ende gesprungen wird)
+function projizieren(pfad, q, von, bis) {
+  let best = { s: von, d: Infinity };
+  for (let i = 1; i < pfad.p.length; i++) {
+    if (pfad.l[i] < von || pfad.l[i - 1] > bis) continue;
+    const a = pfad.p[i - 1], b = pfad.p[i];
+    const dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((q.x - a.x) * dx + (q.y - a.y) * dy) / len2));
+    const d = Math.hypot(a.x + dx * t - q.x, a.y + dy * t - q.y);
+    const s = Math.max(von, Math.min(bis, pfad.l[i - 1] + t * (pfad.l[i] - pfad.l[i - 1])));
+    if (d < best.d) best = { s, d };
+  }
+  return best;
+}
+
+// Toleranzen (in Pixeln), großzügig für Kinderfinger
+const fangRadius = () => Math.max(34, gefuehrt.breite * 1.6);      // so nah muss der Finger am Startpunkt aufsetzen
+const spurToleranz = () => Math.max(26, gefuehrt.breite * 1.3);    // so weit darf er neben dem Strich sein
+const abrutschGrenze = () => Math.max(48, gefuehrt.breite * 2.4);  // ab hier gilt der Versuch als abgerutscht
+
+function gefuehrtStart(p) {
+  const pfad = gefuehrt.pfade[gefuehrt.nr];
+  const start = punktBei(pfad, gefuehrt.fortschritt);
+  const folgt = Math.hypot(p.x - start.x, p.y - start.y) <= fangRadius();
+  gefuehrt.versuch = { punkte: [p], folgt, startFortschritt: gefuehrt.fortschritt };
+}
+
+function gefuehrtBewegung(p) {
+  const v = gefuehrt.versuch;
+  if (!v) return;
+  v.punkte.push(p);
+  if (!v.folgt) return;
+  const pfad = gefuehrt.pfade[gefuehrt.nr];
+  const b = gefuehrt.breite;
+  const treffer = projizieren(pfad, p, gefuehrt.fortschritt - b, gefuehrt.fortschritt + 2.5 * b);
+  if (treffer.d > abrutschGrenze()) {
+    abgerutscht();
+    return;
+  }
+  if (treffer.d <= spurToleranz() && treffer.s > gefuehrt.fortschritt) {
+    gefuehrt.fortschritt = treffer.s;
+    startpunktZeigen(punktBei(pfad, gefuehrt.fortschritt));
+  }
+  // Am Ende angekommen (eine halbe Strichbreite Spielraum)
+  if (gefuehrt.fortschritt >= pfad.L - b * 0.5) strichFertig();
+}
+
+function gefuehrtEnde() {
+  const v = gefuehrt.versuch;
+  gefuehrt.versuch = null;
+  if (!v) return;
+  // Gültige Spur bleibt stehen (Finger absetzen und weitermachen ist erlaubt), alles andere verschwindet
+  if (v.folgt) gefuehrt.spuren.push(v.punkte);
+  else if (v.fertig) spurenNeuZeichnen();          // nach fertigem Strich einfach weitergemalt: nur aufräumen
+  else { spurenNeuZeichnen(); hinweisZeigen(); }
+}
+
+function abgerutscht() {
+  const v = gefuehrt.versuch;
+  v.folgt = false;
+  gefuehrt.fortschritt = v.startFortschritt;
+  v.punkte = [];
+  spurenNeuZeichnen();
+  vorlageZeichnen();
+  hinweisZeigen();
+}
+
+function strichFertig() {
+  const v = gefuehrt.versuch;
+  if (v) { gefuehrt.spuren.push(v.punkte); v.punkte = []; v.folgt = false; v.fertig = true; }
+  gefuehrt.nr++;
+  gefuehrt.fortschritt = 0;
+  klick();
+  if (gefuehrt.nr >= gefuehrt.pfade.length) {
+    startpunktZeigen(null);
+    vorlageZeichnen();
+    geschafft();
+    return;
+  }
+  vorlageZeichnen();
+}
+
+function spurenNeuZeichnen() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const punkte of gefuehrt.spuren) {
+    for (let i = 0; i < punkte.length; i++) linie(punkte[Math.max(0, i - 1)], punkte[i]);
+  }
+}
+
+// Kurzer heller Ton, wenn ein Strich geschafft ist
+function klick() {
+  const c = audio();
+  if (!c) return;
+  const osc = c.createOscillator(), gain = c.createGain(), t = c.currentTime;
+  osc.frequency.value = 880 + gefuehrt.nr * 110;
+  gain.gain.setValueAtTime(0.18, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  osc.connect(gain).connect(c.destination);
+  osc.start(t);
+  osc.stop(t + 0.2);
+}
+
+function hinweisZeigen() {
+  const el = $('#startpunkt');
+  el.classList.remove('hinweis-puls');
+  void el.offsetWidth;
+  el.classList.add('hinweis-puls');
+}
+
+// Grüner Punkt: hier geht es los (bzw. weiter), mit Nummer des Strichs
+function startpunktZeigen(p) {
+  const el = $('#startpunkt');
+  if (!p) { el.hidden = true; return; }
+  const groesse = Math.max(40, gefuehrt.breite * 1.25);
+  el.hidden = false;
+  el.style.width = el.style.height = `${groesse}px`;
+  el.style.left = `${p.x - groesse / 2}px`;
+  el.style.top = `${p.y - groesse / 2}px`;
+  el.textContent = gefuehrt.nr + 1;
+}
+
+function pfadZeichnen(c, pfad, bisS = pfad.L) {
+  c.beginPath();
+  c.moveTo(pfad.p[0].x, pfad.p[0].y);
+  for (let i = 1; i < pfad.p.length && pfad.l[i - 1] < bisS; i++) {
+    const q = pfad.l[i] <= bisS ? pfad.p[i] : punktBei(pfad, bisS);
+    c.lineTo(q.x, q.y);
+  }
+  c.stroke();
+}
+
+function vorlageZeichnen() {
+  const dpr = vorlage.width / tafelZustand.breite;
+  const c = vorlageCtx;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, vorlage.width, vorlage.height);
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+
+  // Vierlinien-System wie im Schulheft
+  const { oben, mitte, grund, unten, mitUnterlinie } = gefuehrt.linien;
+  c.lineWidth = 2;
+  for (const [y, gestrichelt] of [[oben, false], [mitte, true], [grund, false], ...(mitUnterlinie ? [[unten, false]] : [])]) {
+    c.setLineDash(gestrichelt ? [8, 8] : []);
+    c.strokeStyle = y === grund ? '#d9c9b0' : '#ece2d3';
+    c.beginPath(); c.moveTo(12, y); c.lineTo(tafelZustand.breite - 12, y); c.stroke();
+  }
+  c.setLineDash([]);
+
+  // Buchstabe: fertige Striche grün hinterlegt, offene beige
+  gefuehrt.pfade.forEach((pfad, i) => {
+    c.lineWidth = gefuehrt.breite;
+    c.strokeStyle = i < gefuehrt.nr ? '#d5ecd5' : '#f1e8da';
+    pfadZeichnen(c, pfad);
+  });
+
+  // Aktueller Strich: etwas dunkler, mit Pfeilen in Schreibrichtung
+  const pfad = gefuehrt.pfade[gefuehrt.nr];
+  if (!pfad) return;
+  c.lineWidth = gefuehrt.breite;
+  c.strokeStyle = '#ead9bf';
+  pfadZeichnen(c, pfad);
+  pfeileZeichnen(c, pfad);
+  startpunktZeigen(punktBei(pfad, gefuehrt.fortschritt));
+}
+
+function pfeileZeichnen(c, pfad) {
+  const abstand = Math.max(40, gefuehrt.breite * 2.4);
+  const g = gefuehrt.breite * 0.42;
+  c.strokeStyle = '#f28c38';
+  c.lineWidth = Math.max(3.5, gefuehrt.breite * 0.16);
+  for (let s = abstand; s < pfad.L - abstand * 0.4; s += abstand) {
+    const p = punktBei(pfad, s), q = punktBei(pfad, s + 1);
+    const w = Math.atan2(q.y - p.y, q.x - p.x);
+    c.beginPath();
+    c.moveTo(p.x - g * Math.cos(w - 0.6), p.y - g * Math.sin(w - 0.6));
+    c.lineTo(p.x, p.y);
+    c.lineTo(p.x - g * Math.cos(w + 0.6), p.y - g * Math.sin(w + 0.6));
+    c.stroke();
+  }
+}
 
 // Zusammenhängende Flächen in einer Maske finden (4er-Nachbarschaft). Liefert Listen von Pixel-Indizes.
 function flaechen(maske, breite) {
@@ -634,7 +893,8 @@ function geschafft() {
   setTimeout(() => lautAbspielen(eintrag, true), 500);
 
   // Danach neu starten, damit das Kind gleich nochmal üben kann
-  setTimeout(() => {
+  clearTimeout(tafelZustand.jubelTimer);
+  tafelZustand.jubelTimer = setTimeout(() => {
     jubel.classList.remove('zeigen');
     tafelLeeren();
   }, 2600);

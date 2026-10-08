@@ -136,6 +136,31 @@ button { font: inherit; color: inherit; cursor: pointer; }
   min-height: 0;
 }
 .tafel canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+#vorlage { pointer-events: none; }
+
+/* Startpunkt beim geführten Nachspuren: grüner, sanft pulsierender Punkt mit Strich-Nummer */
+.startpunkt {
+  position: absolute;
+  border-radius: 50%;
+  background: #4caf50;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.6);
+  animation: startpuls 1.6s ease-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+.startpunkt.hinweis-puls { animation: hinweis 0.5s ease 3, startpuls 1.6s ease-out 1.5s infinite; }
+@keyframes startpuls {
+  0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.55); }
+  100% { box-shadow: 0 0 0 18px rgba(76, 175, 80, 0); }
+}
+@keyframes hinweis {
+  50% { transform: scale(1.45); }
+}
 
 .sterne { position: absolute; inset: 0; pointer-events: none; }
 .sterne span {

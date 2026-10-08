@@ -41,7 +41,9 @@
       <button id="btn-weiter" class="icon-btn" aria-label="Nächster Buchstabe">➡️</button>
     </header>
     <div id="tafel" class="tafel">
+      <canvas id="vorlage"></canvas>
       <canvas id="canvas"></canvas>
+      <div id="startpunkt" class="startpunkt" hidden></div>
       <div id="sterne" class="sterne"></div>
     </div>
     <footer class="bottombar">
@@ -161,6 +163,7 @@
   v1.onsuccess = () => v1.result.close();
 </script>
   <script src="letters.js"></script>
+  <script src="striche.js"></script>
   <script src="app.js"></script>
   <script src="_test_profile.js"></script>
   <iframe src="/_warten?ms=6000" hidden></iframe>

@@ -5,11 +5,12 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 
 ## Dateien
 - `letters.js` – Buchstaben, Wörter, Bilder, Laute (hier neue Wörter eintragen)
+- `striche.js` – Strichfolge in Schreibrichtung (Vierlinien-System) für geführtes Nachspuren; Buchstaben ohne Eintrag nutzen die Schrift + Flächenprüfung
 - `app.js` – Logik (Nachspuren, Prüfung, Sprache, Elternbereich)
 - `style.css`, `index.html` – Oberfläche
 - `sw.js`, `manifest.webmanifest`, `icons/` – Installation & Offline
 - `bilder/` – eigene Zeichnungen, wo es kein Emoji gibt (Xylophon, Yak)
-- `_test.html` – Test der Spur-Erkennung (unten steht „ALLE TESTS OK“)
+- `_test.html` – Test der Spur-Erkennung inkl. geführtem Nachspuren (grüne Leiste = OK; `#A`, `#a`, `#m`, `#H` wählt den gezeigten Buchstaben)
 - `_test_profile.html` – Test der Profile inkl. Lob (in einem frischen Browserprofil öffnen, grüne Leiste = OK)
 - `_test_kinder.html` – Test der Kinder-Profile (frisches Browserprofil; Ansicht per `#wer`, `#home`, `#kind`, `#eltern`)
 - `werkzeuge/testseiten_erzeugen.sh` – Testseiten nach Änderungen an `index.html` neu erzeugen

@@ -86,6 +86,56 @@
     punkte.forEach((p) => ev('pointermove', p.x, p.y));
     ev('pointerup', punkte[punkte.length - 1].x, punkte[punkte.length - 1].y);
   }
+  // Geführt: Finger entlang eines Strichs ziehen (Anteil von/bis, rückwärts, mit Wackeln)
+  function ziehen(nr, { von = 0, bis = 1, rueckwaerts = false, wackeln = 0, abheben = true } = {}) {
+    const pfad = gefuehrt.pfade[nr];
+    const schritte = Math.ceil(pfad.L / 4);
+    const punkte = [];
+    for (let k = 0; k <= schritte; k++) {
+      let t = von + ((bis - von) * k) / schritte;
+      if (rueckwaerts) t = 1 - t;
+      const p = punktBei(pfad, t * pfad.L);
+      const q = punktBei(pfad, t * pfad.L + 1);
+      const n = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+      const versatz = wackeln * Math.sin(k / 3);
+      punkte.push({ x: p.x - ((q.y - p.y) / n) * versatz, y: p.y + ((q.x - p.x) / n) * versatz });
+    }
+    ev('pointerdown', punkte[0].x, punkte[0].y);
+    punkte.forEach((p) => ev('pointermove', p.x, p.y));
+    if (abheben) ev('pointerup', punkte[punkte.length - 1].x, punkte[punkte.length - 1].y);
+  }
+  function gefuehrtTests(i) {
+    const n = () => gefuehrt.pfade.length;
+    vorbereiten(i);
+    test('geführt: alle Striche', true, () => { for (let k = 0; k < n(); k++) ziehen(k); return tafelZustand.geschafft; });
+    vorbereiten(i);
+    test('geführt: letzter Strich fehlt', false, () => { for (let k = 0; k < n() - 1; k++) ziehen(k); return tafelZustand.geschafft; });
+    vorbereiten(i);
+    test('geführt: erster Strich rückwärts zählt nicht', 0, () => { ziehen(0, { rueckwaerts: true }); return gefuehrt.nr; });
+    vorbereiten(i);
+    test('geführt: absetzen und weitermachen', true, () => {
+      for (let k = 0; k < n(); k++) { ziehen(k, { bis: 0.5 }); ziehen(k, { von: 0.5 }); }
+      return tafelZustand.geschafft;
+    });
+    vorbereiten(i);
+    test('geführt: wackelig', true, () => {
+      for (let k = 0; k < n(); k++) ziehen(k, { wackeln: spurToleranz() * 0.8 });
+      return tafelZustand.geschafft;
+    });
+    vorbereiten(i);
+    test('geführt: abgerutscht zählt nicht', true, () => {
+      ziehen(0, { bis: 0.4 });
+      const vorher = gefuehrt.fortschritt;
+      ziehen(0, { von: 0.4, bis: 0.6, abheben: false });
+      ev('pointermove', 5, 5);                     // weit weg gerutscht
+      ev('pointerup', 5, 5);
+      return Math.abs(gefuehrt.fortschritt - vorher) < 1 && gefuehrt.nr === 0;
+    });
+    if (text() === 'a') {
+      vorbereiten(i);
+      test('geführt: halber Bauch, dann Strich', false, () => { ziehen(0, { bis: 0.5 }); ziehen(1); return tafelZustand.geschafft; });
+    }
+  }
   function test(name, erwartet, ausfuehren) {
     const ist = ausfuehren();
     if (ist !== erwartet) ergebnis.push(`${text()} ${name}: ${ist} ${kurz(tafelZustand.messung)}`);
@@ -94,6 +144,8 @@
   for (const schreibweise of ['klein', 'gross']) {
     zustand.schreibweise = schreibweise;
     BUCHSTABEN.forEach((e, i) => {
+      vorbereiten(i);
+      if (gefuehrt.aktiv) { gefuehrtTests(i); return; }
       vorbereiten(i); test('sauber', true, () => nachfahren(pruef.ziel));
       vorbereiten(i); test('kritzeln', false, kritzeln);
       for (let p = 0; p < 4; p++) {
@@ -111,6 +163,7 @@
     // (nur Großbuchstaben: kleines a und h haben keinen Querstrich)
     for (const b of schreibweise === 'gross' ? ['a', 'h'] : []) {
       vorbereiten(BUCHSTABEN.findIndex((e) => e.b === b));
+      if (gefuehrt.aktiv) continue;
       test('ohne Querstrich', false, () => nachfahren(pruef.ziel, (x0, x1) => x1 - x0 < 2.2 * pruef.strichbreite));
       window.querstrich = (window.querstrich || []).concat(`${text()}: ${kurz(tafelZustand.messung)}`);
     }
@@ -118,6 +171,7 @@
     for (const b of schreibweise === 'gross' ? ['a', 'h'] : []) {
       const i = BUCHSTABEN.findIndex((e) => e.b === b);
       vorbereiten(i);
+      if (gefuehrt.aktiv) continue;
       const { links, rechts, quer } = beine();
       test('Kind: nur Beine', false, () => { strich(links); strich(rechts); echtesPruefen(); return tafelZustand.geschafft; });
       window.querstrich.push(`${text()} nur Beine: ${kurz(tafelZustand.messung)}`);
@@ -125,12 +179,13 @@
       test('Kind: Beine + Querstrich', true, () => { strich(links); strich(rechts); strich(quer); echtesPruefen(); return tafelZustand.geschafft; });
     }
   }
-  zustand.schreibweise = 'klein';
 
-  // Für den Screenshot: "y" halb nachgespurt zeigen
-  zustand.index = BUCHSTABEN.findIndex((e) => e.b === 'y'); zeigen('trace', false); tafelAufbauen();
+  // Für den Screenshot: Buchstabe aus #a, #m, #A, #H (Standard A), erster Strich fertig, zweiter halb
+  const zeigeB = decodeURIComponent(location.hash.slice(1)) || 'A';
+  zustand.schreibweise = zeigeB === zeigeB.toUpperCase() ? 'gross' : 'klein';
+  zustand.index = BUCHSTABEN.findIndex((e) => e.b === zeigeB.toLowerCase()); zeigen('trace', false); tafelAufbauen();
   $('#bild').innerHTML = bildHtml(BUCHSTABEN[zustand.index]); $('#fortschritt').textContent = sterneText(1);
-  ev('pointerdown', tafelZustand.breite * 0.2, tafelZustand.hoehe * 0.4); ev('pointermove', tafelZustand.breite * 0.22, tafelZustand.hoehe * 0.65); ev('pointerup', 0, 0);
+  if (gefuehrt.aktiv && !location.search.includes('leer')) { ziehen(0); ziehen(1, { bis: 0.5 }); }
   const ok = ergebnis.length === 0;
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:' + (ok ? '#1b7f3a' : '#c62828') + ';color:#fff;font:11px monospace;padding:6px;z-index:9;max-height:70vh;overflow:hidden;word-break:break-all';
