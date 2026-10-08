@@ -363,8 +363,9 @@ function rasterZeichnen() {
 const canvas = $('#canvas');
 const ctx = canvas.getContext('2d');
 
-// Prüf-Raster in niedriger Auflösung: Ziel (Buchstabe), erlaubt (Buchstabe + Toleranz), Spur des Kindes
-const PRUEF_BREITE = 140;
+// Prüf-Raster in niedriger Auflösung: Ziel (Buchstabe), erlaubt (Buchstabe + Toleranz), Spur des Kindes.
+// Die Auflösung richtet sich nach der Buchstabengröße, damit Handy und Tablet gleich genau prüfen.
+const PRUEF_BUCHSTABE = 150;
 const pruef = {
   skala: 1,
   ziel: null,
@@ -462,14 +463,15 @@ function tafelAufbauen() {
   canvas.height = Math.round(rect.height * dpr);
 
   tafelZustand.schrift = buchstabenLayout(text(), rect.width, rect.height);
-  // Spurbreite etwas dicker als der Buchstabenstrich, fingerbreit, aber nicht klecksig
-  tafelZustand.linienbreite = Math.min(48, Math.max(22, tafelZustand.schrift.groesse * 0.14));
+  // Spurbreite etwas dicker als der Buchstabenstrich (wächst mit), mindestens fingerbreit
+  tafelZustand.linienbreite = Math.max(22, tafelZustand.schrift.groesse * 0.14);
 
-  pruef.skala = PRUEF_BREITE / rect.width;
+  pruef.skala = PRUEF_BUCHSTABE / (Math.min(rect.width, rect.height) * 0.72);
   pruef.spur.width = Math.round(rect.width * pruef.skala);
   pruef.spur.height = Math.round(rect.height * pruef.skala);
   pruef.ziel = maske('ziel');
   pruef.erlaubt = maske('erlaubt');
+  buchstabenTeileAnalysieren();
 
   tafelLeeren();
 }
@@ -543,6 +545,48 @@ function strichEnde(e) {
 canvas.addEventListener('pointerup', strichEnde);
 canvas.addEventListener('pointercancel', strichEnde);
 
+// Zusammenhängende Flächen in einer Maske finden (4er-Nachbarschaft). Liefert Listen von Pixel-Indizes.
+function flaechen(maske, breite) {
+  const hoehe = maske.length / breite;
+  const besucht = new Uint8Array(maske.length);
+  const stapel = new Int32Array(maske.length);
+  const ergebnis = [];
+  for (let start = 0; start < maske.length; start++) {
+    if (!maske[start] || besucht[start]) continue;
+    const pixel = [];
+    let oben = 0;
+    stapel[oben++] = start;
+    besucht[start] = 1;
+    while (oben) {
+      const i = stapel[--oben];
+      pixel.push(i);
+      const x = i % breite, y = (i - x) / breite;
+      const nachbarn = [x > 0 ? i - 1 : -1, x < breite - 1 ? i + 1 : -1, y > 0 ? i - breite : -1, y < hoehe - 1 ? i + breite : -1];
+      for (const n of nachbarn) {
+        if (n >= 0 && maske[n] && !besucht[n]) { besucht[n] = 1; stapel[oben++] = n; }
+      }
+    }
+    ergebnis.push(pixel);
+  }
+  return ergebnis;
+}
+
+// Einzelteile des Buchstabens (z. B. i-Punkt, Umlaut-Punkte) und Strichbreite für die Lücken-Prüfung
+function buchstabenTeileAnalysieren() {
+  const breite = pruef.spur.width;
+  const ziel = pruef.ziel;
+  let flaeche = 0, rand = 0;
+  for (let i = 0; i < ziel.length; i++) {
+    if (!ziel[i]) continue;
+    flaeche++;
+    const x = i % breite;
+    if (x === 0 || x === breite - 1 || !ziel[i - 1] || !ziel[i + 1] || !ziel[i - breite] || !ziel[i + breite]) rand++;
+  }
+  // Bei langen, dünnen Strichen gilt: Fläche ≈ Breite × Länge, Umfang ≈ 2 × Länge
+  pruef.strichbreite = rand ? (2 * flaeche) / rand : 1;
+  pruef.teile = flaechen(ziel, breite).filter((t) => t.length >= 4);
+}
+
 function pruefen() {
   const daten = spurCtx.getImageData(0, 0, pruef.spur.width, pruef.spur.height).data;
   let ziel = 0, getroffen = 0, spur = 0, daneben = 0;
@@ -554,9 +598,22 @@ function pruefen() {
   if (!ziel || !spur) return;
   const abdeckung = getroffen / ziel;
   const danebenAnteil = daneben / spur;
-  tafelZustand.messung = { abdeckung, danebenAnteil };
-  // Großzügig für 3- bis 4-Jährige: 75 % des Buchstabens getroffen, höchstens 25 % daneben
-  if (abdeckung >= 0.75 && danebenAnteil <= 0.25) geschafft();
+  // Großzügig für 3- bis 4-Jährige: 75 % des Buchstabens getroffen, höchstens 25 % daneben ...
+  if (abdeckung < 0.75 || danebenAnteil > 0.25) {
+    tafelZustand.messung = { abdeckung, danebenAnteil };
+    return;
+  }
+  const gemaltBei = (i) => daten[i * 4 + 3] > 128;
+  // ... jedes Einzelteil (auch i-Punkt, Umlaut-Punkte) mindestens zur Hälfte nachgefahren ...
+  const teilFehlt = pruef.teile.some((t) => t.filter(gemaltBei).length < t.length * 0.5);
+  // ... und kein Stück ausgelassen (z. B. der Querstrich beim A). Erlaubt ist eine Lücke von 0,6 Strichbreiten²,
+  // also etwa: am Strichende eine Strichbreite zu früh aufgehört
+  const luecke = new Uint8Array(pruef.ziel.length);
+  for (let i = 0; i < luecke.length; i++) luecke[i] = pruef.ziel[i] && !gemaltBei(i) ? 1 : 0;
+  const groessteLuecke = Math.max(0, ...flaechen(luecke, pruef.spur.width).map((f) => f.length));
+  const erlaubteLuecke = 0.6 * pruef.strichbreite * pruef.strichbreite;
+  tafelZustand.messung = { abdeckung, danebenAnteil, teilFehlt, groessteLuecke, erlaubteLuecke };
+  if (!teilFehlt && groessteLuecke <= erlaubteLuecke) geschafft();
 }
 
 function geschafft() {
