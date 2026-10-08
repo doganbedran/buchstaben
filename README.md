@@ -55,5 +55,6 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 
 ## Spiele
 - ✏️ **Nachspuren** – Startseite
+- 📳 **Vibration** beim Nachspuren (Sandpapier-Gefühl, Android), im Elternbereich abschaltbar
 - 👂 **Ich höre was** – Laut hören („mmm …“), passendes Bild von dreien antippen; 5 Runden. Ähnlich klingende
   Anlaute (f/v, k/c/q/x, e/ä, j/y) nie in derselben Runde, ß ausgenommen. Nutzt `audio/<b>-laut.wav`.

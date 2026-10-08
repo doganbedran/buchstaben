@@ -318,6 +318,24 @@ window.addEventListener('error', (e) => {
     }
   }
 
+  // Vibration: beim richtigen Ziehen ja, ausgeschaltet nein
+  {
+    const aufrufe = [];
+    vibration.moeglich = true;
+    navigator.vibrate = (m) => { aufrufe.push(m); return true; };
+    zustand.schreibweise = 'klein';
+    vorbereiten(BUCHSTABEN.findIndex((e) => e.b === 'a'));
+    vibration.an = true; vibration.letzte = 0;
+    ziehen(0);
+    // Gedrosselt auf alle 70 ms – im schnellen Test also: Fortschritts-Impuls (10) und Strich fertig (35)
+    const beimZiehen = aufrufe.includes(10) && aufrufe.includes(35) ? aufrufe.length : 0;
+    vorbereiten(BUCHSTABEN.findIndex((e) => e.b === 'a'));
+    aufrufe.length = 0; vibration.an = false;
+    ziehen(0);
+    if (!(beimZiehen >= 2) || aufrufe.length !== 0) ergebnis.push(`Vibration: an=${beimZiehen} aus=${aufrufe.length}`);
+    vibration.an = true;
+  }
+
   // Für den Screenshot: Buchstabe aus #a, #m, #A, #H (Standard A), erster Strich fertig, zweiter halb
   const zeigeB = decodeURIComponent(location.hash.slice(1)) || 'A';
   zustand.schreibweise = zeigeB === zeigeB.toUpperCase() ? 'gross' : 'klein';

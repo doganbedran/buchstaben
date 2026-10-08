@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 22;
+const APP_VERSION = 23;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -721,6 +721,21 @@ function projizieren(pfad, q, von, bis) {
   return best;
 }
 
+// "Sandpapier-Gefühl": leichtes Vibrieren, solange der Finger richtig auf dem Strich vorankommt.
+// Funktioniert auf Android; iPhones unterstützen Vibration im Browser nicht.
+const vibration = {
+  an: speicher.lesen('vibration', true),
+  letzte: 0,
+  moeglich: typeof navigator.vibrate === 'function',
+};
+function vibrieren(muster, nurAlleMs = 0) {
+  if (!vibration.an || !vibration.moeglich) return;
+  const jetzt = performance.now();
+  if (nurAlleMs && jetzt - vibration.letzte < nurAlleMs) return;
+  vibration.letzte = jetzt;
+  try { navigator.vibrate(muster); } catch { /* manche Geräte erlauben es nicht */ }
+}
+
 // Toleranzen (in Pixeln), großzügig für Kinderfinger
 const fangRadius = () => Math.max(34, gefuehrt.breite * 1.6);      // so nah muss der Finger am Startpunkt aufsetzen
 const spurToleranz = () => Math.max(26, gefuehrt.breite * 1.3);    // so weit darf er neben dem Strich sein
@@ -784,6 +799,7 @@ function gefuehrtBewegung(p) {
   }
   if (treffer.d <= spurToleranz() && treffer.s > gefuehrt.fortschritt) {
     gefuehrt.fortschritt = treffer.s;
+    vibrieren(10, 70);
     startpunktZeigen(punktBei(pfad, gefuehrt.fortschritt));
   }
   // Erst fertig, wenn der Finger wirklich am Ende ist (kleiner Spielraum, sonst fehlt z. B. beim j das Hakenende)
@@ -818,6 +834,7 @@ function gefuehrtEnde() {
 }
 
 function abgerutscht() {
+  vibrieren([30, 60, 30]);
   const v = gefuehrt.versuch;
   v.folgt = false;
   gefuehrt.fortschritt = v.startFortschritt;
@@ -836,6 +853,7 @@ function strichFertig() {
     gefuehrt.spuren.push(pfad.p.slice());
     if (v) { v.punkte = []; v.folgt = false; v.fertig = true; }
   } else if (v) { gefuehrt.spuren.push(v.punkte); v.punkte = []; v.folgt = false; v.fertig = true; }
+  vibrieren(35);
   gefuehrt.nr++;
   gefuehrt.fortschritt = 0;
   lauflicht.zyklusStart = performance.now();   // Licht beginnt am Start des nächsten Strichs
@@ -2057,6 +2075,21 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 
 $('#app-version').textContent = `Version ${APP_VERSION}`;
+
+// Einstellung Vibration (gilt für das ganze Gerät)
+(() => {
+  const box = $('#vibration-an');
+  box.checked = vibration.an;
+  box.addEventListener('change', () => {
+    vibration.an = box.checked;
+    speicher.schreiben('vibration', box.checked);
+    if (box.checked) vibrieren(40);
+  });
+  if (!vibration.moeglich) {
+    box.disabled = true;
+    $('#vibration-hinweis').textContent = 'Dieses Gerät bzw. dieser Browser kann nicht vibrieren (z. B. iPhone).';
+  }
+})();
 
 // Von Hand: Update holen und neu laden (falls ein Gerät hängen geblieben ist)
 $('#btn-update').addEventListener('click', async () => {
