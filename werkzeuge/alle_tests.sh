@@ -29,7 +29,8 @@ for lauf in "${LAEUFE[@]}"; do
   IFS='|' read -r name seite groesse zeit <<< "$lauf"
   rm -rf "$D/p-$name" "$D/t-$name.png"; mkdir -p "$D/p-$name"
   timeout "$zeit" firefox --headless --profile "$D/p-$name" --window-size="$groesse" --screenshot "$D/t-$name.png" "$URL/$seite" >/dev/null 2>&1
-  ergebnis=$(python3 -c "
+  # System-Python (hat PIL), auch wenn .venv aktiv ist
+  ergebnis=$(/usr/bin/python3 -c "
 from PIL import Image
 import os, sys
 p = '$D/t-$name.png'

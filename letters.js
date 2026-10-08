@@ -3,6 +3,7 @@
 // Beim ß gibt es kein Wort mit dem Laut am Anfang – dort steckt er im Wort.
 // "bild" ist ein Emoji oder eine Datei in bilder/ (wo es kein passendes Emoji gibt).
 // "mehr": weitere Wörter [Wort, Emoji] – nur mit sauberem Anlaut (nicht Giraffe/"Schiraffe", Eis/"ei", Vulkan/"W").
+// Hauptwort nicht wie der Buchstabenname beginnen lassen (Katze/"Ka") – Kriterium der Berliner Anlauttabellen.
 const BUCHSTABEN = [
   { b: 'a', wort: 'Apfel',    bild: '🍎', laut: 'a',   mehr: [['Affe', '🐒'], ['Ameise', '🐜']] },
   { b: 'b', wort: 'Banane',   bild: '🍌', laut: 'ba',  mehr: [['Ball', '⚽'], ['Bär', '🐻']] },
@@ -14,7 +15,7 @@ const BUCHSTABEN = [
   { b: 'h', wort: 'Hund',     bild: '🐶', laut: 'hu',  mehr: [['Haus', '🏠'], ['Hase', '🐰']] },
   { b: 'i', wort: 'Igel',     bild: '🦔', laut: 'i',   mehr: [['Insel', '🏝️']] },
   { b: 'j', wort: 'Jacke',    bild: '🧥', laut: 'ja',  mehr: [['Jojo', '🪀']] },
-  { b: 'k', wort: 'Katze',    bild: '🐱', laut: 'ka',  mehr: [['Kuh', '🐮'], ['Käse', '🧀']] },
+  { b: 'k', wort: 'Kuh',      bild: '🐮', laut: 'ka',  mehr: [['Katze', '🐱'], ['Käse', '🧀']] },
   { b: 'l', wort: 'Löwe',     bild: '🦁', laut: 'lll', mehr: [['Lama', '🦙'], ['Löffel', '🥄']] },
   { b: 'm', wort: 'Maus',     bild: '🐭', laut: 'mmm', mehr: [['Mond', '🌙'], ['Möhre', '🥕']] },
   { b: 'n', wort: 'Nashorn',  bild: '🦏', laut: 'nnn', mehr: [['Nase', '👃'], ['Nudeln', '🍝']] },
