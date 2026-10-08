@@ -1,4 +1,4 @@
-// Testet die Silben-Trommel. Frisches Browserprofil, keine Silben-Aufnahmen im Repo.
+// Testet die Silben-Trommel. Frisches Browserprofil; mit oder ohne Silben-Aufnahmen in audio/.
 // Alle App-Timer laufen im Zeitraffer (20×), gewartet wird mit bis() auf Zustände statt fester Zeiten.
 (async function () {
   const fehler = [];
@@ -19,9 +19,13 @@
   const wach = () => bis(() => silben.phase === 'trommeln');
   const aktiv = (id) => $(`#${id}`).classList.contains('active');
 
-  // 1. Ohne Silben-Aufnahmen bleibt das Spiel versteckt (nur Bumm zählen hilft nicht beim Silbenhören)
+  // 1. Sichtbar nur mit Silben-Aufnahmen (nur Bumm zählen hilft nicht beim Silbenhören)
   await silbenPruefen();
-  pruefe(knopf().hidden && !silbenGenug(), 'Spiel sichtbar, obwohl keine Silben-Aufnahmen da sind');
+  pruefe(knopf().hidden === !silbenGenug(), 'Sichtbarkeit passt nicht zu den vorhandenen Aufnahmen');
+  silben.bereit.clear();
+  pruefe(!silbenGenug(), 'Ohne Aufnahmen gilt das Spiel als spielbar');
+  silben.bereit.add('Maus');
+  pruefe(!silbenGenug(), 'Ein Wort reicht nicht für alle Runden');
   // Ab hier: so tun, als wären alle Aufnahmen da
   Object.keys(SILBEN).forEach((w) => silben.bereit.add(w));
   knopf().hidden = !silbenGenug();

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 33;
+const APP_VERSION = 34;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -2766,6 +2766,12 @@ function silbeSprechen(nr) {
   const a = new Audio(silbenDatei(silben.wahl.wort, nr));
   wiedergabe.audio = a;
   a.play().catch(() => {});
+  return a;
+}
+
+// Nach dem Takt höchstens noch kurz warten, bis eine lange Silbe ausgeklungen ist (nicht abschneiden)
+async function silbeAusklingen(a) {
+  for (let i = 0; i < 8 && !a.ended && !a.paused && !a.error; i++) await warten(50);
 }
 
 // Die App trommelt das Wort: jede Silbe mit Bumm, Vibration, Stimme und Bogen.
@@ -2780,8 +2786,9 @@ async function vortrommeln(nr, { boegen = null, takt = SILBEN_TAKT_VOR } = {}) {
     trommelAnimation('schlag');
     bumm();
     vibrieren(25);
-    silbeSprechen(i + 1);
+    const a = silbeSprechen(i + 1);
     await warten(takt);
+    await silbeAusklingen(a);
   }
   return silbenAktuell(nr);
 }

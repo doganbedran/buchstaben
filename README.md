@@ -79,6 +79,7 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
   (fehlt eine, trommelt die App ohne Stimme).
 
 ## Aufnahme-Studio (Sprecher-Stimme)
+Die Silben (`audio/silbe-*.wav`) sind von einem echten Sprecher eingesprochen (Autor der App), alle anderen Clips von Piper „Thorsten“.
 Testserver starten, dann http://localhost:8765/werkzeuge/aufnahme-studio.html öffnen (Mikrofon erlauben).
 Pro Wort einmal mit kleinen Pausen sprechen („Ba – na – ne“), Leertaste = Aufnahme an/aus, A = anhören,
 Enter = speichern. Das Studio schneidet an den Pausen, gleicht die Lautstärke an und speichert über den

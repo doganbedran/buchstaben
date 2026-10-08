@@ -7,6 +7,8 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 ## Wichtigste Regeln
 - **Adresse nie ändern** (Domain/Pfad): Profile, Aufnahmen, Fotos, Sterne liegen in IndexedDB/localStorage und hängen an der Origin.
 - **Nichts Privates ins Repo** (öffentlich): keine Namen, Fotos oder Aufnahmen der Familie, keine Sicherungsdateien.
+  Ausnahme (vom User entschieden): seine eigene Stimme als Sprecher der App (`audio/silbe-*.wav`, aus dem Aufnahme-Studio).
+  Nie Kinderstimmen, nie Namen der Kinder – vor dem Commit neue Sprecher-Aufnahmen auf Hintergrund prüfen lassen.
 - Keine Cloud-KI/-Dienste (z. B. Replicate) einbauen oder vorschlagen, außer der User fragt ausdrücklich.
 - Zielgruppe 3–4 Jahre: große Knöpfe, keine Texte für Kinder, kein „falsch“ (sanft wackeln + Hinweis), Eltern-Funktionen hinter dem Zahnrad (2 s halten).
 - Farben farbenblind-sicher: Blau (Startpunkt) + Orange (Pfeile), Unterschiede auch über Helligkeit (Werte in README).
@@ -37,7 +39,7 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 - `striche.js` – Strichfolge aller 60 Zeichen (Vierlinien-System y: 0 Ober-, 50 Mittel-, 100 Grund-, 140 Unterlinie);
   `_striche.html` zeigt alle mit Nummern/Richtung zur Kontrolle
 - `sw.js` – Offline-Cache (network-first mit `cache: 'no-cache'`, GitHub Pages cached sonst 10 min)
-- `audio/` – Thorstens Clips: `<b>.wav`, `<b>-wort.wav`, `<b>-laut.wav`, `<b>-2.wav`…, `lob-*.wav`, `ansage-*.wav`
+- `audio/` – Sprecher-Aufnahmen `silbe-<wort>-<nr>.wav` (Stimme des Users); Thorstens Clips: `<b>.wav`, `<b>-wort.wav`, `<b>-laut.wav`, `<b>-2.wav`…, `lob-*.wav`, `ansage-*.wav`
 - `bilder/` – eigene SVGs, wo es kein Emoji gibt (Xylophon, Yak)
 - `werkzeuge/` – `audio_erzeugen.py`, `testserver.py`, `alle_tests.sh`, `testseiten_erzeugen.sh`,
   `aufnahme-studio.html` (Sprecher-Aufnahmen über den Testserver nach `audio/`, nur `silbe-*.wav`)
