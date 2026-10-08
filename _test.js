@@ -214,6 +214,23 @@ window.addEventListener('error', (e) => {
       });
     }
     // Punkte (i, j, Umlaute) nur antippen
+    // Punkt 20 px neben der Mitte antippen: Farbe muss trotzdem genau auf dem Punkt liegen
+    vorbereiten(i);
+    if (gefuehrt.pfade.some((p) => p.L <= gefuehrt.breite * 0.6)) {
+      test('geführt: Punkt bekommt Farbe', true, () => {
+        const punkte = [];
+        gefuehrt.pfade.forEach((p, k) => {
+          if (p.L <= gefuehrt.breite * 0.6) {
+            const q = p.p[0];
+            punkte.push(punktBei(p, p.L / 2));
+            ev('pointerdown', q.x + 20, q.y - 6); ev('pointerup', q.x + 20, q.y - 6);
+          } else ziehen(k);
+        });
+        const dpr = canvas.width / tafelZustand.breite;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        return punkte.every((m) => ctx.getImageData(Math.round(m.x * dpr), Math.round(m.y * dpr), 1, 1).data[3] > 200);
+      });
+    }
     vorbereiten(i);
     if (gefuehrt.pfade.some((p) => p.L <= gefuehrt.breite * 0.6)) {
       if (gefuehrt.pfade.filter((p) => p.L <= gefuehrt.breite * 0.6).length === 2) {

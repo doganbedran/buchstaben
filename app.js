@@ -550,27 +550,36 @@ function tafelLeeren() {
 const SPUR_FARBEN = ['#f28c38', '#3d8fd1', '#4caf50', '#9b59b6', '#e0567c', '#e6a700'];
 const spurFarbe = () => SPUR_FARBEN[zustand.index % SPUR_FARBEN.length];
 
+// Ein Stück Fingerspur. Ein einzelner Punkt (Antippen) wird als gefüllter Kreis gemalt:
+// Chrome zeichnet eine Linie der Länge 0 nicht, auch nicht mit runden Enden.
+function spurStueck(c, von, bis, breite, farbe) {
+  if (Math.hypot(bis.x - von.x, bis.y - von.y) < 0.5) {
+    c.fillStyle = farbe;
+    c.beginPath();
+    c.arc(bis.x, bis.y, breite / 2, 0, Math.PI * 2);
+    c.fill();
+    return;
+  }
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  c.lineWidth = breite;
+  c.strokeStyle = farbe;
+  c.beginPath();
+  c.moveTo(von.x, von.y);
+  c.lineTo(bis.x, bis.y);
+  c.stroke();
+}
+
 function linie(von, bis) {
   const dpr = canvas.width / tafelZustand.breite;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = tafelZustand.linienbreite;
-  ctx.strokeStyle = spurFarbe();
-  ctx.beginPath();
-  ctx.moveTo(von.x, von.y);
-  ctx.lineTo(bis.x, bis.y);
-  ctx.stroke();
+  spurStueck(ctx, von, bis, tafelZustand.linienbreite, spurFarbe());
   if (gefuehrt.aktiv) return;
 
   const s = pruef.skala;
-  spurCtx.lineCap = 'round';
-  spurCtx.lineWidth = tafelZustand.linienbreite * s;
-  spurCtx.strokeStyle = '#000';
-  spurCtx.beginPath();
-  spurCtx.moveTo(von.x * s, von.y * s);
-  spurCtx.lineTo(bis.x * s, bis.y * s);
-  spurCtx.stroke();
+  spurCtx.setTransform(s, 0, 0, s, 0, 0);
+  spurStueck(spurCtx, von, bis, tafelZustand.linienbreite, '#000');
+  spurCtx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 function punkt(e) {
@@ -772,10 +781,7 @@ function unterwegsAngekommen(p) {
   if (Math.hypot(p.x - start.x, p.y - start.y) > fangRadius()) return;
   const istPunkt = istPunktStrich(pfad);
   gefuehrt.versuch = { punkte: [p], folgt: true, startFortschritt: gefuehrt.fortschritt };
-  if (istPunkt) {
-    linie(p, p);           // Punkt sichtbar ausmalen
-    strichFertig();
-  }
+  if (istPunkt) strichFertig();
 }
 
 function gefuehrtEnde() {
@@ -802,7 +808,13 @@ function abgerutscht() {
 
 function strichFertig() {
   const v = gefuehrt.versuch;
-  if (v) { gefuehrt.spuren.push(v.punkte); v.punkte = []; v.folgt = false; v.fertig = true; }
+  const pfad = gefuehrt.pfade[gefuehrt.nr];
+  if (istPunktStrich(pfad)) {
+    // Punkt geschafft: Farbe genau auf den Punkt (in seiner Form), auch wenn der Finger daneben getippt hat
+    for (let i = 1; i < pfad.p.length; i++) linie(pfad.p[i - 1], pfad.p[i]);
+    gefuehrt.spuren.push(pfad.p.slice());
+    if (v) { v.punkte = []; v.folgt = false; v.fertig = true; }
+  } else if (v) { gefuehrt.spuren.push(v.punkte); v.punkte = []; v.folgt = false; v.fertig = true; }
   gefuehrt.nr++;
   gefuehrt.fortschritt = 0;
   lauflicht.zyklusStart = performance.now();   // Licht beginnt am Start des nächsten Strichs
