@@ -455,6 +455,8 @@ function maske(art) {
 
 const vorlage = $('#vorlage');
 const vorlageCtx = vorlage.getContext('2d');
+const lichter = $('#lichter');
+const lichterCtx = lichter.getContext('2d');
 
 function tafelAufbauen() {
   const rect = canvas.getBoundingClientRect();
@@ -465,16 +467,18 @@ function tafelAufbauen() {
   const dpr = window.devicePixelRatio || 1;
   tafelZustand.breite = rect.width;
   tafelZustand.hoehe = rect.height;
-  canvas.width = vorlage.width = Math.round(rect.width * dpr);
-  canvas.height = vorlage.height = Math.round(rect.height * dpr);
+  canvas.width = vorlage.width = lichter.width = Math.round(rect.width * dpr);
+  canvas.height = vorlage.height = lichter.height = Math.round(rect.height * dpr);
 
   // Buchstaben mit Strichdaten: geführtes Nachspuren Strich für Strich
   if (STRICHE[text()]) {
     strichLayout(STRICHE[text()], rect.width, rect.height);
     tafelLeeren();
+    vormachenStarten();
     return;
   }
   gefuehrt.aktiv = false;
+  lichterLeeren();
 
   tafelZustand.schrift = buchstabenLayout(text(), rect.width, rect.height);
   // Spurbreite etwas dicker als der Buchstabenstrich (wächst mit), mindestens fingerbreit
@@ -500,6 +504,9 @@ function tafelLeeren() {
     gefuehrt.spuren = [];
     gefuehrt.versuch = null;
     vorlageZeichnen();
+    lauflicht.zyklusStart = lauflicht.letzteAktivitaet = performance.now();
+    lauflicht.erinnert = false;
+    lauflichtStarten();
     return;
   }
   startpunktZeigen(null);
@@ -641,6 +648,10 @@ const spurToleranz = () => Math.max(26, gefuehrt.breite * 1.3);    // so weit da
 const abrutschGrenze = () => Math.max(48, gefuehrt.breite * 2.4);  // ab hier gilt der Versuch als abgerutscht
 
 function gefuehrtStart(p) {
+  lauflicht.vormachen = null;          // Kind legt los: Vormachen sofort beenden
+  lauflicht.letzteAktivitaet = performance.now();
+  lauflicht.erinnert = false;
+  startpunktZeigen(punktBei(gefuehrt.pfade[gefuehrt.nr], gefuehrt.fortschritt));
   const pfad = gefuehrt.pfade[gefuehrt.nr];
   const start = punktBei(pfad, gefuehrt.fortschritt);
   const folgt = Math.hypot(p.x - start.x, p.y - start.y) <= fangRadius();
@@ -650,6 +661,7 @@ function gefuehrtStart(p) {
 function gefuehrtBewegung(p) {
   const v = gefuehrt.versuch;
   if (!v) return;
+  lauflicht.letzteAktivitaet = performance.now();
   v.punkte.push(p);
   if (!v.folgt) return;
   const pfad = gefuehrt.pfade[gefuehrt.nr];
@@ -668,6 +680,8 @@ function gefuehrtBewegung(p) {
 }
 
 function gefuehrtEnde() {
+  lauflicht.letzteAktivitaet = performance.now();
+  lauflicht.zyklusStart = performance.now();    // Lauflicht startet neu ab der Stelle, an der es weitergeht
   const v = gefuehrt.versuch;
   gefuehrt.versuch = null;
   if (!v) return;
@@ -692,6 +706,7 @@ function strichFertig() {
   if (v) { gefuehrt.spuren.push(v.punkte); v.punkte = []; v.folgt = false; v.fertig = true; }
   gefuehrt.nr++;
   gefuehrt.fortschritt = 0;
+  lauflicht.zyklusStart = performance.now();   // Licht beginnt am Start des nächsten Strichs
   klick();
   if (gefuehrt.nr >= gefuehrt.pfade.length) {
     startpunktZeigen(null);
@@ -734,7 +749,7 @@ function hinweisZeigen() {
 function startpunktZeigen(p) {
   const el = $('#startpunkt');
   if (!p) { el.hidden = true; return; }
-  const groesse = Math.max(40, gefuehrt.breite * 1.25);
+  const groesse = Math.min(56, Math.max(40, gefuehrt.breite * 0.9));
   el.hidden = false;
   el.style.width = el.style.height = `${groesse}px`;
   el.style.left = `${p.x - groesse / 2}px`;
@@ -784,24 +799,161 @@ function vorlageZeichnen() {
   c.lineWidth = gefuehrt.breite;
   c.strokeStyle = '#ead9bf';
   pfadZeichnen(c, pfad);
-  pfeileZeichnen(c, pfad);
-  startpunktZeigen(punktBei(pfad, gefuehrt.fortschritt));
+  startpunktZeigen(lauflicht.vormachen ? null : punktBei(pfad, gefuehrt.fortschritt));
 }
 
-function pfeileZeichnen(c, pfad) {
-  const abstand = Math.max(40, gefuehrt.breite * 2.4);
-  const g = gefuehrt.breite * 0.42;
-  c.strokeStyle = '#f28c38';
-  c.lineWidth = Math.max(3.5, gefuehrt.breite * 0.16);
-  for (let s = abstand; s < pfad.L - abstand * 0.4; s += abstand) {
-    const p = punktBei(pfad, s), q = punktBei(pfad, s + 1);
-    const w = Math.atan2(q.y - p.y, q.x - p.x);
-    c.beginPath();
-    c.moveTo(p.x - g * Math.cos(w - 0.6), p.y - g * Math.sin(w - 0.6));
-    c.lineTo(p.x, p.y);
-    c.lineTo(p.x - g * Math.cos(w + 0.6), p.y - g * Math.sin(w + 0.6));
-    c.stroke();
+// ---------- Lauflicht ("Landebahn"): Pfeile leuchten nacheinander in Schreibrichtung auf ----------
+
+const lauflicht = {
+  vormachen: null,          // { start } solange der ganze Buchstabe einmal vorgemacht wird
+  zyklusStart: 0,
+  letzteAktivitaet: 0,
+  erinnert: false,          // Erinnerung nach Untätigkeit schon gezeigt?
+  erinnerungBis: 0,         // bis wann das Licht kräftiger leuchtet
+  laeuft: false,
+};
+const LICHT_PAUSE = 0.9;        // Sekunden Pause zwischen zwei Durchläufen
+const LICHT_NACHGLUEHEN = 0.55; // Sekunden, die ein Pfeil nach dem Aufleuchten nachglüht
+const ERINNERUNG_NACH = 6000;   // ms ohne Berührung bis zur Erinnerung
+
+const lichtTempo = () => Math.max(260, gefuehrt.breite * 6);   // Pixel pro Sekunde
+const pfeilAbstand = () => Math.max(32, gefuehrt.breite * 1.8);
+
+// Pfeil-Positionen auf einem Strich (ab "ab", z. B. ab dem bereits geschafften Teil)
+function pfeilStellen(pfad, ab = 0) {
+  const abstand = pfeilAbstand(), stellen = [];
+  for (let s = abstand * 0.6; s < pfad.L - abstand * 0.3; s += abstand) if (s > ab) stellen.push(s);
+  return stellen;
+}
+
+// Vormachen: wo ist das Licht nach t Sekunden? Striche nacheinander, mit kurzer Pause dazwischen.
+function vormachenZustand(t) {
+  const v = lichtTempo();
+  for (let nr = 0; nr < gefuehrt.pfade.length; nr++) {
+    const dauer = gefuehrt.pfade[nr].L / v;
+    if (t <= dauer) return { nr, kopf: t * v };
+    t -= dauer + 0.25;
+    if (t < 0) return { nr, kopf: gefuehrt.pfade[nr].L };
   }
+  return null;   // fertig
+}
+
+function vormachenStarten() {
+  lauflicht.vormachen = { start: performance.now() };
+  lauflicht.letzteAktivitaet = performance.now();
+  lauflicht.erinnert = false;
+  startpunktZeigen(null);
+  lauflichtStarten();
+}
+
+function lauflichtStarten() {
+  if (lauflicht.laeuft) return;
+  lauflicht.laeuft = true;
+  requestAnimationFrame(lauflichtSchritt);
+}
+
+function lichterLeeren() {
+  lichterCtx.setTransform(1, 0, 0, 1, 0, 0);
+  lichterCtx.clearRect(0, 0, lichter.width, lichter.height);
+}
+
+function lauflichtSchritt(jetzt) {
+  if (lauflicht.eingefroren) { lauflicht.laeuft = false; return; }   // nur für Test-Screenshots
+  // Nur zeichnen, solange geführt nachgespurt wird und die Tafel sichtbar ist
+  if (!gefuehrt.aktiv || !$('#trace').classList.contains('active') || tafelZustand.geschafft) {
+    lauflicht.laeuft = false;
+    lichterLeeren();
+    return;
+  }
+  lichterZeichnen(jetzt);
+  requestAnimationFrame(lauflichtSchritt);
+}
+
+function lichterZeichnen(jetzt) {
+  lichterLeeren();
+  const dpr = lichter.width / tafelZustand.breite;
+  const c = lichterCtx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const v = lichtTempo();
+
+  // 1. Vormachen: alle Striche nacheinander, mit Geisterpunkt vorneweg
+  if (lauflicht.vormachen) {
+    const z = vormachenZustand((jetzt - lauflicht.vormachen.start) / 1000);
+    if (!z) {
+      lauflicht.vormachen = null;
+      lauflicht.zyklusStart = jetzt;
+      lauflicht.letzteAktivitaet = jetzt;
+      vorlageZeichnen();               // jetzt Startpunkt zeigen
+      return;
+    }
+    for (let nr = 0; nr <= z.nr; nr++) {
+      const pfad = gefuehrt.pfade[nr];
+      const kopf = nr < z.nr ? pfad.L : z.kopf;
+      const zeitSeitEnde = nr < z.nr ? 1 : 0;   // frühere Striche: schon verglüht
+      for (const s of pfeilStellen(pfad)) {
+        if (s > kopf) continue;
+        const glut = zeitSeitEnde ? 0.5 : Math.exp(-((kopf - s) / v) / LICHT_NACHGLUEHEN);
+        pfeil(c, pfad, s, Math.max(0.5, glut), 1);
+      }
+    }
+    const kopfPunkt = punktBei(gefuehrt.pfade[z.nr], z.kopf);
+    geisterpunkt(c, kopfPunkt);
+    return;
+  }
+
+  // 2. Nachspuren: Licht läuft auf dem aktuellen Strich ab der Stelle, an der es weitergeht
+  const pfad = gefuehrt.pfade[gefuehrt.nr];
+  if (!pfad) return;
+  if (!lauflicht.erinnert && jetzt - lauflicht.letzteAktivitaet > ERINNERUNG_NACH && tafelZustand.pointerId === null) {
+    lauflicht.erinnert = true;
+    lauflicht.erinnerungBis = jetzt + 2500;
+    lauflicht.zyklusStart = jetzt;
+    hinweisZeigen();
+  }
+  const kraeftig = jetzt < lauflicht.erinnerungBis;
+  const ab = gefuehrt.fortschritt;
+  const dauer = (pfad.L - ab) / v;
+  const t = ((jetzt - lauflicht.zyklusStart) / 1000) % (dauer + LICHT_PAUSE);
+  const kopf = ab + t * v;
+  for (const s of pfeilStellen(pfad, ab)) {
+    // Noch nicht erreicht: schwach sichtbar (Landebahn "aus"); erreicht: hell, dann nachglühen
+    const glut = s > kopf ? 0 : Math.exp(-((kopf - s) / v) / LICHT_NACHGLUEHEN);
+    pfeil(c, pfad, s, 0.28 + 0.72 * glut, kraeftig ? 1.35 : 1);
+  }
+}
+
+function pfeil(c, pfad, s, staerke, groesse) {
+  const p = punktBei(pfad, s), q = punktBei(pfad, s + 1);
+  const w = Math.atan2(q.y - p.y, q.x - p.x);
+  const g = gefuehrt.breite * 0.42 * groesse * (0.85 + 0.25 * staerke);
+  c.save();
+  c.globalAlpha = Math.min(1, staerke);
+  c.strokeStyle = '#f28c38';
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+  c.lineWidth = Math.max(3.5, gefuehrt.breite * 0.16) * groesse;
+  if (staerke > 0.6) { c.shadowColor = 'rgba(255, 170, 60, 0.9)'; c.shadowBlur = 12 * staerke; }
+  c.beginPath();
+  c.moveTo(p.x - g * Math.cos(w - 0.6), p.y - g * Math.sin(w - 0.6));
+  c.lineTo(p.x, p.y);
+  c.lineTo(p.x - g * Math.cos(w + 0.6), p.y - g * Math.sin(w + 0.6));
+  c.stroke();
+  c.restore();
+}
+
+function geisterpunkt(c, p) {
+  const r = Math.max(12, gefuehrt.breite * 0.38);
+  c.save();
+  c.shadowColor = 'rgba(76, 175, 80, 0.9)';
+  c.shadowBlur = 18;
+  c.fillStyle = '#ffffff';
+  c.strokeStyle = '#4caf50';
+  c.lineWidth = 4;
+  c.beginPath();
+  c.arc(p.x, p.y, r, 0, Math.PI * 2);
+  c.fill();
+  c.stroke();
+  c.restore();
 }
 
 // Zusammenhängende Flächen in einer Maske finden (4er-Nachbarschaft). Liefert Listen von Pixel-Indizes.

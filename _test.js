@@ -107,6 +107,28 @@
   function gefuehrtTests(i) {
     const n = () => gefuehrt.pfade.length;
     vorbereiten(i);
+    test('Vormachen startet beim Öffnen', true, () => !!lauflicht.vormachen && $('#startpunkt').hidden);
+    test('Vormachen zeigt alle Striche der Reihe nach', true, () => {
+      const besucht = [];
+      for (let t = 0; t < 60; t += 0.05) {
+        const z = vormachenZustand(t);
+        if (!z) break;
+        if (besucht[besucht.length - 1] !== z.nr) besucht.push(z.nr);
+      }
+      return besucht.join() === [...Array(n()).keys()].join() && vormachenZustand(60) === null;
+    });
+    test('Vormachen endet beim Aufsetzen', true, () => {
+      ziehen(0, { bis: 0.1 });
+      return lauflicht.vormachen === null && !$('#startpunkt').hidden;
+    });
+    test('Lichter zeichnen ohne Fehler', true, () => {
+      lichterZeichnen(performance.now() + 500);
+      lauflicht.vormachen = { start: performance.now() - 300 };
+      lichterZeichnen(performance.now());
+      lauflicht.vormachen = null;
+      return true;
+    });
+    vorbereiten(i);
     test('geführt: alle Striche', true, () => { for (let k = 0; k < n(); k++) ziehen(k); return tafelZustand.geschafft; });
     vorbereiten(i);
     test('geführt: letzter Strich fehlt', false, () => { for (let k = 0; k < n() - 1; k++) ziehen(k); return tafelZustand.geschafft; });
@@ -185,7 +207,21 @@
   zustand.schreibweise = zeigeB === zeigeB.toUpperCase() ? 'gross' : 'klein';
   zustand.index = BUCHSTABEN.findIndex((e) => e.b === zeigeB.toLowerCase()); zeigen('trace', false); tafelAufbauen();
   $('#bild').innerHTML = bildHtml(BUCHSTABEN[zustand.index]); $('#fortschritt').textContent = sterneText(1);
-  if (gefuehrt.aktiv && !location.search.includes('leer')) { ziehen(0); ziehen(1, { bis: 0.5 }); }
+  // ?demo=0.8 -> Vormachen nach 0,8 s einfrieren; sonst erster Strich fertig, zweiter halb, Lauflicht eingefroren
+  const demo = new URLSearchParams(location.search).get('demo');
+  if (gefuehrt.aktiv && demo) {
+    lauflicht.eingefroren = true;
+    lauflicht.vormachen = { start: 0 };
+    vorlageZeichnen();
+    lichterZeichnen(parseFloat(demo) * 1000);
+  } else if (gefuehrt.aktiv) {
+    ziehen(0); ziehen(1, { bis: 0.4 });
+    lauflicht.eingefroren = true;
+    lauflicht.zyklusStart = 0;
+    const pfad = gefuehrt.pfade[gefuehrt.nr];
+    // Licht hat gerade 60 % des restlichen Strichs erreicht
+    lichterZeichnen(((pfad.L - gefuehrt.fortschritt) * 0.6 / lichtTempo()) * 1000);
+  }
   const ok = ergebnis.length === 0;
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:' + (ok ? '#1b7f3a' : '#c62828') + ';color:#fff;font:11px monospace;padding:6px;z-index:9;max-height:70vh;overflow:hidden;word-break:break-all';
