@@ -16,6 +16,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 - `_test_kinder.html` – Test der Kinder-Profile (frisches Browserprofil; Ansicht per `#wer`, `#home`, `#kind`, `#eltern`)
 - `_test_sichern.html` – Test Sichern & Übertragen (frisches Browserprofil)
 - `_test_hoeren.html` – Test Hör-Spiel
+- `_test_memory.html` – Test Memory
 - `_test_album.html` – Test Sticker-Album
 - `_test_name.html` – Test „Mein Name“
 - `_test_woerter.html` – Test Wort-Vorrat und persönliche Wörter (`#eltern`, `#spuren`)
@@ -60,6 +61,7 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 - ✏️ **Nachspuren** – Startseite
 - 📳 **Vibration** beim Nachspuren (Sandpapier-Gefühl, Android), im Elternbereich abschaltbar
 - ✍️ **Mein Name** – eigenen Namen Buchstabe für Buchstabe nachspuren (nur mit ausgewähltem Kind)
+- 🧩 **Groß & klein** – Memory mit 4 Paaren (A/a); gleich aussehende Paare (C/c, O/o …) und i+l zusammen ausgeschlossen
 - 📒 **Sticker-Album** – pro geschafftem Buchstaben ein Sticker des gezeigten Wortes, Album pro Kind
 - 👂 **Ich höre was** – Laut hören („mmm …“), passendes Bild von dreien antippen; 5 Runden. Ähnlich klingende
   Anlaute (f/v, k/c/q/x, e/ä, j/y) nie in derselben Runde, ß ausgenommen. Nutzt `audio/<b>-laut.wav`.

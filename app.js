@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 26;
+const APP_VERSION = 27;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -426,6 +426,8 @@ function zeigen(id, verlauf = true) {
 window.addEventListener('popstate', async () => {
   wiedergabeStoppen();
   clearTimeout(hoerSpiel.timer);
+  clearTimeout(memory.timer);
+  clearTimeout(memory.timerNeu);
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
   if (ziel === 'eltern') {
@@ -1977,6 +1979,102 @@ async function aufnehmen(knopf, fertig) {
   setTimeout(() => { if (r.state === 'recording') r.stop(); }, 5000);
 }
 
+// ---------- Memory: Groß und klein ----------
+
+// Nur Buchstaben, deren große und kleine Form sich deutlich unterscheiden
+const MEMORY_BUCHSTABEN = BUCHSTABEN.map((e) => e.b).filter((b) => !'coöswvxzß'.includes(b));
+const MEMORY_PAARE = 4;
+const memory = { karten: [], offen: [], gefunden: 0, gesperrt: false, timer: null };
+
+function grossVon(b) { return b === 'ß' ? 'ẞ' : b.toUpperCase(); }
+
+// Großes I und kleines l sind in der Druckschrift beide ein senkrechter Strich: nie zusammen in ein Spiel
+const MEMORY_NICHT_ZUSAMMEN = [['i', 'l']];
+
+function memoryNeu(paare = MEMORY_PAARE) {
+  clearTimeout(memory.timer);
+  const auswahl = [];
+  for (const b of mischen(MEMORY_BUCHSTABEN)) {
+    if (auswahl.length === paare) break;
+    const konflikt = MEMORY_NICHT_ZUSAMMEN.some((gruppe) => gruppe.includes(b) && gruppe.some((x) => x !== b && auswahl.includes(x)));
+    if (!konflikt) auswahl.push(b);
+  }
+  memory.karten = mischen(auswahl.flatMap((b) => [{ b, z: grossVon(b) }, { b, z: b }]))
+    .map((k, i) => ({ ...k, i, paar: false }));
+  memory.offen = [];
+  memory.gefunden = 0;
+  memory.gesperrt = false;
+  memoryZeichnen();
+}
+
+function memoryZeichnen() {
+  $('#memory-paare').innerHTML = Array.from({ length: memory.karten.length / 2 },
+    (_, i) => `<span class="${i < memory.gefunden ? 'voll' : ''}"></span>`).join('');
+  const box = $('#memory-karten');
+  box.innerHTML = '';
+  memory.karten.forEach((k) => {
+    const btn = document.createElement('button');
+    btn.className = `memory-karte${k.paar ? ' paar' : ''}${memory.offen.includes(k.i) ? ' offen' : ''}`;
+    btn.setAttribute('aria-label', memory.offen.includes(k.i) || k.paar ? k.z : 'verdeckte Karte');
+    btn.innerHTML = `<div class="innen"><div class="hinten">★</div><div class="vorne">${strichSvg(k.z, [-26, 148], 70)}</div></div>`;
+    btn.addEventListener('click', () => memoryKarteGetippt(k.i));
+    box.appendChild(btn);
+  });
+}
+
+function memoryKarteGetippt(i) {
+  const k = memory.karten[i];
+  if (memory.gesperrt || k.paar || memory.offen.includes(i)) return;
+  audio();
+  memory.offen.push(i);
+  memoryZeichnen();
+  if (memory.offen.length < 2) return;
+  const [a, b] = memory.offen.map((j) => memory.karten[j]);
+  if (a.b === b.b) {
+    // Paar gefunden: bleibt offen, Laut ertönt
+    a.paar = b.paar = true;
+    memory.offen = [];
+    memory.gefunden++;
+    glockenspiel();
+    folgeAbspielen([{ url: `audio/${dateiName(a.b)}-laut.wav` }]);
+    memoryZeichnen();
+    if (memory.gefunden === memory.karten.length / 2) memoryGeschafft();
+  } else {
+    // Kein Paar: kurz anschauen lassen, dann wieder umdrehen
+    memory.gesperrt = true;
+    memory.timer = setTimeout(memoryZurueckdrehen, 1300);
+  }
+}
+
+function memoryZurueckdrehen() {
+  memory.offen = [];
+  memory.gesperrt = false;
+  memoryZeichnen();
+}
+
+function memoryGeschafft() {
+  const jubel = $('#memory-jubel');
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  memory.timer = setTimeout(() => {
+    folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft!');
+  }, 700);
+  memory.timerNeu = setTimeout(() => { jubel.classList.remove('zeigen'); memoryNeu(); }, 3800);
+}
+
+function memoryStarten() {
+  clearTimeout(memory.timerNeu);
+  memoryNeu();
+  zeigen('memory');
+  folgeAbspielen([{ url: 'audio/ansage-memory.wav' }], 'Finde groß und klein!');
+}
+
+$('#btn-memory-home').addEventListener('click', () => {
+  clearTimeout(memory.timer); clearTimeout(memory.timerNeu); wiedergabeStoppen(); zurStartseite();
+});
+$('#btn-memory-neu').addEventListener('click', () => { clearTimeout(memory.timerNeu); $('#memory-jubel').classList.remove('zeigen'); memoryNeu(); });
+
 // ---------- Sticker-Album ----------
 
 const stickerSchluessel = (b, wort) => `${b}|${wort}`;
@@ -2130,7 +2228,7 @@ $('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.t
 $('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
 
 // Spiele-Leiste
-const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, album: albumOeffnen };
+const SPIELE = { hoeren: hoerSpielStarten, name: nameStarten, memory: memoryStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();

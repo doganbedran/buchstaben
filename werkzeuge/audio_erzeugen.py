@@ -48,6 +48,7 @@ ANSAGEN = {
     'hoeren-nochmal': 'Hör noch mal genau hin.',
     'runde-geschafft': 'Alles geschafft! Toll gemacht!',
     'sticker': 'Ein neuer Sticker für dein Album!',
+    'memory': 'Finde groß und klein!',
 }
 
 TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen']

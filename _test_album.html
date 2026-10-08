@@ -33,6 +33,7 @@
       <button class="spiel-btn aktiv" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
       <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
       <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
+      <button class="spiel-btn" data-spiel="memory" aria-label="Groß und klein">🧩</button>
       <button class="spiel-btn" data-spiel="album" aria-label="Sticker-Album">📒</button>
     </nav>
     <div id="grid" class="grid"></div>
@@ -74,6 +75,17 @@
       <button id="btn-loeschen" class="icon-btn" aria-label="Wegwischen">🧽</button>
     </footer>
     <div id="jubel" class="jubel"><span id="jubel-bild"></span><div id="sticker-neu" class="sticker-neu">📒 ✨</div></div>
+  </section>
+
+  <!-- Memory: Groß- und Kleinbuchstaben finden -->
+  <section id="memory" class="screen">
+    <header class="topbar">
+      <button id="btn-memory-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div id="memory-paare" class="runden-punkte"></div>
+      <button id="btn-memory-neu" class="icon-btn" aria-label="Neues Spiel">🔄</button>
+    </header>
+    <div id="memory-karten" class="memory-karten"></div>
+    <div id="memory-jubel" class="jubel"><span>🏆</span></div>
   </section>
 
   <!-- Sticker-Album -->
