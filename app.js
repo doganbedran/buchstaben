@@ -416,12 +416,12 @@ function buchstabeMalen(c, s, skala, art) {
   c.textBaseline = 'alphabetic';
   c.lineJoin = 'round';
   if (art === 'vorlage') {
-    c.fillStyle = '#f1e8da';
+    c.fillStyle = '#f4eee5';
     c.fillText(text(), s.x, s.y);
     c.setLineDash([2, 10]);
     c.lineCap = 'round';
     c.lineWidth = 4;
-    c.strokeStyle = '#c9b79c';
+    c.strokeStyle = '#b39a74';
     c.strokeText(text(), s.x, s.y);
   } else if (art === 'ziel') {
     c.fillStyle = '#000';
@@ -585,6 +585,17 @@ canvas.addEventListener('pointercancel', strichEnde);
 // ---------- Geführtes Nachspuren: Strich für Strich in Schreibrichtung ----------
 
 const STRICH_BREITE = 12;   // Strichbreite der Vorlage in Einheiten des Vierlinien-Systems
+
+// Farben für das geführte Nachspuren: Blau + Orange bleiben auch bei Rot-Grün-Schwäche unterscheidbar,
+// und alle wichtigen Unterschiede stecken zusätzlich in der Helligkeit (Kontraste siehe README).
+const FARBE = {
+  umriss: '#c7b08a',     // feiner Rand um den ganzen Buchstaben
+  offen: '#f4eee5',      // Striche, die noch kommen
+  aktuell: '#e0c79c',    // Strich, der gerade dran ist
+  fertig: '#ffffff',     // geschaffte Striche (darüber liegt die Fingerspur)
+  pfeil: '#b8470b',      // Lauflicht-Pfeile
+  start: '#1d5fbf',      // Startpunkt und Geisterpunkt
+};
 const gefuehrt = {
   aktiv: false,
   pfade: [],        // pro Strich: { p: [{x,y}], l: [Bogenlänge bis Punkt i], L: Gesamtlänge } in Bildschirm-Pixeln
@@ -786,18 +797,20 @@ function vorlageZeichnen() {
   }
   c.setLineDash([]);
 
-  // Buchstabe: fertige Striche grün hinterlegt, offene beige
+  // Buchstabe: erst ein feiner Umriss um alle Striche, dann die Füllung (fertig hell, offen sandfarben)
+  c.lineWidth = gefuehrt.breite + 4;
+  c.strokeStyle = FARBE.umriss;
+  gefuehrt.pfade.forEach((pfad) => pfadZeichnen(c, pfad));
+  c.lineWidth = gefuehrt.breite;
   gefuehrt.pfade.forEach((pfad, i) => {
-    c.lineWidth = gefuehrt.breite;
-    c.strokeStyle = i < gefuehrt.nr ? '#d5ecd5' : '#f1e8da';
+    c.strokeStyle = i < gefuehrt.nr ? FARBE.fertig : FARBE.offen;
     pfadZeichnen(c, pfad);
   });
 
-  // Aktueller Strich: etwas dunkler, mit Pfeilen in Schreibrichtung
+  // Aktueller Strich: deutlich dunkler als die anderen
   const pfad = gefuehrt.pfade[gefuehrt.nr];
   if (!pfad) return;
-  c.lineWidth = gefuehrt.breite;
-  c.strokeStyle = '#ead9bf';
+  c.strokeStyle = FARBE.aktuell;
   pfadZeichnen(c, pfad);
   startpunktZeigen(lauflicht.vormachen ? null : punktBei(pfad, gefuehrt.fortschritt));
 }
@@ -928,11 +941,11 @@ function pfeil(c, pfad, s, staerke, groesse) {
   const g = gefuehrt.breite * 0.42 * groesse * (0.85 + 0.25 * staerke);
   c.save();
   c.globalAlpha = Math.min(1, staerke);
-  c.strokeStyle = '#f28c38';
+  c.strokeStyle = FARBE.pfeil;
   c.lineCap = 'round';
   c.lineJoin = 'round';
   c.lineWidth = Math.max(3.5, gefuehrt.breite * 0.16) * groesse;
-  if (staerke > 0.6) { c.shadowColor = 'rgba(255, 170, 60, 0.9)'; c.shadowBlur = 12 * staerke; }
+  if (staerke > 0.6) { c.shadowColor = 'rgba(242, 140, 56, 0.95)'; c.shadowBlur = 12 * staerke; }
   c.beginPath();
   c.moveTo(p.x - g * Math.cos(w - 0.6), p.y - g * Math.sin(w - 0.6));
   c.lineTo(p.x, p.y);
@@ -944,10 +957,10 @@ function pfeil(c, pfad, s, staerke, groesse) {
 function geisterpunkt(c, p) {
   const r = Math.max(12, gefuehrt.breite * 0.38);
   c.save();
-  c.shadowColor = 'rgba(76, 175, 80, 0.9)';
+  c.shadowColor = 'rgba(29, 95, 191, 0.8)';
   c.shadowBlur = 18;
   c.fillStyle = '#ffffff';
-  c.strokeStyle = '#4caf50';
+  c.strokeStyle = FARBE.start;
   c.lineWidth = 4;
   c.beginPath();
   c.arc(p.x, p.y, r, 0, Math.PI * 2);
