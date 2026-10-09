@@ -48,8 +48,9 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 ## Daten (nur auf dem Gerät)
 - IndexedDB `lernapp` (Version 3): `profile` (eigene Stimm-/Bildprofile inkl. `woerter`), `medien` (Blobs, Schlüssel
   `<profil>|<b oder w-id oder lob-n>|bild|stimme`, Funde `fund-<kind>|<id>|…`), `kinder` (Name, Tier/Foto,
-  Namensaufnahme, sterne, schreibweise, profil, album, reihenfolge, farbe, spiele (Regal), funde), `aufnahmen` (alt, nur Migration).
-- localStorage: App-weite Einstellungen ohne Kinder (`schreibweise`, `sterne`, `profil`, `album`, `spiele`, …), aktives `kind`.
+  Namensaufnahme, sterne, schreibweise, profil, album, reihenfolge, farbe, spieleAus (ausgeblendete Spiele; alt: spiele), funde), `aufnahmen` (alt, nur Migration).
+- localStorage: App-weite Einstellungen ohne Kinder (`schreibweise`, `sterne`, `profil`, `album`, `spieleAus`, …), aktives `kind`.
+- Neues Spiel: in `ALLE_SPIELE` (und ggf. `START_REGAL`) eintragen – es erscheint dann bei allen von selbst.
 - Neue Geräte/Kinder: Montessori-Reihenfolge und kleines Regal (`START_REGAL`); bestehende behalten A–Z und alle Spiele
   (erkannt an fehlendem `sterne` in localStorage bzw. fehlendem Feld am Kind).
 - Profil „Standard“ ist kein DB-Eintrag und unveränderlich. Pro Buchstabe: Eigenes > Standard.

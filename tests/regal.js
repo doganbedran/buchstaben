@@ -11,15 +11,15 @@
 
   // 1. Neues Gerät: kleines Regal (✍️ nur mit Kind)
   rasterZeichnen();
-  pruefe(sichtbar() === 'spuren,hoeren,silben,album', `Start-Regal: ${sichtbar()}`);
+  pruefe(sichtbar() === 'spuren,zeigen,hoeren,silben,album', `Start-Regal: ${sichtbar()}`);
 
   // 2. App-weit im Elternbereich: Memory dazu, Album weg; letztes Spiel bleibt
   await elternOeffnen();
   const knopf = (box, id) => [...$(box).querySelectorAll('.regal-spiel')][ALLE_SPIELE.indexOf(id)];
   knopf('#spiele-wahl', 'memory').click();
   knopf('#spiele-wahl', 'album').click();
-  pruefe(speicher.lesen('spiele').join(',') === 'spuren,hoeren,silben,name,memory', `Gespeichert: ${speicher.lesen('spiele')}`);
-  ['spuren', 'hoeren', 'silben', 'name', 'memory'].forEach((id) => knopf('#spiele-wahl', id).click());
+  pruefe(speicher.lesen('spieleAus').join(',') === 'jagd,legen,album', `Gespeichert (aus): ${speicher.lesen('spieleAus')}`);
+  ['spuren', 'zeigen', 'hoeren', 'silben', 'name', 'memory'].forEach((id) => knopf('#spiele-wahl', id).click());
   pruefe(zustand.spiele.length === 1, `Letztes Spiel abwählbar: ${zustand.spiele}`);
   history.back(); await warte(300);
   rasterZeichnen();
@@ -30,28 +30,37 @@
   await elternOeffnen();
   $('#btn-kind-neu').click(); await warte(400);
   const lina = kinder.find((k) => k.name === 'Lina');
-  pruefe(lina.spiele.join(',') === 'memory', `Lina übernimmt nicht: ${lina.spiele}`);
+  const regalVonKind = (k) => regalVon(regalAus(k) || []).join(',');
+  pruefe(regalVonKind(lina) === 'memory', `Lina übernimmt nicht: ${regalVonKind(lina)}`);
   knopf('#kind-spiele', 'legen').click(); await warte(300);
-  pruefe((await datenbank.kinder()).find((k) => k.id === lina.id).spiele.join(',') === 'memory,legen', 'Kind-Regal nicht gespeichert');
+  pruefe(regalVonKind((await datenbank.kinder()).find((k) => k.id === lina.id)) === 'memory,legen', 'Kind-Regal nicht gespeichert');
   history.back(); await warte(300); history.back(); await warte(300);
   window.prompt = () => 'Emil';
   await elternOeffnen();
   $('#btn-kind-neu').click(); await warte(400);
   const emil = kinder.find((k) => k.name === 'Emil');
-  pruefe(emil.spiele.join(',') === START_REGAL.join(','), `Emil: ${emil.spiele}`);
+  pruefe(regalVonKind(emil) === START_REGAL.join(','), `Emil: ${regalVonKind(emil)}`);
   history.back(); await warte(300); history.back(); await warte(300);
   await kindWaehlen(emil.id); rasterZeichnen();
-  pruefe(sichtbar() === 'spuren,hoeren,silben,name,album', `Emil sieht: ${sichtbar()}`);
+  pruefe(sichtbar() === 'spuren,zeigen,hoeren,silben,name,album', `Emil sieht: ${sichtbar()}`);
   await kindWaehlen(lina.id); rasterZeichnen();
   pruefe(sichtbar() === 'memory,legen', `Lina sieht: ${sichtbar()}`);
 
   // 4. Altes Kind ohne Regal-Feld sieht alle Spiele
-  delete aktivesKind().spiele; einstellungenLaden(); rasterZeichnen();
+  delete aktivesKind().spieleAus; einstellungenLaden(); rasterZeichnen();
   pruefe(sichtbar().split(',').length === ALLE_SPIELE.length, `Altes Kind: ${sichtbar()}`);
+  // Version 37 speicherte die sichtbaren Spiele: wer damals alle hatte, bekommt neue Spiele (👆) dazu
+  aktivesKind().spiele = REGAL_V37.slice(); einstellungenLaden(); rasterZeichnen();
+  pruefe(sichtbar().split(',').length === ALLE_SPIELE.length, `Kind mit alter Liste: ${sichtbar()}`);
+  aktivesKind().spiele = ['spuren', 'hoeren']; einstellungenLaden();
+  pruefe(zustand.spiele.join(',') === 'spuren,zeigen,hoeren', `Alte kleine Liste: ${zustand.spiele}`);
+  await einstellungenSpeichern();
+  const gespeichert = (await datenbank.kinder()).find((k) => k.id === aktivesKind().id);
+  pruefe(!gespeichert.spiele && Array.isArray(gespeichert.spieleAus), 'Alte Liste nicht umgeschrieben');
 
   // 5. Sicherung enthält das Regal
   const sicherung = await sicherungErstellen();
-  pruefe(sicherung.kinder.some((k) => k.spiele && k.spiele.join(',') === START_REGAL.join(',')), 'Regal fehlt in der Sicherung');
+  pruefe(sicherung.kinder.some((k) => Array.isArray(k.spieleAus)) && Array.isArray(sicherung.einstellungen.spieleAus), 'Regal fehlt in der Sicherung');
 
   // Ansicht: Kind-Formular mit Regal (zur Regal-Karte gescrollt)
   await elternOeffnen();

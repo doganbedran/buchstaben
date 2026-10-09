@@ -31,6 +31,7 @@
     <!-- Spiele: große Symbole, die Kinder ohne Lesen verstehen -->
     <nav class="spiele-raster" aria-label="Spiele">
       <button class="spiel-btn" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
+      <button class="spiel-btn" data-spiel="zeigen" aria-label="Zeig mir">👆</button>
       <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
       <button class="spiel-btn" data-spiel="silben" aria-label="Silben-Trommel" hidden>🥁</button>
       <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
@@ -120,6 +121,19 @@
     </div>
     <input type="file" id="jagd-input" accept="image/*" capture="environment" hidden>
     <div id="jagd-jubel" class="jubel"><span id="jagd-jubel-bild"></span></div>
+  </section>
+
+  <!-- Zeig mir das mmm: Drei-Stufen-Lektion -->
+  <section id="zeigen" class="screen">
+    <header class="topbar">
+      <button id="btn-zeigen-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div id="zeigen-runden" class="zeigen-punkte"></div>
+      <button id="btn-zeigen-laut" class="icon-btn" aria-label="Nochmal hören">🔊</button>
+    </header>
+    <div id="zeigen-symbol" class="zeigen-symbol" aria-hidden="true">👀</div>
+    <div id="zeigen-karten" class="zeigen-karten"></div>
+    <div id="zeigen-ablage" class="zeigen-ablage"></div>
+    <div id="zeigen-jubel" class="jubel"><span>🏆</span></div>
   </section>
 
   <!-- Silben-Trommel -->

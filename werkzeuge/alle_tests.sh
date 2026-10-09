@@ -30,6 +30,8 @@ LAEUFE=(
   "start-klein|tests/startseite.html|360,640|60"
   "start-tab|tests/startseite.html|1280,800|60"
   "regal|tests/regal.html|412,860|90"
+  "zeigen|tests/zeigen.html|412,860|90"
+  "zeigen-tab|tests/zeigen.html|1280,800|90"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do

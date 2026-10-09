@@ -582,3 +582,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .spiel-ende button { border: none; border-radius: 50%; background: var(--papier); box-shadow: var(--schatten); display: grid; place-items: center; }
 .spiel-ende .ende-home { width: 110px; height: 110px; font-size: 3.4rem; }
 .spiel-ende .ende-nochmal { width: 76px; height: 76px; font-size: 2.2rem; }
+
+/* Zeig mir das mmm */
+.zeigen-punkte { display: flex; gap: 14px; }
+.zeigen-punkte .punkt-gruppe { display: flex; gap: 5px; }
+.zeigen-punkte .punkt-gruppe span { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #c7b08a; background: var(--papier); }
+.zeigen-punkte .punkt-gruppe span.voll { background: #f5c518; border-color: #b07800; }
+.zeigen-symbol { text-align: center; font-size: 3.2rem; margin: 14px 0 4px; display: block; }
+.zeigen-symbol.huepft { animation: huepfen 0.6s ease; }
+.zeigen-karten { flex: 1; display: grid; gap: 14px; align-content: center; justify-content: center; width: 100%; max-width: 720px; margin: 0 auto; }
+.zeigen-karten.einzeln { grid-template-columns: min(260px, 64vw); }
+.zeigen-karten.reihe { grid-template-columns: repeat(3, minmax(0, 200px)); }
+.zeigen-karte {
+  border: none; border-radius: 26px; background: var(--papier); box-shadow: var(--schatten); color: #2f3b52;
+  aspect-ratio: 5 / 6; display: grid; place-items: center; padding: 6%; transition: opacity 0.4s;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.zeigen-karte .zeichen-svg { width: 100%; height: 100%; }
+.zeigen-karte.kommt { animation: aufploppen 0.4s ease-out; }
+.zeigen-karte.pulsiert { animation: trommelwarten 1.6s ease-in-out infinite; }
+.zeigen-karte.huepft { animation: huepfen 0.6s ease; }
+.zeigen-karte.wackelt { animation: wackeln 0.6s ease; }
+.zeigen-karte.blass { opacity: 0.45; }
+.zeigen-karte.richtig { box-shadow: 0 0 0 6px #1d5fbf; }
+.zeigen-ablage { display: flex; gap: 12px; justify-content: center; padding: 10px 0 max(40px, 8vh); }
+.zeigen-ablage[hidden] { display: none; }
+.zeigen-feld {
+  width: 60px; height: 72px; border: none; border-bottom: 4px solid #c7b08a; background: transparent;
+  display: grid; place-items: center; color: #2f3b52; padding: 0;
+}
+.zeigen-feld .zeichen-svg { height: 58px; width: auto; }
+.zeigen-feld.voll { animation: huepfen 0.5s ease; }

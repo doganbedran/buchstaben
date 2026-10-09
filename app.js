@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 37;
+const APP_VERSION = 38;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -168,9 +168,28 @@ const reihenfolgeStandard = () => (neuesGeraet() ? 'montessori' : 'alphabet');
 
 // Spiele-Regal: welche Spiele ein Kind auf der Startseite sieht (Montessori: ein Material kommt erst ins Regal,
 // wenn es gezeigt wurde). Neue Kinder/Geräte beginnen mit wenigen Spielen, wer die App schon nutzt, behält alle.
-const ALLE_SPIELE = ['spuren', 'hoeren', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
-const START_REGAL = ['spuren', 'hoeren', 'silben', 'name', 'album'];
-const regalStandard = () => (neuesGeraet() ? START_REGAL : ALLE_SPIELE);
+// Gespeichert wird, was AUSGEBLENDET ist – so erscheinen neue Spiele nach einem Update von selbst.
+const ALLE_SPIELE = ['spuren', 'zeigen', 'hoeren', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
+const START_REGAL = ['spuren', 'zeigen', 'hoeren', 'silben', 'name', 'album'];
+const ausVon = (sichtbar) => ALLE_SPIELE.filter((id) => !sichtbar.includes(id));
+const START_AUS = ausVon(START_REGAL);
+// Version 37 speicherte die sichtbaren Spiele ("spiele"); damals gab es diese acht
+const REGAL_V37 = ['spuren', 'hoeren', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
+
+function regalAus(quelle) {
+  if (Array.isArray(quelle.spieleAus)) return quelle.spieleAus;
+  if (Array.isArray(quelle.spiele)) return REGAL_V37.filter((id) => !quelle.spiele.includes(id));
+  return null;
+}
+
+function regalVon(aus) {
+  const sichtbar = ALLE_SPIELE.filter((id) => !aus.includes(id));
+  return sichtbar.length ? sichtbar : ALLE_SPIELE;
+}
+
+// Regal ohne Kinder: gespeichert, sonst neues Gerät = kleines Regal, bisheriges Gerät = alle
+const appWeitAus = () => regalAus({ spieleAus: speicher.lesen('spieleAus', null), spiele: speicher.lesen('spiele', null) })
+  || (neuesGeraet() ? START_AUS : []);
 
 // Sterne, Schrift und Profil kommen vom aktiven Kind – ohne Kinder aus den App-weiten Einstellungen
 function einstellungenLaden() {
@@ -181,7 +200,7 @@ function einstellungenLaden() {
   zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
   zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', reihenfolgeStandard());
   zustand.farbe = k ? (k.farbe || 'bunt') : speicher.lesen('farbe', 'bunt');
-  zustand.spiele = k ? (k.spiele || ALLE_SPIELE) : speicher.lesen('spiele', regalStandard());
+  zustand.spiele = regalVon(k ? (regalAus(k) || []) : appWeitAus());
   zustand.funde = k ? (k.funde || []) : speicher.lesen('funde', []);
 }
 
@@ -193,14 +212,16 @@ function einstellungenSpeichern() {
     k.album = zustand.album;
     k.reihenfolge = zustand.reihenfolge;
     k.farbe = zustand.farbe;
-    k.spiele = zustand.spiele;
+    k.spieleAus = ausVon(zustand.spiele);
+    delete k.spiele;
     k.funde = zustand.funde;
     return datenbank.kindSpeichern(k);
   }
   speicher.schreiben('funde', zustand.funde);
   speicher.schreiben('reihenfolge', zustand.reihenfolge);
   speicher.schreiben('farbe', zustand.farbe);
-  speicher.schreiben('spiele', zustand.spiele);
+  speicher.schreiben('spieleAus', ausVon(zustand.spiele));
+  try { localStorage.removeItem('spiele'); } catch { /* egal */ }
   speicher.schreiben('schreibweise', zustand.schreibweise);
   speicher.schreiben('sterne', zustand.sterne);
   speicher.schreiben('album', zustand.album);
@@ -462,6 +483,7 @@ window.addEventListener('popstate', async () => {
   clearTimeout(jagd.timer);
   clearTimeout(legen.timer);
   silbenTimerStoppen();
+  zeigenStoppen();
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
   if (ziel === 'eltern') {
@@ -1769,7 +1791,7 @@ $('#btn-kind-neu').addEventListener('click', async () => {
     album: erstesKind ? speicher.lesen('album', []) : [],
     reihenfolge: erstesKind ? speicher.lesen('reihenfolge', reihenfolgeStandard()) : 'montessori',
     farbe: erstesKind ? speicher.lesen('farbe', 'bunt') : 'bunt',
-    spiele: erstesKind ? speicher.lesen('spiele', regalStandard()) : START_REGAL,
+    spieleAus: erstesKind ? appWeitAus() : START_AUS,
     funde: erstesKind ? speicher.lesen('funde', []) : [],
     erstellt: Date.now(),
   };
@@ -1804,7 +1826,7 @@ async function kindAendern(fn) {
     zustand.album = kindInArbeit.album || [];
     zustand.reihenfolge = kindInArbeit.reihenfolge || 'alphabet';
     zustand.farbe = kindInArbeit.farbe || 'bunt';
-    zustand.spiele = kindInArbeit.spiele || ALLE_SPIELE;
+    zustand.spiele = regalVon(regalAus(kindInArbeit) || []);
     zustand.funde = kindInArbeit.funde || [];
   }
   kindFormularZeichnen();
@@ -1829,7 +1851,7 @@ async function kindFormularZeichnen() {
 
   document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => { r.checked = r.value === k.schreibweise; });
   document.querySelectorAll('input[name="kind-reihenfolge"]').forEach((r) => { r.checked = r.value === (k.reihenfolge || 'alphabet'); });
-  regalWahlZeichnen($('#kind-spiele'), k.spiele || ALLE_SPIELE, (neu) => kindAendern((kk) => { kk.spiele = neu; }));
+  regalWahlZeichnen($('#kind-spiele'), regalVon(regalAus(k) || []), (neu) => kindAendern((kk) => { kk.spieleAus = ausVon(neu); delete kk.spiele; }));
 
   const profile = [STANDARD, ...(await datenbank.profile())];
   const box = $('#kind-profile');
@@ -2731,6 +2753,293 @@ function hoerSpielStarten() {
 $('#btn-hoeren-home').addEventListener('click', () => { clearTimeout(hoerSpiel.timer); wiedergabeStoppen(); zurStartseite(); });
 $('#btn-hoeren-laut').addEventListener('click', () => { audio(); hoerLautAbspielen(false); });
 
+// ---------- Zeig mir das mmm: Drei-Stufen-Lektion (Das ist … / Zeig mir … / Was ist das?) ----------
+
+// Nicht zusammen in eine Lektion: sehen sich ähnlich (klein oder GROSS; lieber zu streng) …
+const AEHNLICHE_FORMEN = [['b', 'd', 'p', 'q'], ['m', 'n', 'u', 'w'], ['i', 'j', 'l', 't'], ['a', 'o', 'ä', 'ö'],
+  ['a', 'd', 'g', 'q'], ['o', 'q', 'c', 'g', 'd'], ['u', 'ü', 'v'], ['f', 't', 'e'], ['v', 'w', 'y', 'a'], ['c', 'e'],
+  ['h', 'n', 'r'], ['n', 'z'], ['s', 'z', 'ß'], ['p', 'r', 'b'], ['k', 'x']];
+// … oder klingen für Kinderohren fast gleich (gleiche Laute fasst lautGruppe zusammen)
+const AEHNLICHE_LAUTE = [['m', 'n'], ['b', 'p'], ['d', 't'], ['g', 'k'], ['f', 'w', 'v'], ['s', 'z', 'ß']];
+const ZEIGEN_STUFEN = [3, 6, 3];   // Schritte je Stufe (= Rundenpunkte in drei Gruppen)
+const ZEIGEN_SYMBOL = ['👀', '👂', '🗣️'];
+const lektion = { buchstaben: [], stufe: 0, schritt: 0, punkte: 0, daneben: new Set(), auftraege: [], ziel: null, gesperrt: true, timer: null, nummer: 0, letzterTipp: 0 };
+
+const zeigenAktuell = (nr) => nr === lektion.nummer && $('#zeigen').classList.contains('active');
+
+function vertraeglich(a, b) {
+  return lautGruppe(a) !== lautGruppe(b)
+    && ![...AEHNLICHE_FORMEN, ...AEHNLICHE_LAUTE].some((g) => g.includes(a) && g.includes(b));
+}
+
+// 3 Buchstaben: im Montessori-Modus aus der aktuellen Gruppe (wenigste Sterne zuerst), sonst aus den freien
+function zeigenAuswahl() {
+  const frei = [...freigeschaltet()];
+  const zuerst = montessori() ? montessoriStand().aktuell : [];
+  const nachSternen = (liste) => mischen(liste).sort((a, b) => (zustand.sterne[a] || 0) - (zustand.sterne[b] || 0));
+  const wahl = [];
+  [...nachSternen(zuerst), ...nachSternen(frei.filter((b) => !zuerst.includes(b)))].forEach((b) => {
+    if (wahl.length < 3 && !wahl.includes(b) && wahl.every((x) => vertraeglich(x, b))) wahl.push(b);
+  });
+  return wahl;
+}
+
+// Reihenfolge der Aufträge in Stufe 2: jeder Buchstabe zweimal, nie zweimal derselbe hintereinander
+function zeigenAuftraege(buchstaben) {
+  if (new Set(buchstaben).size < 2) return [...buchstaben, ...buchstaben];
+  for (;;) {
+    const folge = mischen([...buchstaben, ...buchstaben]);
+    if (folge.every((b, i) => b !== folge[i - 1])) return folge;
+  }
+}
+
+const lautQuelle = (b) => ({ url: `audio/${dateiName(b)}-laut.wav` });
+const lautText = (b) => (BUCHSTABEN.find((e) => e.b === b) || { laut: b }).laut;
+
+function zeigenStoppen() {
+  clearTimeout(lektion.timer);
+  lektion.nummer++;
+  lektion.gesperrt = true;
+}
+
+function zeigenPunkteZeichnen() {
+  let n = 0;
+  $('#zeigen-runden').innerHTML = ZEIGEN_STUFEN.map((anzahl, stufe) => `<span class="punkt-gruppe${stufe === lektion.stufe ? ' jetzt' : ''}">${
+    Array.from({ length: anzahl }, () => `<span class="${n++ < lektion.punkte ? 'voll' : ''}"></span>`).join('')}</span>`).join('');
+}
+
+function zeigenKarte(b, extra = '') {
+  const btn = document.createElement('button');
+  btn.className = `zeigen-karte${extra}`;
+  btn.innerHTML = strichSvg(legenZeichen(b), [-26, 148], 40);
+  btn.setAttribute('aria-label', b);
+  btn.addEventListener('click', () => zeigenGetippt(b, btn));
+  return btn;
+}
+
+function karteAnimieren(btn, klasse) {
+  btn.classList.remove('huepft', 'wackelt');
+  void btn.offsetWidth;
+  btn.classList.add(klasse);
+}
+
+async function zeigenSagen(nr, folge, text) {
+  await folgeAbspielen(folge, text);
+  return zeigenAktuell(nr);
+}
+
+function zeigenSymbol() {
+  const s = $('#zeigen-symbol');
+  s.textContent = ZEIGEN_SYMBOL[lektion.stufe];
+  karteAnimieren(s, 'huepft');
+}
+
+// Stufe 1: Das ist … (ein Buchstabe groß; Tipp = Laut nochmal, dann in die Ablage)
+async function zeigenStufe1() {
+  zeigenStoppen();
+  const nr = lektion.nummer;
+  const b = lektion.buchstaben[lektion.schritt];
+  const box = $('#zeigen-karten');
+  box.className = 'zeigen-karten einzeln';
+  box.innerHTML = '';
+  box.appendChild(zeigenKarte(b, ' kommt'));
+  if (!(await zeigenSagen(nr, [{ url: 'audio/ansage-zeigen-das-ist.wav' }, lautQuelle(b)], `Das ist ${lautText(b)}`))) return;
+  lektion.gesperrt = false;
+  box.firstChild.classList.add('pulsiert');
+  // Kein Tipp: einmal erinnern, dann zeigt die App selbst weiter (hier zeigt ja die App)
+  lektion.timer = setTimeout(async () => {
+    if (!zeigenAktuell(nr)) return;
+    await zeigenSagen(nr, [lautQuelle(b)], lautText(b));
+    lektion.timer = setTimeout(() => zeigenAktuell(nr) && zeigenWeiter(nr), 8000);
+  }, 6000);
+}
+
+// Stufe 2: Zeig mir … (drei Karten, Plätze bleiben fest)
+async function zeigenAuftrag() {
+  zeigenStoppen();
+  const nr = lektion.nummer;
+  lektion.ziel = lektion.auftraege[lektion.schritt];
+  document.querySelectorAll('.zeigen-karte').forEach((k) => k.classList.remove('blass', 'richtig'));
+  // Nach der Hälfte die Plätze einmal tauschen: das Kind soll die Form suchen, nicht die Stelle
+  if (lektion.schritt === 3) {
+    const box = $('#zeigen-karten');
+    const alt = [...box.children];
+    let neu = mischen(alt);
+    while (neu.every((k, i) => k === alt[i])) neu = mischen(alt);
+    neu.forEach((k) => { k.classList.remove('kommt'); void k.offsetWidth; k.classList.add('kommt'); box.appendChild(k); });
+    await warten(500);
+    if (!zeigenAktuell(nr)) return;
+  }
+  if (!(await zeigenSagen(nr, [{ url: 'audio/ansage-zeigen-zeig-mir.wav' }, lautQuelle(lektion.ziel)], `Zeig mir ${lautText(lektion.ziel)}`))) return;
+  lektion.gesperrt = false;
+  zeigenWiederholen(nr, 2);
+}
+
+// 8 s nichts getippt: Auftrag wiederholen (höchstens zweimal), nie selbst weiterschalten
+function zeigenWiederholen(nr, rest) {
+  clearTimeout(lektion.timer);
+  if (!rest) return;
+  lektion.timer = setTimeout(async () => {
+    if (!zeigenAktuell(nr) || lektion.gesperrt) return;
+    await zeigenSagen(nr, [{ url: 'audio/ansage-zeigen-zeig-mir.wav' }, lautQuelle(lektion.ziel)], `Zeig mir ${lautText(lektion.ziel)}`);
+    zeigenWiederholen(nr, rest - 1);
+  }, 8000);
+}
+
+// Stufe 3: Was ist das? (Kind sagt den Laut, Tipp = Vergleich übers Ohr)
+async function zeigenFrage() {
+  zeigenStoppen();
+  const nr = lektion.nummer;
+  const b = lektion.auftraege[lektion.schritt];
+  const box = $('#zeigen-karten');
+  box.className = 'zeigen-karten einzeln';
+  box.innerHTML = '';
+  box.appendChild(zeigenKarte(b, ' kommt'));
+  // War dieser Buchstabe in Stufe 2 noch unsicher: wie in der Montessori-Lektion zurück zu "Das ist …"
+  if (lektion.daneben.has(b)) {
+    if (!(await zeigenSagen(nr, [{ url: 'audio/ansage-zeigen-das-ist.wav' }, lautQuelle(b)], `Das ist ${lautText(b)}`))) return;
+    lektion.gesperrt = false;
+    box.firstChild.classList.add('pulsiert');
+    lektion.timer = setTimeout(() => zeigenAktuell(nr) && !lektion.gesperrt && zeigenWeiter(nr), 8000);
+    return;
+  }
+  if (!(await zeigenSagen(nr, [{ url: 'audio/ansage-zeigen-was-ist-das.wav' }], 'Was ist das? Sag es!'))) return;
+  // Erst Ruhe zum Selbersagen (Tippen zählt noch nicht), dann sanft pulsieren; ohne Tipp sagt die App den Laut
+  lektion.timer = setTimeout(() => {
+    if (!zeigenAktuell(nr)) return;
+    lektion.gesperrt = false;
+    box.firstChild && box.firstChild.classList.add('pulsiert');
+    lektion.timer = setTimeout(async () => {
+      if (!zeigenAktuell(nr) || lektion.gesperrt) return;
+      lektion.gesperrt = true;
+      if (await zeigenSagen(nr, [lautQuelle(b)], lautText(b))) zeigenWeiter(nr);
+    }, 7000);
+  }, 3000);
+}
+
+async function zeigenGetippt(b, btn) {
+  const jetzt = performance.now();
+  if (lektion.gesperrt || jetzt - lektion.letzterTipp < 400) return;
+  lektion.letzterTipp = jetzt;
+  audio();
+  clearTimeout(lektion.timer);
+  const nr = lektion.nummer;
+  if (lektion.stufe === 1 && b !== lektion.ziel) {
+    // Kein "falsch": sanft wackeln, Laut der getippten Karte, dann der gesuchte nochmal
+    lektion.gesperrt = true;
+    btn.classList.add('blass');
+    karteAnimieren(btn, 'wackelt');
+    if (!(await zeigenSagen(nr, [lautQuelle(b)], lautText(b)))) return;
+    await warten(400);
+    if (!(await zeigenSagen(nr, [{ url: 'audio/ansage-zeigen-zeig-mir.wav' }, lautQuelle(lektion.ziel)], `Zeig mir ${lautText(lektion.ziel)}`))) return;
+    btn.classList.remove('blass');   // nur kurz blass: kein Lösen durch Ausschließen
+    lektion.daneben.add(lektion.ziel);
+    lektion.gesperrt = false;
+    zeigenWiederholen(nr, 2);
+    return;
+  }
+  lektion.gesperrt = true;
+  btn.classList.remove('pulsiert');
+  karteAnimieren(btn, 'huepft');
+  if (lektion.stufe === 1) { btn.classList.add('richtig'); glockenspiel(); }
+  // Treffer in Stufe 2 bekommen ein kurzes Lob
+  if (!(await zeigenSagen(nr, [lautQuelle(b), ...(lektion.stufe === 1 ? [lobQuelle()] : [])], lautText(b)))) return;
+  await warten(lektion.stufe === 1 ? 900 : 600);
+  if (zeigenAktuell(nr)) zeigenWeiter(nr);
+}
+
+function zeigenWeiter(nr) {
+  if (!zeigenAktuell(nr)) return;
+  lektion.punkte++;
+  if (lektion.stufe === 0) {
+    const feld = $('#zeigen-ablage').children[lektion.schritt];
+    feld.innerHTML = strichSvg(legenZeichen(lektion.buchstaben[lektion.schritt]), [-26, 148], 40);
+    feld.classList.add('voll');
+  }
+  lektion.schritt++;
+  zeigenPunkteZeichnen();
+  if (lektion.schritt < ZEIGEN_STUFEN[lektion.stufe]) { zeigenSchritt(); return; }
+  zeigenNaechsteStufe();
+}
+
+function zeigenSchritt() {
+  if (lektion.stufe === 0) zeigenStufe1();
+  else if (lektion.stufe === 1) zeigenAuftrag();
+  else zeigenFrage();
+}
+
+async function zeigenNaechsteStufe() {
+  zeigenStoppen();
+  const nr = lektion.nummer;
+  glockenspiel();
+  if (lektion.stufe === 2) { zeigenGeschafft(); return; }
+  lektion.stufe++;
+  lektion.schritt = 0;
+  zeigenPunkteZeichnen();
+  await warten(700);
+  if (!zeigenAktuell(nr)) return;
+  zeigenSymbol();
+  $('#zeigen-ablage').hidden = true;
+  if (lektion.stufe === 1) {
+    // Die drei kommen zusammen: Plätze einmal mischen, dann fest
+    lektion.auftraege = zeigenAuftraege(lektion.buchstaben);
+    const box = $('#zeigen-karten');
+    box.className = 'zeigen-karten reihe';
+    box.innerHTML = '';
+    mischen(lektion.buchstaben).forEach((b) => box.appendChild(zeigenKarte(b, ' kommt')));
+  } else {
+    lektion.auftraege = mischen(lektion.buchstaben);
+  }
+  zeigenSchritt();
+}
+
+function zeigenGeschafft() {
+  const nr = lektion.nummer;
+  const jubel = $('#zeigen-jubel');
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
+  lektion.timer = setTimeout(() => zeigenAktuell(nr) && spielEnde('zeigen', zeigenNeu), 2200);
+}
+
+function zeigenNeu() {
+  zeigenStoppen();
+  lektion.buchstaben = zeigenAuswahl();
+  lektion.stufe = 0;
+  lektion.schritt = 0;
+  lektion.punkte = 0;
+  lektion.daneben = new Set();
+  zeigenPunkteZeichnen();
+  $('#zeigen-symbol').textContent = ZEIGEN_SYMBOL[0];
+  const ablage = $('#zeigen-ablage');
+  ablage.hidden = false;
+  ablage.innerHTML = '';
+  lektion.buchstaben.forEach((b) => {
+    const feld = document.createElement('button');
+    feld.className = 'zeigen-feld';
+    feld.setAttribute('aria-label', 'Ablage');
+    // Schon vorgestellte Buchstaben in der Ablage: Tipp = Laut (sonst nichts)
+    feld.addEventListener('click', () => { if (feld.classList.contains('voll') && !lektion.gesperrt) { audio(); folgeAbspielen([lautQuelle(b)]); } });
+    ablage.appendChild(feld);
+  });
+  zeigenSchritt();
+}
+
+function zeigenStarten() {
+  spielEndeWeg('zeigen');
+  zeigen('zeigen');
+  zeigenNeu();
+}
+
+$('#btn-zeigen-home').addEventListener('click', () => { zeigenStoppen(); wiedergabeStoppen(); zurStartseite(); });
+// 🔊: aktuellen Schritt von vorn (Ansage nochmal); geht immer – rettet auch einen hängen gebliebenen Ton
+$('#btn-zeigen-laut').addEventListener('click', () => {
+  audio();
+  lektion.gesperrt = true;
+  zeigenSchritt();
+});
+
 // ---------- Silben-Trommel: pro Silbe einmal auf die Trommel hauen ----------
 
 // Silbenzahl je Runde: mit 2 beginnen, 1 Silbe nicht direkt nach dem ersten Erfolg, mit einem leichteren Wort enden
@@ -3054,7 +3363,7 @@ function buchstabenZeigen() {
 }
 $('#btn-buchstaben-home').addEventListener('click', zurStartseite);
 
-const SPIELE = { spuren: buchstabenZeigen, hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
+const SPIELE = { spuren: buchstabenZeigen, zeigen: zeigenStarten, hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();
@@ -3106,7 +3415,7 @@ async function sicherungErstellen() {
       album: speicher.lesen('album', []),
       reihenfolge: speicher.lesen('reihenfolge', 'alphabet'),
       farbe: speicher.lesen('farbe', 'bunt'),
-      spiele: speicher.lesen('spiele', ALLE_SPIELE),
+      spieleAus: appWeitAus(),
       funde: speicher.lesen('funde', []),
     },
     profile,
@@ -3156,7 +3465,7 @@ async function sicherungEinspielen(s) {
     speicher.schreiben('album', s.einstellungen.album || []);
     speicher.schreiben('reihenfolge', s.einstellungen.reihenfolge || 'alphabet');
     speicher.schreiben('farbe', s.einstellungen.farbe || 'bunt');
-    speicher.schreiben('spiele', s.einstellungen.spiele || ALLE_SPIELE);
+    speicher.schreiben('spieleAus', regalAus(s.einstellungen) || []);
   }
   await kinderLaden();
   if (!aktivesKind() && kinder.length) { zustand.kind = kinder[0].id; speicher.schreiben('kind', zustand.kind); }
