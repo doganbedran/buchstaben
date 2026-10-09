@@ -74,6 +74,7 @@
 </main>
 <script src="../letters.js"></script>
 <script src="../kisten.js"></script>
+<script src="../ansagen.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
@@ -120,11 +121,10 @@ function auftraegeBauen(ansagen, lob) {
   return a;
 }
 
-// Ansagen und Lob-Sätze stehen in audio_erzeugen.py (eine Quelle für Piper und Studio)
+// Ansagen aus ansagen.js, Lob-Sätze aus audio_erzeugen.py
 async function texteLaden() {
   const py = await (await fetch('audio_erzeugen.py', { cache: 'no-store' })).text();
-  const block = py.split('ANSAGEN = {')[1].split('\n}')[0];
-  const ansagen = [...block.matchAll(/'([a-z0-9-]+)': '([^']+)'/g)].map((m) => [m[1], m[2]]);
+  const ansagen = Object.entries(ANSAGEN).map(([name, [satz]]) => [name, satz]);
   const lob = [...py.match(/LOB = \[([^\]]+)\]/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
   return { ansagen, lob };
 }

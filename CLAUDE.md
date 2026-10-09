@@ -74,8 +74,9 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 - Stimme `de_DE-thorsten-high` in `.stimmen/` (nicht im Repo); andere deutsche Piper-Stimmen hat der User als unbrauchbar bewertet.
 - `.venv` hat Piper (pip wurde per get-pip.py ins venv geholt, System hat kein pip).
 - Piper klingt bei jedem Lauf etwas anders: **nur neue Dateien erzeugen**, bestehende nicht überschreiben.
-  `--teile` wählt Teile (buchstaben, laute, mehr, lob, ansagen). Neue Ansage: in `ANSAGEN` eintragen, in einen
+  `--teile` wählt Teile (buchstaben, laute, mehr, lob, ansagen). Neue Ansage: in `ANSAGEN` (ansagen.js) eintragen, in einen
   Zwischenordner erzeugen (`--ziel` außerhalb von `audio/`) und nur die neue Datei nach `audio/` kopieren.
+  Ansage-Texte stehen in `ansagen.js` (nicht mehr in audio_erzeugen.py).
 - Aussprache-Hilfen in `SPRECHEN` (z. B. Clown → Klaun). Laute als Lautschrift in `LAUTE`.
 
 ## Testen – Stolperfallen

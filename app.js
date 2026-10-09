@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 45;
+const APP_VERSION = 46;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -2080,7 +2080,7 @@ function anpassenZeichnen() {
     box.querySelector('[data-a=neu]').addEventListener('click', profilNeu);
     return;
   }
-  box.innerHTML = '<p class="hinweis">Am einfachsten: Laute, Wörter und Lob einmal selbst einsprechen – die App '
+  box.innerHTML = '<p class="hinweis">Am einfachsten: Laute, Wörter, Lob und mehr einmal selbst einsprechen – die App '
     + 'nutzt Ihre Stimme dann in allen Spielen. Was Sie nicht aufnehmen, kommt aus „Standard“. Alles bleibt nur auf diesem Gerät.</p>'
     + '<button class="text-btn studio-start" data-a="studio">🎙️ Stimme einsprechen</button>'
     + '<p class="hinweis">Fotos und Aufnahmen je Buchstabe (die ganze Ansage, z. B. „mmm … mmm … Maus“):</p>';
@@ -2310,25 +2310,50 @@ async function aufnehmen(knopf, fertig) {
 // ---------- Stimme einsprechen (Elternbereich): Laute, Wörter, Lob – jedes Stück einmal, alles bleibt auf dem Gerät ----------
 
 const STUDIO_RATE = 22050;
-const STUDIO_BEREICHE = { laute: 'Laute', woerter: 'Wörter', lob: 'Lob' };
+const STUDIO_BEREICHE = { laute: 'Laute', woerter: 'Wörter', lob: 'Lob', ansagen: 'Ansagen', kisten: 'Kisten', silben: 'Silben' };
 const studio = { bereich: 'laute', pos: 0, aufnahme: null, stream: null, rekorder: null, startet: false, stoppTimer: null, lauf: 0 };
 // lauf: zählt bei jedem Wechsel/Verlassen hoch – späte Ergebnisse (Mikrofon, Aufbereitung) gehören dann nicht mehr hierher
 const studioAktuell = (lauf) => lauf === studio.lauf && $('#studio').classList.contains('active') && !document.hidden;
 
+// Ein Stück, das eine Standard-Datei ersetzt: schluessel datei:<name>.wav, Standard audio/<name>.wav
+const studioDatei = (datei, felder) => ({ schluessel: `datei:${datei}`, standard: `audio/${datei}`, art: 'satz', ...felder });
+
 // Stücke je Bereich; "schluessel" ist der Medien-Schlüssel im Profil (datei:… = ersetzt die Standard-Datei)
 function studioStuecke(bereich) {
   if (bereich === 'laute') {
-    return BUCHSTABEN.map((e) => ({ schluessel: `datei:${dateiName(e.b)}-laut.wav`, b: e.b, art: 'laut', text: e.b === 'ß' ? 'ß' : `${grossVon(e.b)} ${e.b}`,
-      bild: bildHtml(e), tipp: `Nur den Laut, wie in „${e.wort}“ – nicht den Buchstabennamen („mmm“ statt „Em“).`,
-      standard: `audio/${dateiName(e.b)}-laut.wav` }));
+    return BUCHSTABEN.map((e) => studioDatei(`${dateiName(e.b)}-laut.wav`, { b: e.b, art: 'laut',
+      text: e.b === 'ß' ? 'ß' : `${grossVon(e.b)} ${e.b}`, bild: bildHtml(e),
+      tipp: `Nur den Laut, wie in „${e.wort}“ – nicht den Buchstabennamen („mmm“ statt „Em“).` }));
   }
   if (bereich === 'woerter') {
-    return BUCHSTABEN.map((e) => ({ schluessel: `datei:${dateiName(e.b)}-wort.wav`, b: e.b, art: 'wort', text: e.wort, bild: bildHtml(e),
-      tipp: 'Das Wort einmal deutlich sprechen – den Laut davor setzt die App selbst dazu.', standard: `audio/${dateiName(e.b)}-wort.wav` }));
+    const tipp = 'Das Wort einmal deutlich sprechen – den Laut davor setzt die App selbst dazu.';
+    return BUCHSTABEN.flatMap((e) => [
+      studioDatei(`${dateiName(e.b)}-wort.wav`, { b: e.b, art: 'wort', text: e.wort, bild: bildHtml(e), tipp }),
+      ...(e.mehr || []).map(([wort, bild], i) => studioDatei(`${dateiName(e.b)}-${i + 2}-wort.wav`, { b: e.b, art: 'wort', text: wort, bild, tipp })),
+    ]);
   }
-  return LOB_SAETZE.map((satz, i) => ({ schluessel: `lob-${i + 1}`, art: 'lob', text: satz, bild: '⭐',
-    tipp: 'Echt freuen, nicht übertreiben. Sobald ein eigener Lob-Satz da ist, lobt die App nur noch mit Ihren Sätzen – am besten alle fünf aufnehmen.',
-    standard: `audio/lob-${i + 1}.wav` }));
+  if (bereich === 'lob') {
+    return LOB_SAETZE.map((satz, i) => ({ schluessel: `lob-${i + 1}`, art: 'lob', text: satz, bild: '⭐',
+      tipp: 'Echt freuen, nicht übertreiben. Sobald ein eigener Lob-Satz da ist, lobt die App nur noch mit Ihren Sätzen – am besten alle fünf aufnehmen.',
+      standard: `audio/lob-${i + 1}.wav` }));
+  }
+  if (bereich === 'ansagen') {
+    return Object.entries(ANSAGEN).map(([name, [satz, spiel]]) => studioDatei(`ansage-${name}.wav`, { text: satz, bild: '💬',
+      tipp: `Ansage im Spiel „${spiel}“ – freundlich und ruhig, wie zu einem Kind neben Ihnen.` }));
+  }
+  if (bereich === 'kisten') {
+    return [
+      ...KISTEN.flatMap((k) => k.woerter.map(([id, wort, bild]) => studioDatei(`kiste-${id}.wav`, { text: wort, bild,
+        tipp: `Wörterkiste „${k.name}“ – das Wort MIT Artikel sprechen.` }))),
+      ...Object.entries(TIERLAUTE).map(([id, laut]) => studioDatei(`tier-${id}.wav`, { text: laut,
+        bild: KISTEN.flatMap((k) => k.woerter).find((w) => w[0] === id)[2], tipp: 'Tierlaut für „Wie macht …?“ – so, wie Sie ihn zu Hause machen.' })),
+    ];
+  }
+  // Silben einzeln (am Handy verlässlicher als eine Aufnahme schneiden)
+  const bildVon = (wort) => (BUCHSTABEN.find((e) => e.wort === wort) || {}).bild
+    || (BUCHSTABEN.flatMap((e) => e.mehr || []).find((m) => m[0] === wort) || [])[1] || '🥁';
+  return Object.entries(SILBEN).flatMap(([wort, teile]) => teile.map((silbe, i) => studioDatei(silbenDatei(wort, i + 1).replace('audio/', ''), {
+    text: silbe, bild: bildVon(wort), tipp: `Silbe ${i + 1} von „${teile.join('-')}“ – kurz und deutlich, wie beim Klatschen.` })));
 }
 
 const studioEigen = (st) => !!(medien[st.schluessel] && medien[st.schluessel].stimme);
@@ -2428,7 +2453,7 @@ async function studioAufnahmeStart() {
   $('#btn-studio-mikro').classList.add('aktiv');
   studioMeldung('Ich höre zu …');
   // Sicherheitsstopp: Laute/Wörter kurz, Lob etwas länger
-  studio.stoppTimer = setTimeout(() => { if (r.state === 'recording') r.stop(); }, studio.bereich === 'lob' ? 6000 : 4000);
+  studio.stoppTimer = setTimeout(() => { if (r.state === 'recording') r.stop(); }, ['lob', 'ansagen'].includes(studio.bereich) ? 6000 : 4000);
 }
 
 function studioAufnahmeStopp() {

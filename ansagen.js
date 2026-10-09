@@ -1,0 +1,26 @@
+// Ansagen der Spiele: Dateiname (audio/ansage-<name>.wav) -> [Text, Spiel].
+// Eine Quelle für App (Eltern-Studio), Laptop-Studio, Offline-Speicher (sw.js) und Piper (werkzeuge/audio_erzeugen.py).
+const ANSAGEN = {
+  'hoeren': ['Was fängt so an?', 'Ich höre was'],
+  'hoeren-nochmal': ['Hör noch mal genau hin.', 'Ich höre was'],
+  'runde-geschafft': ['Alles geschafft! Toll gemacht!', 'Alle Spiele'],
+  'sticker': ['Ein neuer Sticker für dein Album!', 'Alle Spiele'],
+  'memory': ['Finde groß und klein!', 'Memory'],
+  'neue-buchstaben': ['Hurra! Neue Buchstaben!', 'Alle Spiele'],
+  'jagd': ['Finde etwas, das so anfängt!', 'Buchstaben-Jagd'],
+  'legen': ['Leg das Wort!', 'Wörter legen'],
+  'silben': ['Trommle das Wort!', 'Silben-Trommel'],
+  'silben-erinnerung': ['Hau auf die Trommel!', 'Silben-Trommel'],
+  'silben-hoermal': ['Hör mal, so geht es.', 'Silben-Trommel'],
+  'silben-jetzt-du': ['Jetzt du!', 'Silben-Trommel'],
+  'silben-zusammen': ['Wir trommeln zusammen!', 'Silben-Trommel'],
+  'silben-hoerzu': ['Hör zu!', 'Silben-Trommel'],
+  'silben-zusammen-geschafft': ['Zusammen geschafft!', 'Silben-Trommel'],
+  'zeigen-das-ist': ['Das ist', 'Zeig mir'],
+  'zeigen-zeig-mir': ['Zeig mir', 'Zeig mir'],
+  'zeigen-was-ist-das': ['Was ist das? Sag es!', 'Zeig mir'],
+  'kiste-wo-ist': ['Wo ist', 'Wörterkiste'],
+  'kiste-wo-ist-bei-dir': ['Wo ist bei dir', 'Wörterkiste'],
+  'kiste-wie-macht': ['Wie macht', 'Wörterkiste'],
+  'kiste-aussuchen': ['Such dir eine Kiste aus!', 'Wörterkiste'],
+};

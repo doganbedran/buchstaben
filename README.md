@@ -13,6 +13,7 @@ Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als I
 - Vorläufige Aufnahmen: Piper „Thorsten“ (Datensatz CC0, Modell MIT)
 
 ## Dateien
+- `ansagen.js` – Texte aller Ansagen (eine Quelle für App, Studios, Offline-Speicher und Piper)
 - `letters.js` – Buchstaben, Wörter, Bilder, Laute (hier neue Wörter eintragen)
 - `striche.js` – Strichfolge in Schreibrichtung (Vierlinien-System) für alle Buchstaben, groß und klein; daraus werden Vorlage, Kacheln und Prüfung gebaut (Zeichen ohne Eintrag nutzen die Schrift + Flächenprüfung)
 - `_striche.html` – Übersicht aller Buchstaben mit Strich-Nummern und Richtung (zum Prüfen von Formen)
@@ -50,7 +51,7 @@ Zahnrad oben rechts **2 Sekunden gedrückt halten**. Dort: Profile, große/klein
 (etwa jedes dritte Lob, nie zweimal hintereinander: „Toll gemacht! … Lina! … Apfel“; ohne Aufnahme kein Name), eigene Sterne, eigene Schrift und ein
 zugewiesenes Profil. Mit Kindern startet die App mit „Wer spielt?“. Ohne Kinder gelten die Einstellungen app-weit.
 
-**Stimme einsprechen** (eigenes Profil → „🎙️ Stimme einsprechen“): Laute, Wörter und Lob am Handy einmal
+**Stimme einsprechen** (eigenes Profil → „🎙️ Stimme einsprechen“): Laute, Wörter, Lob, Ansagen, Kisten und Silben am Handy einmal
 einsprechen (🎙️ gedrückt halten). Die App schneidet die Stille ab, gleicht die Lautstärke an und nutzt die Aufnahme in
 allen Spielen (Medien-Schlüssel `datei:<name>.wav` ersetzt `audio/<name>.wav`; „Laut … Laut … Wort“ wird aus den
 Teilen zusammengesetzt). Je Stück oder Bereich auf Standard zurücksetzbar, alles auch in der Sicherung.

@@ -43,31 +43,8 @@ DATEINAMEN = {'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss'}
 
 LOB = ['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Wunderbar!']
 
-# Ansagen der Spiele: Dateiname -> Text
-ANSAGEN = {
-    'hoeren': 'Was fängt so an?',
-    'hoeren-nochmal': 'Hör noch mal genau hin.',
-    'runde-geschafft': 'Alles geschafft! Toll gemacht!',
-    'sticker': 'Ein neuer Sticker für dein Album!',
-    'memory': 'Finde groß und klein!',
-    'neue-buchstaben': 'Hurra! Neue Buchstaben!',
-    'jagd': 'Finde etwas, das so anfängt!',
-    'legen': 'Leg das Wort!',
-    'silben': 'Trommle das Wort!',
-    'silben-erinnerung': 'Hau auf die Trommel!',
-    'silben-hoermal': 'Hör mal, so geht es.',
-    'silben-jetzt-du': 'Jetzt du!',
-    'silben-zusammen': 'Wir trommeln zusammen!',
-    'silben-hoerzu': 'Hör zu!',
-    'silben-zusammen-geschafft': 'Zusammen geschafft!',
-    'zeigen-das-ist': 'Das ist',
-    'zeigen-zeig-mir': 'Zeig mir',
-    'zeigen-was-ist-das': 'Was ist das? Sag es!',
-    'kiste-wo-ist': 'Wo ist',
-    'kiste-wo-ist-bei-dir': 'Wo ist bei dir',
-    'kiste-wie-macht': 'Wie macht',
-    'kiste-aussuchen': 'Such dir eine Kiste aus!',
-}
+# Ansagen der Spiele: Dateiname -> Text (aus ansagen.js, eine Quelle für App und Werkzeuge)
+ANSAGEN = dict(re.findall(r"'([a-z0-9-]+)': \['([^']+)'", (PROJEKT / 'ansagen.js').read_text(encoding='utf-8')))
 
 TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen', 'kisten']
 

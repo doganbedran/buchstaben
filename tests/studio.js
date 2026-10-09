@@ -59,7 +59,27 @@
   [...$('#studio-reiter').children][2].click();
   await sprechen(0.6); await studioSpeichern();
   pruefe(medien['lob-1'] && medien['lob-1'].stimme && lobQuelle().eigen, 'Lob nicht übernommen');
-  pruefe([...$('#studio-reiter').children].map((b) => b.textContent).join('|') === 'Laute 1/30|Wörter 1/30|Lob 1/5', `Reiter: ${$('#studio-reiter').textContent}`);
+  const anzahl = (b) => studioStuecke(b).length;
+  pruefe([...$('#studio-reiter').children].map((b) => b.textContent).join('|')
+    === `Laute 1/30|Wörter 1/${anzahl('woerter')}|Lob 1/5|Ansagen 0/${anzahl('ansagen')}|Kisten 0/${anzahl('kisten')}|Silben 0/${anzahl('silben')}`, `Reiter: ${$('#studio-reiter').textContent}`);
+  pruefe(anzahl('woerter') > 60 && anzahl('ansagen') === Object.keys(ANSAGEN).length && anzahl('kisten') === 36 && anzahl('silben') > 70, 'Bereichsgrößen');
+  // Neue Bereiche ersetzen die passende Standard-Datei in den Spielen
+  [...$('#studio-reiter').children][3].click();
+  await sprechen(0.8); await studioSpeichern();
+  pruefe(eigeneDatei(`audio/ansage-${Object.keys(ANSAGEN)[0]}.wav`), 'Ansage nicht übernommen');
+  [...$('#studio-reiter').children][4].click();
+  await sprechen(0.5); await studioSpeichern();
+  pruefe(eigeneDatei('audio/kiste-nase.wav'), 'Kisten-Wort nicht übernommen');
+  [...$('#studio-reiter').children][5].click();
+  await sprechen(0.3); await studioSpeichern();
+  pruefe(eigeneDatei(studioStuecke('silben')[0].standard), 'Silbe nicht übernommen');
+  // Weitere Wörter (mehr): Ansage aus eigenem Laut/Wort-Teil
+  [...$('#studio-reiter').children][1].click();
+  studioGehe(1);
+  pruefe($('#studio-text').textContent === 'Affe', `Zweites Wort: ${$('#studio-text').textContent}`);
+  await sprechen(0.5); await studioSpeichern();
+  pruefe(woerterFuer(BUCHSTABEN[0])[1].ansage().map((q) => q.url).join() === 'audio/a-laut.wav,audio/a-2-wort.wav', 'Weiteres Wort nicht aus Teilen');
+  [...$('#studio-reiter').children][2].click();
 
   // 6. Sicherung enthält die Studio-Aufnahmen; Einspielen nimmt nur bekannte Schlüssel und eingebettete Daten
   const sicherung = await sicherungErstellen();
