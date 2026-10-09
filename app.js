@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 36;
+const APP_VERSION = 37;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -163,7 +163,14 @@ function kindBildHtml(k) {
 }
 
 // Neue Geräte und neue Kinder beginnen in Montessori-Reihenfolge; wer die App schon nutzt, behält A–Z
-const reihenfolgeStandard = () => (speicher.lesen('sterne', null) === null ? 'montessori' : 'alphabet');
+const neuesGeraet = () => speicher.lesen('sterne', null) === null;
+const reihenfolgeStandard = () => (neuesGeraet() ? 'montessori' : 'alphabet');
+
+// Spiele-Regal: welche Spiele ein Kind auf der Startseite sieht (Montessori: ein Material kommt erst ins Regal,
+// wenn es gezeigt wurde). Neue Kinder/Geräte beginnen mit wenigen Spielen, wer die App schon nutzt, behält alle.
+const ALLE_SPIELE = ['spuren', 'hoeren', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
+const START_REGAL = ['spuren', 'hoeren', 'silben', 'name', 'album'];
+const regalStandard = () => (neuesGeraet() ? START_REGAL : ALLE_SPIELE);
 
 // Sterne, Schrift und Profil kommen vom aktiven Kind – ohne Kinder aus den App-weiten Einstellungen
 function einstellungenLaden() {
@@ -174,6 +181,7 @@ function einstellungenLaden() {
   zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
   zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', reihenfolgeStandard());
   zustand.farbe = k ? (k.farbe || 'bunt') : speicher.lesen('farbe', 'bunt');
+  zustand.spiele = k ? (k.spiele || ALLE_SPIELE) : speicher.lesen('spiele', regalStandard());
   zustand.funde = k ? (k.funde || []) : speicher.lesen('funde', []);
 }
 
@@ -185,12 +193,14 @@ function einstellungenSpeichern() {
     k.album = zustand.album;
     k.reihenfolge = zustand.reihenfolge;
     k.farbe = zustand.farbe;
+    k.spiele = zustand.spiele;
     k.funde = zustand.funde;
     return datenbank.kindSpeichern(k);
   }
   speicher.schreiben('funde', zustand.funde);
   speicher.schreiben('reihenfolge', zustand.reihenfolge);
   speicher.schreiben('farbe', zustand.farbe);
+  speicher.schreiben('spiele', zustand.spiele);
   speicher.schreiben('schreibweise', zustand.schreibweise);
   speicher.schreiben('sterne', zustand.sterne);
   speicher.schreiben('album', zustand.album);
@@ -535,6 +545,35 @@ function montessoriStand() {
   return { aktuell, gelernt: offen.filter((g) => g !== aktuell).flat() };
 }
 
+// Startseite: nur Spiele aus dem Regal; Trommel nur mit Silben-Aufnahmen, "Mein Name" nur mit Kind
+function spieleZeigen() {
+  const k = aktivesKind();
+  const regal = zustand.spiele && zustand.spiele.length ? zustand.spiele : ALLE_SPIELE;
+  document.querySelectorAll('#home .spiel-btn').forEach((btn) => {
+    const id = btn.dataset.spiel;
+    btn.hidden = !regal.includes(id) || (id === 'name' && !(k && nameZeichen(k.name).length))
+      || (id === 'silben' && !silbenGenug());
+  });
+}
+
+// Auswahl fürs Regal im Elternbereich (je Kind oder app-weit); das letzte Spiel lässt sich nicht abwählen
+function regalWahlZeichnen(box, gewaehlt, aendern) {
+  box.innerHTML = '';
+  ALLE_SPIELE.forEach((id) => {
+    const vorlage = document.querySelector(`#home .spiel-btn[data-spiel="${id}"]`);
+    const btn = document.createElement('button');
+    const an = gewaehlt.includes(id);
+    btn.className = `regal-spiel${an ? ' gewaehlt' : ''}`;
+    btn.innerHTML = `<span>${vorlage.textContent}</span>${vorlage.getAttribute('aria-label')}`;
+    btn.setAttribute('aria-pressed', an);
+    btn.addEventListener('click', () => {
+      const neu = an ? gewaehlt.filter((x) => x !== id) : ALLE_SPIELE.filter((x) => x === id || gewaehlt.includes(x));
+      if (neu.length) aendern(neu);
+    });
+    box.appendChild(btn);
+  });
+}
+
 let gezeigteGruppe = null;   // damit eine neue Gruppe beim ersten Zeigen "dazukommt" (Animation)
 
 function kachelBauen(i, extra = '') {
@@ -554,8 +593,8 @@ function rasterZeichnen() {
   // Oben links: wer gerade spielt (Tipp darauf -> "Wer spielt?")
   const k = aktivesKind();
   $('#btn-kind').hidden = !k;
-  document.querySelector('.spiel-btn[data-spiel="name"]').hidden = !k || !nameZeichen(k.name).length;
   if (k) $('#btn-kind').innerHTML = kindBildHtml(k);
+  spieleZeigen();
   const grid = $('#grid');
   grid.innerHTML = '';
   grid.classList.toggle('montessori', montessori());
@@ -1655,7 +1694,16 @@ async function elternOeffnen() {
   zeigen('eltern');
 }
 
+function spieleWahlZeichnen() {
+  regalWahlZeichnen($('#spiele-wahl'), zustand.spiele || ALLE_SPIELE, (neu) => {
+    zustand.spiele = neu;
+    einstellungenSpeichern();
+    spieleWahlZeichnen();
+  });
+}
+
 async function elternZeichnen() {
+  spieleWahlZeichnen();
   kinderListeZeichnen();
   sicherungZusammenfassung();
   // Teilen-Knopf nur, wo das Gerät Dateien teilen kann (z. B. Android)
@@ -1721,6 +1769,7 @@ $('#btn-kind-neu').addEventListener('click', async () => {
     album: erstesKind ? speicher.lesen('album', []) : [],
     reihenfolge: erstesKind ? speicher.lesen('reihenfolge', reihenfolgeStandard()) : 'montessori',
     farbe: erstesKind ? speicher.lesen('farbe', 'bunt') : 'bunt',
+    spiele: erstesKind ? speicher.lesen('spiele', regalStandard()) : START_REGAL,
     funde: erstesKind ? speicher.lesen('funde', []) : [],
     erstellt: Date.now(),
   };
@@ -1755,6 +1804,7 @@ async function kindAendern(fn) {
     zustand.album = kindInArbeit.album || [];
     zustand.reihenfolge = kindInArbeit.reihenfolge || 'alphabet';
     zustand.farbe = kindInArbeit.farbe || 'bunt';
+    zustand.spiele = kindInArbeit.spiele || ALLE_SPIELE;
     zustand.funde = kindInArbeit.funde || [];
   }
   kindFormularZeichnen();
@@ -1779,6 +1829,7 @@ async function kindFormularZeichnen() {
 
   document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => { r.checked = r.value === k.schreibweise; });
   document.querySelectorAll('input[name="kind-reihenfolge"]').forEach((r) => { r.checked = r.value === (k.reihenfolge || 'alphabet'); });
+  regalWahlZeichnen($('#kind-spiele'), k.spiele || ALLE_SPIELE, (neu) => kindAendern((kk) => { kk.spiele = neu; }));
 
   const profile = [STANDARD, ...(await datenbank.profile())];
   const box = $('#kind-profile');
@@ -2707,7 +2758,7 @@ async function silbenPruefen() {
       if (da.every(Boolean)) silben.bereit.add(wort);
     } catch { /* offline und nicht im Cache */ }
   }));
-  $('.spiel-btn[data-spiel="silben"]').hidden = !silbenGenug();
+  spieleZeigen();
 }
 
 const silbenGenug = () => [...new Set(SILBEN_RUNDEN)].every((n) => silbenWoerter(n).length >= 2);
@@ -3055,6 +3106,7 @@ async function sicherungErstellen() {
       album: speicher.lesen('album', []),
       reihenfolge: speicher.lesen('reihenfolge', 'alphabet'),
       farbe: speicher.lesen('farbe', 'bunt'),
+      spiele: speicher.lesen('spiele', ALLE_SPIELE),
       funde: speicher.lesen('funde', []),
     },
     profile,
@@ -3104,6 +3156,7 @@ async function sicherungEinspielen(s) {
     speicher.schreiben('album', s.einstellungen.album || []);
     speicher.schreiben('reihenfolge', s.einstellungen.reihenfolge || 'alphabet');
     speicher.schreiben('farbe', s.einstellungen.farbe || 'bunt');
+    speicher.schreiben('spiele', s.einstellungen.spiele || ALLE_SPIELE);
   }
   await kinderLaden();
   if (!aktivesKind() && kinder.length) { zustand.kind = kinder[0].id; speicher.schreiben('kind', zustand.kind); }

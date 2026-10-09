@@ -8,6 +8,10 @@
   folgeAbspielen = () => Promise.resolve();
 
   // 1. Startseite: nur Spiele, keine Buchstaben, nichts ragt über den Rand, kein Scrollen nötig
+  // (volles Regal mit Trommel = meiste Kacheln)
+  zustand.spiele = ALLE_SPIELE;
+  silben.bereit = new Set(Object.keys(SILBEN));
+  spieleZeigen();
   pruefe(aktiv('home'), 'Startseite nicht aktiv');
   pruefe(!$('#home .kachel'), 'Buchstaben auf der Startseite');
   const spiele = [...document.querySelectorAll('#home .spiel-btn')].filter((b) => !b.hidden);

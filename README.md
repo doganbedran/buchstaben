@@ -16,6 +16,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
   - `spur` – Spur-Erkennung inkl. geführtem Nachspuren (`#A`, `#a`, `#m`, `#H` wählt den gezeigten Buchstaben)
   - `profile`, `kinder` (Ansicht `#wer`, `#home`, `#kind`, `#eltern`), `sichern`, `woerter` (`#eltern`, `#spuren`) – frisches Browserprofil
   - `startseite` – Startseite nur mit Spielen, Weg ✏️ → Buchstaben → Nachspuren → zurück
+  - `regal` – Spiele-Regal app-weit und je Kind, Standard für neue/alte Kinder, Sicherung
   - `hoeren`, `silben`, `legen`, `jagd`, `farben`, `montessori`, `memory`, `album`, `name` – je ein Spiel/eine Funktion
 - `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
 
@@ -55,6 +56,8 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 
 ## Spiele
 Die Startseite zeigt nur große Spiel-Kacheln (ohne Scrollen); die Buchstaben gibt es erst nach ✏️.
+Welche Spiele dort stehen, legen die Eltern je Kind fest (Elternbereich → Kind → „Spiele im Regal“). Neue Kinder
+beginnen mit ✏️ 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Regal stellen, wenn man es zusammen ausprobiert hat.
 
 - ✏️ **Nachspuren** – Buchstaben-Raster (eine Farbe, großes Bild, Sterne nur im Elternbereich); Reihenfolge pro Kind: Montessori (Standard für neue Kinder/Geräte; Gruppen m a s l → o i e n → …, nächste Gruppe ab 2 Sternen je Buchstabe – sichtbar sind nur die aktuelle Gruppe groß und die gelernten klein, noch nicht eingeführte gar nicht) oder A–Z (alles offen). Sterne je Buchstabe sehen die Eltern im Elternbereich unter „Fortschritt“
 - 🎨 **Fingerfarben** – Farbwahl beim Nachspuren (bunt, 6 Farben, Regenbogen, Glitzer), pro Kind gespeichert

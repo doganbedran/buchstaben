@@ -509,6 +509,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
   aspect-ratio: 1; border: 2px solid var(--rand); border-radius: 14px;
   background: var(--bg); font-size: 1.7rem;
 }
+/* Spiele-Regal im Elternbereich */
+.regal-wahl { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.regal-spiel {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; border: 2px solid #e3d8c6;
+  background: var(--papier); font: inherit; font-size: 0.95rem; text-align: left; opacity: 0.55;
+}
+.regal-spiel span { font-size: 1.6rem; }
+.regal-spiel.gewaehlt { border-color: var(--akzent); background: #fde9d6; opacity: 1; }
 .tier.gewaehlt { border-color: var(--akzent); background: #fde9d6; }
 
 .textfeld {
