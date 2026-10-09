@@ -672,3 +672,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (orientation: landscape) {
   .spiele-raster.viele { grid-template-columns: repeat(5, min(160px, 17vw, 30vh)); grid-auto-rows: min(160px, 17vw, 30vh); }
 }
+
+/* Über die App & Datenschutz */
+.info .karte p { margin: 0 0 10px; line-height: 1.5; font-size: 0.95rem; }
+.info .karte a { color: #1d5fbf; }

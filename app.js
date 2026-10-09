@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 44;
+const APP_VERSION = 45;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -508,6 +508,12 @@ window.addEventListener('popstate', async () => {
   studioMikrofonZu();
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
+  // Infoseite von der Begrüßung aus geöffnet: dorthin zurück
+  if (ziel === 'home' && $('#info').classList.contains('active') && infoVonBegruessung) {
+    infoVonBegruessung = false;
+    zeigen('willkommen', false);
+    return;
+  }
   if (ziel === 'eltern') {
     await elternZeichnen();
     zeigen('eltern', false);
@@ -4192,6 +4198,18 @@ $('#sicherung-input').addEventListener('change', async (e) => {
     alert(fehler instanceof SyntaxError ? 'Die Datei ist keine gültige Sicherung.' : (fehler.message || 'Einspielen fehlgeschlagen.'));
   }
 });
+
+// ---------- Über die App & Datenschutz (für Eltern; erreichbar aus dem Elternbereich und der Begrüßung) ----------
+
+let infoVonBegruessung = false;
+function infoOeffnen() {
+  infoVonBegruessung = $('#willkommen').classList.contains('active');
+  $('#info-version').textContent = `Version ${APP_VERSION}`;
+  zeigen('info');
+}
+$('#btn-info').addEventListener('click', infoOeffnen);
+$('#btn-willkommen-info').addEventListener('click', infoOeffnen);
+$('#btn-info-zurueck').addEventListener('click', () => history.back());
 
 // ---------- Willkommen (erster Start) ----------
 

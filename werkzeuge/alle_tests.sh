@@ -36,6 +36,7 @@ LAEUFE=(
   "willkommen|tests/willkommen.html|412,860|60"
   "kiste|tests/kiste.html|412,860|90"
   "kiste-klein|tests/kiste.html|360,640|90"
+  "info|tests/info.html|412,860|60"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do

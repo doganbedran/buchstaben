@@ -3,6 +3,15 @@
 Montessori-inspirierte Lern-App für Kinder ab 3: Buchstaben mit dem Finger nachspuren, Anlaut hören („mmm … wie Maus“), Sterne sammeln.
 Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne Tracking.
 
+**Ausprobieren:** https://doganbedran.github.io/buchstaben/ – im Browser öffnen, auf dem Handy „Zum Startbildschirm
+hinzufügen“. Kostenlos, ohne Werbung, ohne Konto; alle Daten (Kinder, Fotos, Aufnahmen) bleiben auf dem Gerät.
+Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als Issue hier auf GitHub.
+
+## Lizenz
+- Programmcode und eigene Zeichnungen (`bilder/`): [GNU AGPL 3.0](LICENSE)
+- Aufnahmen des Sprechers (`audio/`, Liste in `audio/sprecher.json`): CC BY-NC-ND 4.0 – siehe [audio/LIZENZ.md](audio/LIZENZ.md)
+- Vorläufige Aufnahmen: Piper „Thorsten“ (Datensatz CC0, Modell MIT)
+
 ## Dateien
 - `letters.js` – Buchstaben, Wörter, Bilder, Laute (hier neue Wörter eintragen)
 - `striche.js` – Strichfolge in Schreibrichtung (Vierlinien-System) für alle Buchstaben, groß und klein; daraus werden Vorlage, Kacheln und Prüfung gebaut (Zeichen ohne Eintrag nutzen die Schrift + Flächenprüfung)
@@ -20,6 +29,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
   - `willkommen` – Begrüßung beim ersten Start
   - `studio` – Stimme einsprechen im Elternbereich (künstlicher Ton statt Mikrofon)
   - `kiste` – Wörterkiste (Auswahl, alle Stufen, Stufe 4, Erzähl-Bild)
+  - `info` – Über die App & Datenschutz (Texte, Links, Zurück-Weg)
   - `regal` – Spiele-Regal app-weit und je Kind, Standard für neue/alte Kinder, Sicherung
   - `hoeren`, `silben`, `legen`, `jagd`, `farben`, `montessori`, `memory`, `album`, `name` – je ein Spiel/eine Funktion
 - `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
