@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 43;
+const APP_VERSION = 44;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
