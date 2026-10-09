@@ -80,11 +80,13 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
   (fehlt eine, trommelt die App ohne Stimme).
 
 ## Aufnahme-Studio (Sprecher-Stimme)
-Die Silben (`audio/silbe-*.wav`) sind von einem echten Sprecher eingesprochen (Autor der App), alle anderen Clips von Piper „Thorsten“.
 Testserver starten, dann http://localhost:8765/werkzeuge/aufnahme-studio.html öffnen (Mikrofon erlauben).
-Pro Wort einmal mit kleinen Pausen sprechen („Ba – na – ne“), Leertaste = Aufnahme an/aus, A = anhören,
-Enter = speichern. Das Studio schneidet an den Pausen, gleicht die Lautstärke an und speichert über den
-Testserver (`POST /_speichern`, nur vom eigenen Rechner) nach `audio/`. Grün = schon aufgenommen.
+Bereiche: **Laute, Ansagen, Wörter, Lob, Silben** – jedes Stück einmal sprechen; Leertaste = Aufnahme an/aus,
+A = anhören, Enter = speichern. Das Studio schneidet die Stille ab, gleicht die Lautstärke an und baut die
+zusammengesetzten Clips selbst („mmm“ → `m-laut.wav` = „mmm … mmm“, `m.wav` = „mmm … mmm … Maus“).
+Silben: pro Wort einmal mit kleinen Pausen („Ba – na – ne“). Gespeichert wird über den Testserver
+(`POST /_speichern`, nur von der Studio-Seite); `audio/sprecher.json` listet alle Dateien mit Sprecher-Stimme,
+`audio_erzeugen.py` (Piper) überschreibt sie nie. Was noch nicht aufgenommen ist, spricht Piper „Thorsten“.
 
 ## Wörter
 Jeder Buchstabe hat einen Wort-Vorrat: Hauptwort (`wort`/`bild`), weitere Standard-Wörter (`mehr` in `letters.js`,

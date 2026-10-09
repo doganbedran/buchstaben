@@ -43,7 +43,7 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 - `bilder/` – eigene SVGs, wo es kein Emoji gibt (Xylophon, Yak)
 - `tests/` – ein Test je Funktion (`<name>.js`); die Seiten `<name>.html` erzeugt das Skript (nicht im Repo)
 - `werkzeuge/` – `audio_erzeugen.py`, `testserver.py`, `alle_tests.sh`, `testseiten_erzeugen.sh`,
-  `aufnahme-studio.html` (Sprecher-Aufnahmen über den Testserver nach `audio/`, nur `silbe-*.wav`)
+  `aufnahme-studio.html` (Sprecher-Aufnahmen über den Testserver nach `audio/`, Liste in `audio/sprecher.json`)
 
 ## Daten (nur auf dem Gerät)
 - IndexedDB `lernapp` (Version 3): `profile` (eigene Stimm-/Bildprofile inkl. `woerter`), `medien` (Blobs, Schlüssel
@@ -56,6 +56,14 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 - Profil „Standard“ ist kein DB-Eintrag und unveränderlich. Pro Buchstabe: Eigenes > Standard.
 - Sicherung (Elternbereich) = JSON mit Profilen, Medien, Kindern, Funden; Einspielen ergänzt nach ID, löscht nichts.
   Neue Felder an Kindern/Einstellungen auch in `einstellungenLaden/-Speichern`, beim ersten Kind und in der Sicherung ergänzen.
+
+## Audio: Sprecher-Stimme vor Piper
+- Der User spricht nach und nach alles selbst ein (Aufnahme-Studio: Laute, Ansagen, Wörter, Lob, Silben). Welche Dateien
+  schon seine Stimme sind, steht in `audio/sprecher.json` (führt der Testserver); `audio_erzeugen.py` überspringt sie.
+- Neue Ansage/neues Wort: Text eintragen (ANSAGEN bzw. letters.js), Piper erzeugt eine vorläufige Datei, der User nimmt
+  sie im Studio auf. Das Studio liest ANSAGEN und LOB direkt aus `audio_erzeugen.py`.
+- Neue Sprecher-Aufnahmen vor dem Push von ihm anhören lassen (Kinderstimmen/Namen im Hintergrund?). Der Auto-Modus
+  blockiert das Pushen von Sprachaufnahmen – der User muss es ausdrücklich im Chat freigeben.
 
 ## Audio (Piper, lokal)
 - Stimme `de_DE-thorsten-high` in `.stimmen/` (nicht im Repo); andere deutsche Piper-Stimmen hat der User als unbrauchbar bewertet.

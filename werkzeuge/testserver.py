@@ -2,10 +2,12 @@
 """Lokaler Testserver. Wie `python3 -m http.server`, plus /_warten?ms=N (antwortet verzögert).
 Testseiten binden /_warten als iframe ein, damit das load-Ereignis (und damit ein Screenshot)
 erst nach asynchronen Tests kommt.
-Fürs Aufnahme-Studio (werkzeuge/aufnahme-studio.html): POST /_speichern?datei=silbe-<wort>-<nr>.wav legt die
-Aufnahme in audio/ ab – nur von der Studio-Seite selbst (Origin/Host geprüft, sonst könnte jede fremde Webseite
-im Browser hierher schreiben) und nur Silben-Dateien (Thorstens Clips bleiben unangetastet).
+Fürs Aufnahme-Studio (werkzeuge/aufnahme-studio.html): POST /_speichern?datei=<name>.wav legt die Aufnahme in
+audio/ ab – nur von der Studio-Seite selbst (Origin/Host geprüft, sonst könnte jede fremde Webseite im Browser
+hierher schreiben). Jede gespeicherte Datei kommt in audio/sprecher.json: Das ist die Liste der Dateien mit der
+Sprecher-Stimme; audio_erzeugen.py (Piper) überschreibt sie nie.
 Lauscht nur auf diesem Rechner; mit --lan auch im WLAN (z. B. zum Testen am Handy)."""
+import json
 import re
 import sys
 import time
@@ -13,6 +15,17 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+
+def sprecher_merken(ordner, datei):
+    """audio/sprecher.json um die Datei ergänzen (beim ersten Mal mit den schon aufgenommenen Silben)."""
+    liste = ordner / 'sprecher.json'
+    if liste.exists():
+        dateien = set(json.loads(liste.read_text(encoding='utf-8')))
+    else:
+        dateien = {p.name for p in ordner.glob('silbe-*.wav')}
+    dateien.add(datei)
+    liste.write_text(json.dumps(sorted(dateien), indent=0) + '\n', encoding='utf-8')
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -37,7 +50,7 @@ class Handler(SimpleHTTPRequestHandler):
                 or self.headers.get('Host') not in eigene \
                 or self.headers.get('Origin') not in {f'http://{h}' for h in eigene} \
                 or self.headers.get('Content-Type') != 'audio/wav' \
-                or not re.fullmatch(r'silbe-[a-z]+-[1-9]\.wav', datei):
+                or not re.fullmatch(r'[a-z0-9]+(-[a-z0-9]+)*\.wav', datei):
             self.send_error(403)
             return
         if not 44 < laenge <= 5_000_000:
@@ -47,7 +60,9 @@ class Handler(SimpleHTTPRequestHandler):
         if daten[:4] != b'RIFF' or daten[8:12] != b'WAVE':
             self.send_error(400)
             return
-        (Path(self.directory) / 'audio' / datei).write_bytes(daten)
+        ordner = Path(self.directory) / 'audio'
+        (ordner / datei).write_bytes(daten)
+        sprecher_merken(ordner, datei)
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b'ok')

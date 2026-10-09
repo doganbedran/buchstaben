@@ -7,45 +7,59 @@
 <!--
   Aufnahme-Studio für die Sprecher-Stimme der App (nur am eigenen Rechner, nicht Teil der App).
   Start: Testserver laufen lassen, dann http://localhost:8765/werkzeuge/aufnahme-studio.html öffnen.
-  Pro Wort einmal mit kleinen Pausen sprechen („Ba – na – ne“); das Studio schneidet an den Pausen,
-  gleicht die Lautstärke an und speichert jede Silbe als audio/silbe-<wort>-<nr>.wav (über den Testserver).
+  Bereiche: Laute, Ansagen, Wörter, Lob, Silben. Jedes Stück nur einmal sprechen – das Studio schneidet die Stille ab,
+  gleicht die Lautstärke an und baut die zusammengesetzten Clips selbst:
+    <b>-laut.wav = Laut … Laut          (aus einer Aufnahme "mmm")
+    <b>.wav      = Laut … Laut … Wort    (aus <b>-laut.wav und <b>-wort.wav)
+    <b>-2.wav …  = Laut … Laut … Wort 2  (aus <b>-laut.wav und <b>-2-wort.wav)
+  Silben: pro Wort einmal mit kleinen Pausen („Ba – na – ne“), das Studio schneidet an den Pausen.
+  Gespeichert wird über den Testserver; audio/sprecher.json merkt sich, was schon die Sprecher-Stimme ist.
 -->
 <style>
   :root { --papier: #fffaf2; --tinte: #3b3229; --blau: #1d5fbf; --orange: #b8470b; --grau: #8a7d6e; --ok: #1b7f3a; }
   * { box-sizing: border-box; }
   body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: #f4eee5; color: var(--tinte); display: flex; height: 100vh; }
-  aside { width: 260px; overflow-y: auto; background: var(--papier); border-right: 1px solid #e3d8c6; padding: 10px; }
+  aside { width: 280px; overflow-y: auto; background: var(--papier); border-right: 1px solid #e3d8c6; padding: 10px; }
+  .reiter { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .reiter button { flex: 1 0 auto; border: 2px solid #e3d8c6; border-radius: 10px; background: #fff; padding: 6px 8px; font: inherit; font-size: 0.9rem; cursor: pointer; }
+  .reiter button.aktiv { border-color: var(--blau); background: #e8f0fb; }
   aside h2 { font-size: 0.9rem; color: var(--grau); margin: 14px 4px 6px; }
-  aside button { display: flex; justify-content: space-between; width: 100%; border: none; background: none; padding: 6px 8px;
+  #liste button { display: flex; justify-content: space-between; width: 100%; border: none; background: none; padding: 6px 8px;
     border-radius: 8px; font: inherit; text-align: left; cursor: pointer; }
-  aside button.aktiv { background: #fde9d6; }
-  aside button .fertig { color: var(--ok); }
-  main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 20px; }
-  .bild { font-size: 5rem; line-height: 1; }
+  #liste button.aktiv { background: #fde9d6; }
+  #liste button .fertig { color: var(--ok); }
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 20px; }
+  .bild { font-size: 5rem; line-height: 1; min-height: 5rem; }
   .bild img { height: 5rem; }
-  .silben { font-size: 3.2rem; font-weight: 700; letter-spacing: 1px; }
-  .silben span { padding: 0 6px; border-radius: 10px; }
-  .silben span.da { color: var(--ok); }
-  .silben .trenner { color: var(--grau); padding: 0; }
+  .text { font-size: 3.2rem; font-weight: 700; letter-spacing: 1px; text-align: center; }
+  .text span { padding: 0 6px; border-radius: 10px; }
+  .text span.da { color: var(--ok); }
+  .text .trenner { color: var(--grau); padding: 0; }
+  .hinweis { color: var(--grau); font-size: 1rem; text-align: center; max-width: 600px; min-height: 1.4em; }
   .knoepfe { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
   .knoepfe button { font: inherit; font-size: 1.1rem; padding: 12px 18px; border-radius: 14px; border: 2px solid #c7b08a;
     background: var(--papier); cursor: pointer; }
   .knoepfe button:disabled { opacity: 0.4; cursor: default; }
   #btn-aufnahme.laeuft { background: var(--orange); color: #fff; border-color: var(--orange); }
   #btn-speichern { background: var(--blau); color: #fff; border-color: var(--blau); }
-  .teile { display: flex; gap: 10px; }
+  .teile { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   .teile button { font: inherit; padding: 8px 14px; border-radius: 10px; border: 2px solid var(--blau); background: #fff; cursor: pointer; }
+  .teile button.alt { border-color: #c7b08a; color: var(--grau); }
   canvas { width: min(640px, 90%); height: 90px; background: #fff; border-radius: 12px; }
   .meldung { min-height: 1.5em; font-size: 1.05rem; text-align: center; }
   .meldung.warnung { color: var(--orange); }
-  .tipp { color: var(--grau); font-size: 0.9rem; max-width: 560px; text-align: center; }
+  .tipp { color: var(--grau); font-size: 0.9rem; max-width: 600px; text-align: center; }
 </style>
 </head>
 <body>
-<aside id="liste"></aside>
+<aside>
+  <div class="reiter" id="reiter"></div>
+  <div id="liste"></div>
+</aside>
 <main>
   <div class="bild" id="bild"></div>
-  <div class="silben" id="silben"></div>
+  <div class="text" id="text"></div>
+  <div class="hinweis" id="hinweis"></div>
   <canvas id="welle" width="1280" height="180"></canvas>
   <div class="teile" id="teile"></div>
   <div class="meldung" id="meldung"></div>
@@ -56,8 +70,7 @@
     <button id="btn-speichern" disabled>✓ Speichern &amp; weiter <small>(Enter)</small></button>
     <button id="btn-weiter">Weiter →</button>
   </div>
-  <p class="tipp">Silben so sprechen wie beim Klatschen, mit einer kleinen Pause dazwischen: „Ba – na – ne“.
-    Freundlich, nicht zu langsam, immer gleich weit vom Mikrofon. Grün = schon aufgenommen.</p>
+  <p class="tipp" id="tipp"></p>
 </main>
 <script src="../letters.js"></script>
 <script>
@@ -67,64 +80,121 @@ if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
   throw new Error('nur lokal');
 }
 const RATE = 22050;   // wie Thorstens Dateien
+const PAUSE_LAUT = 0.35;   // zwischen Laut und Laut (wie audio_erzeugen.py)
+const PAUSE_WORT = 0.5;    // zwischen Laut und Wort
 
-// Aufträge: ein Eintrag pro Wort, jede Silbe wird eine Datei
+const BEREICHE = {
+  laute: { name: 'Laute', tipp: 'Den LAUT sprechen, nicht den Buchstabennamen: „mmm“ statt „Em“, „k“ statt „Ka“. Einmal sprechen – das Studio macht „mmm … mmm“ daraus.' },
+  ansagen: { name: 'Ansagen', tipp: 'Freundlich und ruhig, wie zu einem Kind, das neben dir sitzt.' },
+  woerter: { name: 'Wörter', tipp: 'Das Wort einmal deutlich sprechen. Den Laut davor („mmm … mmm …“) setzt das Studio selbst dazu.' },
+  lob: { name: 'Lob', tipp: 'Echt freuen, nicht übertreiben.' },
+  silben: { name: 'Silben', tipp: 'Silben wie beim Klatschen, mit kleiner Pause dazwischen: „Ba – na – ne“.' },
+};
+
+// ---------- Aufträge ----------
 const bilder = {};
 BUCHSTABEN.forEach((e) => { bilder[e.wort] = e.bild; (e.mehr || []).forEach(([w, b]) => { bilder[w] = b; }); });
-const auftraege = Object.entries(SILBEN)
-  .map(([wort, silben]) => ({ wort, silben, dateien: silben.map((_, i) => silbenDatei(wort, i + 1)) }))
-  .sort((a, b) => a.silben.length - b.silben.length);
+const zeichen = (b) => (b === 'ß' ? 'ß' : `${b.toUpperCase()} ${b}`);
 
-const vorhanden = new Set();
+function auftraegeBauen(ansagen, lob) {
+  const a = { laute: [], ansagen: [], woerter: [], lob: [], silben: [] };
+  BUCHSTABEN.forEach((e) => {
+    const d = dateiName(e.b);
+    a.laute.push({ b: e.b, titel: e.b, text: zeichen(e.b), hinweis: `Laut von ${e.b} – wie in „${e.wort}“`, bild: e.bild,
+      dateien: [`audio/${d}-laut.wav`], art: 'laut' });
+    a.woerter.push({ b: e.b, titel: e.wort, text: e.wort, hinweis: `Wort für ${e.b}`, bild: e.bild,
+      dateien: [`audio/${d}-wort.wav`], art: 'wort', ganz: `audio/${d}.wav` });
+    (e.mehr || []).forEach(([w, bild], i) => a.woerter.push({ b: e.b, titel: w, text: w, hinweis: `Weiteres Wort für ${e.b}`, bild,
+      dateien: [`audio/${d}-${i + 2}-wort.wav`], art: 'wort', ganz: `audio/${d}-${i + 2}.wav` }));
+  });
+  ansagen.forEach(([name, satz]) => a.ansagen.push({ titel: satz, text: satz, hinweis: `Ansage „${name}“`, dateien: [`audio/ansage-${name}.wav`], art: 'satz' }));
+  lob.forEach((satz, i) => a.lob.push({ titel: satz, text: satz, hinweis: `Lob ${i + 1}`, dateien: [`audio/lob-${i + 1}.wav`], art: 'satz' }));
+  Object.entries(SILBEN).sort((x, y) => x[1].length - y[1].length).forEach(([wort, silben]) => a.silben.push({
+    titel: silben.join('-'), wort, silben, bild: bilder[wort], dateien: silben.map((_, i) => silbenDatei(wort, i + 1)), art: 'silben' }));
+  return a;
+}
+
+// Ansagen und Lob-Sätze stehen in audio_erzeugen.py (eine Quelle für Piper und Studio)
+async function texteLaden() {
+  const py = await (await fetch('audio_erzeugen.py', { cache: 'no-store' })).text();
+  const block = py.split('ANSAGEN = {')[1].split('\n}')[0];
+  const ansagen = [...block.matchAll(/'([a-z0-9-]+)': '([^']+)'/g)].map((m) => [m[1], m[2]]);
+  const lob = [...py.match(/LOB = \[([^\]]+)\]/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  return { ansagen, lob };
+}
+
+let auftraege = null;
+let bereich = 'laute';
 let pos = 0;
-let teile = null;       // geschnittene Silben (Float32Array) der letzten Aufnahme
+let sprecher = new Set();   // Dateien, die schon die Sprecher-Stimme sind
+let teile = null;           // aufbereitete Stücke der letzten Aufnahme
 let rohdaten = null;
 
-async function pruefen(datei) {
-  try {
-    const r = await fetch('../' + datei, { method: 'HEAD', cache: 'no-store' });
-    if (r.ok) vorhanden.add(datei); else vorhanden.delete(datei);
-  } catch { vorhanden.delete(datei); }
+const liste = () => auftraege[bereich];
+const fertig = (a) => a.dateien.every((d) => sprecher.has(d.replace('audio/', '')));
+
+async function sprecherLaden() {
+  try { sprecher = new Set(await (await fetch('../audio/sprecher.json', { cache: 'no-store' })).json()); } catch { sprecher = new Set(); }
+}
+
+function reiterZeichnen() {
+  $('#reiter').innerHTML = '';
+  Object.entries(BEREICHE).forEach(([id, b]) => {
+    const n = auftraege[id].filter(fertig).length;
+    const btn = document.createElement('button');
+    btn.className = id === bereich ? 'aktiv' : '';
+    btn.textContent = `${b.name} ${n}/${auftraege[id].length}`;
+    btn.onclick = () => { bereich = id; const i = liste().findIndex((a) => !fertig(a)); gehe(i >= 0 ? i : 0); };
+    $('#reiter').appendChild(btn);
+  });
 }
 
 function listeZeichnen() {
   const el = $('#liste');
   el.innerHTML = '';
-  let gruppe = 0;
-  auftraege.forEach((a, i) => {
-    if (a.silben.length !== gruppe) {
-      gruppe = a.silben.length;
-      el.insertAdjacentHTML('beforeend', `<h2>${gruppe} Silbe${gruppe > 1 ? 'n' : ''}</h2>`);
-    }
-    const fertig = a.dateien.every((d) => vorhanden.has(d));
+  liste().forEach((a, i) => {
     const b = document.createElement('button');
     b.className = i === pos ? 'aktiv' : '';
-    b.innerHTML = `<span>${a.silben.join('-')}</span><span class="fertig">${fertig ? '✓' : ''}</span>`;
+    b.innerHTML = `<span>${a.titel}</span><span class="fertig">${fertig(a) ? '✓' : ''}</span>`;
     b.onclick = () => gehe(i);
     el.appendChild(b);
   });
-  const n = auftraege.flatMap((a) => a.dateien).length;
-  el.insertAdjacentHTML('afterbegin', `<h2>Silben: ${[...vorhanden].length} / ${n}</h2>`);
+  const aktiv = el.children[pos];
+  if (aktiv) aktiv.scrollIntoView({ block: 'nearest' });
+}
+
+function abspielKnopf(url, text, alt = false) {
+  const b = document.createElement('button');
+  b.textContent = text;
+  if (alt) b.className = 'alt';
+  b.onclick = () => new Audio(`../${url}?${Date.now()}`).play();
+  return b;
 }
 
 function anzeigen() {
-  const a = auftraege[pos];
-  const bild = bilder[a.wort] || '';
+  const a = liste()[pos];
+  const bild = a.bild || '';
   $('#bild').innerHTML = bild.startsWith('bilder/') ? `<img src="../${bild}" alt="">` : bild;
-  $('#silben').innerHTML = a.silben.map((s, i) => `<span class="${vorhanden.has(a.dateien[i]) ? 'da' : ''}">${s}</span>`)
-    .join('<span class="trenner">–</span>');
-  $('#teile').innerHTML = a.dateien.filter((d) => vorhanden.has(d)).length
-    ? a.dateien.map((d, i) => `<button data-url="../${d}">▶ ${a.silben[i]}</button>`).join('') : '';
-  $('#teile').querySelectorAll('button').forEach((b) => { b.onclick = () => new Audio(b.dataset.url + '?' + Date.now()).play(); });
+  $('#text').innerHTML = a.art === 'silben'
+    ? a.silben.map((s, i) => `<span class="${sprecher.has(a.dateien[i].replace('audio/', '')) ? 'da' : ''}">${s}</span>`).join('<span class="trenner">–</span>')
+    : `<span class="${fertig(a) ? 'da' : ''}">${a.text}</span>`;
+  $('#hinweis').textContent = a.hinweis || '';
+  $('#tipp').textContent = `${BEREICHE[bereich].tipp} Grün = schon mit deiner Stimme.`;
+  const t = $('#teile');
+  t.innerHTML = '';
+  if (a.art === 'silben') a.dateien.forEach((d, i) => sprecher.has(d.replace('audio/', '')) && t.appendChild(abspielKnopf(d, `▶ ${a.silben[i]}`)));
+  else t.appendChild(abspielKnopf(a.dateien[0], fertig(a) ? '▶ deine Aufnahme' : '▶ bisher (Thorsten)', !fertig(a)));
+  if (a.ganz) t.appendChild(abspielKnopf(a.ganz, '▶ so in der App', !sprecher.has(a.ganz.replace('audio/', ''))));
   teile = null;
   $('#btn-anhoeren').disabled = true;
   $('#btn-speichern').disabled = true;
   meldung('');
   welleZeichnen(null);
+  reiterZeichnen();
   listeZeichnen();
 }
 
-function gehe(i) { pos = Math.max(0, Math.min(auftraege.length - 1, i)); anzeigen(); }
+function gehe(i) { pos = Math.max(0, Math.min(liste().length - 1, i)); anzeigen(); }
 function meldung(text, warnung = false) { const m = $('#meldung'); m.textContent = text; m.className = 'meldung' + (warnung ? ' warnung' : ''); }
 
 // ---------- Aufnahme ----------
@@ -157,25 +227,31 @@ async function aufnahmeUmschalten() {
   meldung('Aufnahme läuft …');
 }
 
-async function verarbeiten(blob) {
+async function dekodieren(arrayBuffer) {
   const ctx = new AudioContext();
-  let puffer;
-  try { puffer = await ctx.decodeAudioData(await blob.arrayBuffer()); } catch { meldung('Nichts gehört – bitte nochmal.', true); return; } finally { ctx.close(); }
-  rohdaten = await umrechnen(puffer.getChannelData(0), puffer.sampleRate);
-  const soll = auftraege[pos].silben.length;
-  const stuecke = schneiden(rohdaten, soll);
+  try {
+    const puffer = await ctx.decodeAudioData(arrayBuffer);
+    return await umrechnen(puffer.getChannelData(0), puffer.sampleRate);
+  } finally { ctx.close(); }
+}
+
+async function verarbeiten(blob) {
+  try { rohdaten = await dekodieren(await blob.arrayBuffer()); } catch { meldung('Nichts gehört – bitte nochmal.', true); return; }
+  const a = liste()[pos];
+  const stuecke = abschnitte(rohdaten);
+  if (a.art !== 'silben' && stuecke.length) stuecke.splice(0, stuecke.length, [stuecke[0][0], stuecke[stuecke.length - 1][1]]);   // ganz, ohne Stille
   welleZeichnen(rohdaten, stuecke);
+  $('#btn-anhoeren').disabled = false;
+  const soll = a.art === 'silben' ? a.silben.length : 1;
   if (stuecke.length !== soll) {
     teile = null;
     $('#btn-speichern').disabled = true;
-    $('#btn-anhoeren').disabled = false;
     meldung(stuecke.length ? `Ich höre ${stuecke.length} Teil${stuecke.length > 1 ? 'e' : ''} statt ${soll} – bitte mit kleinen Pausen nochmal.`
       : 'Nichts gehört – bitte etwas lauter nochmal.', true);
     return;
   }
-  teile = stuecke.map(([a, b]) => aufbereiten(rohdaten.slice(a, b)));
+  teile = stuecke.map(([x, y]) => aufbereiten(rohdaten.slice(x, y)));
   $('#btn-speichern').disabled = false;
-  $('#btn-anhoeren').disabled = false;
   meldung('Gut! Anhören (A), dann speichern (Enter) – oder nochmal aufnehmen (Leertaste).');
   await anhoeren();
 }
@@ -193,8 +269,8 @@ async function umrechnen(daten, rate) {
   return (await off.startRendering()).getChannelData(0).slice();
 }
 
-// Laute Abschnitte finden (10-ms-Fenster); kurze Lücken (< 90 ms) gehören zur Silbe
-function schneiden(d, soll) {
+// Laute Abschnitte finden (10-ms-Fenster); kurze Lücken (< 90 ms) gehören dazu
+function abschnitte(d) {
   const fenster = Math.round(RATE * 0.01);
   const energie = [];
   for (let i = 0; i < d.length; i += fenster) {
@@ -205,24 +281,24 @@ function schneiden(d, soll) {
   const spitze = Math.max(...energie);
   if (spitze < 0.01) return [];
   const schwelle = Math.max(0.006, spitze * 0.1);
-  let abschnitte = [];
+  let liste = [];
   let start = -1;
   energie.forEach((e, i) => {
     if (e >= schwelle && start < 0) start = i;
-    if (e < schwelle && start >= 0) { abschnitte.push([start, i]); start = -1; }
+    if (e < schwelle && start >= 0) { liste.push([start, i]); start = -1; }
   });
-  if (start >= 0) abschnitte.push([start, energie.length]);
+  if (start >= 0) liste.push([start, energie.length]);
   // Kleine Lücken schließen, Klicks (< 60 ms) weglassen
   const zusammen = [];
-  abschnitte.forEach((a) => {
+  liste.forEach((a) => {
     const letzter = zusammen[zusammen.length - 1];
     if (letzter && a[0] - letzter[1] < 9) letzter[1] = a[1]; else zusammen.push([...a]);
   });
-  abschnitte = zusammen.filter(([a, b]) => b - a >= 6);
-  // Ränder: 40 ms davor, 90 ms danach (nicht über die Mitte zur nächsten Silbe)
-  return abschnitte.map(([a, b], i) => {
-    const vor = i ? Math.floor((abschnitte[i - 1][1] + a) / 2) : 0;
-    const nach = i < abschnitte.length - 1 ? Math.floor((b + abschnitte[i + 1][0]) / 2) : energie.length;
+  liste = zusammen.filter(([a, b]) => b - a >= 6);
+  // Ränder: 40 ms davor, 90 ms danach (nicht über die Mitte zum nächsten Teil)
+  return liste.map(([a, b], i) => {
+    const vor = i ? Math.floor((liste[i - 1][1] + a) / 2) : 0;
+    const nach = i < liste.length - 1 ? Math.floor((b + liste[i + 1][0]) / 2) : energie.length;
     return [Math.max(vor, a - 4) * fenster, Math.min(nach, b + 9) * fenster];
   });
 }
@@ -232,6 +308,14 @@ function aufbereiten(t) {
   const spitze = t.reduce((m, x) => Math.max(m, Math.abs(x)), 1e-6);
   const blende = Math.round(RATE * 0.008);
   return t.map((x, i) => x / spitze * 0.9 * Math.min(1, i / blende, (t.length - 1 - i) / blende));
+}
+
+const stille = (sekunden) => new Float32Array(Math.round(RATE * sekunden));
+function verbinden(...stuecke) {
+  const ganz = new Float32Array(stuecke.reduce((n, s) => n + s.length, 0));
+  let o = 0;
+  stuecke.forEach((s) => { ganz.set(s, o); o += s.length; });
+  return ganz;
 }
 
 function wav(daten) {
@@ -246,10 +330,15 @@ function wav(daten) {
   return new Blob([buf], { type: 'audio/wav' });
 }
 
-// Silben so abspielen, wie die Trommel es tut: im Takt von 650 ms
+// So, wie es später klingt: Silben im Takt der Trommel, Laute doppelt
+function vorschau() {
+  if (!teile) return rohdaten ? [aufbereiten(rohdaten)] : [];
+  if (liste()[pos].art === 'laut') return [verbinden(teile[0], stille(PAUSE_LAUT), teile[0])];
+  return teile;
+}
+
 async function anhoeren() {
-  const stuecke = teile || (rohdaten ? [aufbereiten(rohdaten)] : []);
-  for (const t of stuecke) {
+  for (const t of vorschau()) {
     const a = new Audio(URL.createObjectURL(wav(t)));
     a.onended = () => URL.revokeObjectURL(a.src);
     a.play();
@@ -257,19 +346,47 @@ async function anhoeren() {
   }
 }
 
+async function hochladen(datei, daten) {
+  const name = datei.replace('audio/', '');
+  const r = await fetch(`/_speichern?datei=${name}`, { method: 'POST', body: wav(daten) });
+  if (!r.ok) throw new Error(`Speichern ging nicht (${r.status}) – Testserver neu gestartet?`);
+  sprecher.add(name);
+}
+
+async function laden(datei) {
+  const r = await fetch(`../${datei}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`${datei} fehlt`);
+  return dekodieren(await r.arrayBuffer());
+}
+
+// Zusammengesetzte Clips neu bauen: <b>.wav und <b>-n.wav = Laut … Laut … Wort
+async function ganzeBauen(b) {
+  const d = dateiName(b);
+  const e = BUCHSTABEN.find((x) => x.b === b);
+  const laut = await laden(`audio/${d}-laut.wav`);
+  const paare = [[`audio/${d}-wort.wav`, `audio/${d}.wav`], ...(e.mehr || []).map((_, i) => [`audio/${d}-${i + 2}-wort.wav`, `audio/${d}-${i + 2}.wav`])];
+  for (const [wortDatei, ganzDatei] of paare) {
+    await hochladen(ganzDatei, verbinden(laut, stille(PAUSE_WORT), await laden(wortDatei)));
+  }
+}
+
 async function speichern() {
   if (!teile) return;
-  const a = auftraege[pos];
-  for (let i = 0; i < teile.length; i++) {
-    const name = a.dateien[i].replace('audio/', '');
-    const r = await fetch(`/_speichern?datei=${name}`, { method: 'POST', body: wav(teile[i]) });
-    if (!r.ok) { meldung(`Speichern ging nicht (${r.status}) – läuft der Testserver neu gestartet?`, true); return; }
-    vorhanden.add(a.dateien[i]);
-  }
-  // Nächstes Wort, das noch fehlt
-  const naechstes = auftraege.findIndex((x, i) => i > pos && !x.dateien.every((d) => vorhanden.has(d)));
+  const a = liste()[pos];
+  try {
+    if (a.art === 'laut') {
+      await hochladen(a.dateien[0], vorschau()[0]);
+      await ganzeBauen(a.b);
+    } else if (a.art === 'wort') {
+      await hochladen(a.dateien[0], teile[0]);
+      await ganzeBauen(a.b);
+    } else {
+      for (let i = 0; i < teile.length; i++) await hochladen(a.dateien[i], teile[i]);
+    }
+  } catch (fehler) { meldung(fehler.message, true); return; }
+  const naechstes = liste().findIndex((x, i) => i > pos && !fertig(x));
   gehe(naechstes >= 0 ? naechstes : pos + 1);
-  meldung(`„${a.wort}“ gespeichert.`);
+  meldung(`„${a.titel}“ gespeichert.`);
 }
 
 function welleZeichnen(d, stuecke = []) {
@@ -306,8 +423,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 (async () => {
-  await Promise.all(auftraege.flatMap((a) => a.dateien).map(pruefen));
-  const erstes = auftraege.findIndex((a) => !a.dateien.every((d) => vorhanden.has(d)));
+  const { ansagen, lob } = await texteLaden();
+  auftraege = auftraegeBauen(ansagen, lob);
+  await sprecherLaden();
+  const erstes = liste().findIndex((a) => !fertig(a));
   gehe(erstes >= 0 ? erstes : 0);
 })();
 </script>

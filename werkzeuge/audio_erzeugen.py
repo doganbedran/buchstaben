@@ -17,6 +17,7 @@ Piper klingt bei jedem Lauf etwas anders. Damit fertige Dateien gleich bleiben, 
     .venv/bin/python werkzeuge/audio_erzeugen.py --stimme de_DE-thorsten-high --ziel audio --teile laute,ansagen
 """
 import argparse
+import json
 import re
 import wave
 from pathlib import Path
@@ -99,7 +100,19 @@ def pause(rate, sekunden):
     return np.zeros(int(rate * sekunden), dtype=np.float32)
 
 
+def sprecher_dateien():
+    """Dateien mit der Sprecher-Stimme (aus dem Aufnahme-Studio) – die erzeugt Piper nie neu."""
+    liste = PROJEKT / 'audio' / 'sprecher.json'
+    return set(json.loads(liste.read_text(encoding='utf-8'))) if liste.exists() else set()
+
+
+SPRECHER = sprecher_dateien()
+
+
 def speichern(pfad, audio, rate):
+    if pfad.name in SPRECHER and pfad.resolve().parent == (PROJEKT / 'audio').resolve():
+        print('übersprungen (Sprecher-Aufnahme):', pfad.name)
+        return
     audio = audio / max(1e-6, np.abs(audio).max()) * 0.9  # gleiche Lautstärke für alle Clips
     pcm = (audio * 32767).astype(np.int16)
     with wave.open(str(pfad), 'wb') as w:
