@@ -102,14 +102,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .bild-datei { height: 1.15em; width: auto; vertical-align: -0.2em; }
 .bild-datei.foto { width: 1.15em; object-fit: cover; border-radius: 0.18em; }
 
-/* Montessori: aktuelle Gruppe groß (2 Spalten), darunter klein die schon gelernten zum Wiederholen */
-.grid.montessori { grid-template-columns: repeat(4, 1fr); }
-.kachel.jetzt { grid-column: span 2; }
+/* Montessori: aktuelle Gruppe groß (2 je Reihe), darunter die schon gelernten zum Wiederholen (3 je Reihe wie A–Z) */
+.grid.montessori { grid-template-columns: repeat(6, 1fr); }
+.kachel.jetzt { grid-column: span 3; }
+.kachel.gelernt { grid-column: span 2; }
 .kachel.jetzt .zeichen { font-size: 3.6rem; }
 .kachel.jetzt .mini { font-size: 3rem; }
-.kachel.gelernt { border-radius: 16px; }
-.kachel.gelernt .zeichen { font-size: 1.8rem; }
-.kachel.gelernt .mini { font-size: 1.4rem; }
+.kachel.gelernt { border-radius: 18px; }
+.kachel.gelernt .zeichen { font-size: 2.2rem; }
+.kachel.gelernt .mini { font-size: 1.7rem; }
 .kachel.kommt-dazu { animation: aufploppen 0.6s ease-out backwards; }
 .kachel.kommt-dazu:nth-child(2) { animation-delay: 0.15s; }
 .kachel.kommt-dazu:nth-child(3) { animation-delay: 0.3s; }
@@ -117,6 +118,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .raster-trenner { grid-column: 1 / -1; height: 2px; background: #e8dcc8; margin: 6px 20%; }
 @media (orientation: landscape) {
   .grid.montessori { grid-template-columns: repeat(8, 1fr); }
+  .kachel.jetzt { grid-column: span 2; }
+  .kachel.gelernt { grid-column: span 1; }
 }
 /* Elternbereich: Sterne je Buchstabe */
 .fortschritt-buchstaben { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 0.9rem; margin: 8px 0 12px; }

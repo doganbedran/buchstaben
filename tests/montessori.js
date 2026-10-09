@@ -50,6 +50,16 @@
   pruefe(document.querySelectorAll('.kachel.gelernt').length === 4 && $('.raster-trenner'), 'Gelernte nicht klein darunter');
   rasterZeichnen();
   pruefe(!document.querySelector('.kachel.kommt-dazu'), 'Animation bei jedem Zeichnen');
+  // Handy: gelernte Kacheln nicht zu eng (3 je Reihe wie A–Z); alles gelernt = normales Raster
+  zeigen('buchstaben', false);
+  const breite = $('.kachel.gelernt').getBoundingClientRect().width;
+  if (innerWidth < 500) pruefe(breite >= 100, `Gelernte Kacheln zu schmal: ${Math.round(breite)} px`);
+  const sterneVorher = zustand.sterne;
+  zustand.sterne = Object.fromEntries(BUCHSTABEN.map((e) => [e.b, 2]));
+  rasterZeichnen();
+  pruefe(!$('#grid').classList.contains('montessori') && document.querySelectorAll('#grid .kachel').length === 30, 'Alles gelernt: kein normales Raster');
+  zustand.sterne = sterneVorher;
+  rasterZeichnen();
 
   // 5. Weiter-Knopf geht zum nächsten offenen Buchstaben in Montessori-Reihenfolge (l -> o)
   zustand.index = BUCHSTABEN.findIndex((e) => e.b === 'l');

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 38;
+const APP_VERSION = 39;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -619,12 +619,13 @@ function rasterZeichnen() {
   spieleZeigen();
   const grid = $('#grid');
   grid.innerHTML = '';
-  grid.classList.toggle('montessori', montessori());
+  const { aktuell, gelernt } = montessori() ? montessoriStand() : { aktuell: [], gelernt: [] };
+  // Alles gelernt (oder A–Z): normales Raster
+  grid.classList.toggle('montessori', aktuell.length > 0);
   if (!montessori()) {
     BUCHSTABEN.forEach((_, i) => grid.appendChild(kachelBauen(i)));
     return;
   }
-  const { aktuell, gelernt } = montessoriStand();
   const schluessel = aktuell.join('');
   const neu = gezeigteGruppe !== null && gezeigteGruppe !== schluessel;
   gezeigteGruppe = schluessel;
