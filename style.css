@@ -102,12 +102,29 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .bild-datei { height: 1.15em; width: auto; vertical-align: -0.2em; }
 .bild-datei.foto { width: 1.15em; object-fit: cover; border-radius: 0.18em; }
 
-.kachel.gesperrt { opacity: 0.38; box-shadow: none; }
-.kachel.gesperrt .zeichen { color: #b8a88f !important; }
-.kachel.wackeln-kachel { animation: wackeln 0.5s ease; }
+/* Montessori: aktuelle Gruppe groß (2 Spalten), darunter klein die schon gelernten zum Wiederholen */
+.grid.montessori { grid-template-columns: repeat(4, 1fr); }
+.kachel.jetzt { grid-column: span 2; }
+.kachel.jetzt .zeichen { font-size: 3.6rem; }
+.kachel.jetzt .mini { font-size: 3rem; }
+.kachel.gelernt { border-radius: 16px; }
+.kachel.gelernt .zeichen { font-size: 1.8rem; }
+.kachel.gelernt .mini { font-size: 1.4rem; }
+.kachel.kommt-dazu { animation: aufploppen 0.6s ease-out backwards; }
+.kachel.kommt-dazu:nth-child(2) { animation-delay: 0.15s; }
+.kachel.kommt-dazu:nth-child(3) { animation-delay: 0.3s; }
+.kachel.kommt-dazu:nth-child(4) { animation-delay: 0.45s; }
+.raster-trenner { grid-column: 1 / -1; height: 2px; background: #e8dcc8; margin: 6px 20%; }
+@media (orientation: landscape) {
+  .grid.montessori { grid-template-columns: repeat(8, 1fr); }
+}
+/* Elternbereich: Sterne je Buchstabe */
+.fortschritt-buchstaben { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 0.9rem; margin: 8px 0 12px; }
+.fortschritt-buchstaben b { margin-right: 3px; }
+.fortschritt-buchstaben .zu { opacity: 0.5; }
 .karte h3.unter { margin-top: 16px; }
 .jubel.mit-schloss::after {
-  content: '🔓'; position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); font-size: 4rem;
+  content: '✨'; position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); font-size: 4rem;
   animation: sticker-rein 3s ease forwards;
 }
 

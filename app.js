@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 35;
+const APP_VERSION = 36;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -162,6 +162,9 @@ function kindBildHtml(k) {
     : k.tier;
 }
 
+// Neue Geräte und neue Kinder beginnen in Montessori-Reihenfolge; wer die App schon nutzt, behält A–Z
+const reihenfolgeStandard = () => (speicher.lesen('sterne', null) === null ? 'montessori' : 'alphabet');
+
 // Sterne, Schrift und Profil kommen vom aktiven Kind – ohne Kinder aus den App-weiten Einstellungen
 function einstellungenLaden() {
   const k = aktivesKind();
@@ -169,7 +172,7 @@ function einstellungenLaden() {
   zustand.sterne = k ? k.sterne : speicher.lesen('sterne', {});
   zustand.profil = k ? k.profil : speicher.lesen('profil', STANDARD.id);
   zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
-  zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', 'alphabet');
+  zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', reihenfolgeStandard());
   zustand.farbe = k ? (k.farbe || 'bunt') : speicher.lesen('farbe', 'bunt');
   zustand.funde = k ? (k.funde || []) : speicher.lesen('funde', []);
 }
@@ -524,6 +527,29 @@ function freigeschaltet() {
   return frei;
 }
 
+// Montessori: aktuelle Gruppe und schon gelernte Buchstaben; noch nicht eingeführte bleiben unsichtbar
+function montessoriStand() {
+  const frei = freigeschaltet();
+  const offen = MONTESSORI_GRUPPEN.filter((g) => g.every((b) => frei.has(b)));
+  const aktuell = offen.find((g) => !g.every((b) => (zustand.sterne[b] || 0) >= FREI_AB_STERNEN)) || [];
+  return { aktuell, gelernt: offen.filter((g) => g !== aktuell).flat() };
+}
+
+let gezeigteGruppe = null;   // damit eine neue Gruppe beim ersten Zeigen "dazukommt" (Animation)
+
+function kachelBauen(i, extra = '') {
+  const eintrag = BUCHSTABEN[i];
+  const btn = document.createElement('button');
+  btn.className = `kachel${extra}`;
+  btn.setAttribute('aria-label', `${eintrag.b} wie ${eintrag.wort}`);
+  // Sterne nur im Album/Elternbereich – auf jeder Kachel verleiten sie zum Sammeln statt zum Spuren
+  btn.innerHTML = `<span class="zeichen">${zeichenHtml(eintrag)}</span><span class="mini">${bildHtml(eintrag)}</span>`;
+  btn.addEventListener('click', () => buchstabeOeffnen(i));
+  return btn;
+}
+
+const buchstabenIndex = (b) => BUCHSTABEN.findIndex((e) => e.b === b);
+
 function rasterZeichnen() {
   // Oben links: wer gerade spielt (Tipp darauf -> "Wer spielt?")
   const k = aktivesKind();
@@ -532,25 +558,20 @@ function rasterZeichnen() {
   if (k) $('#btn-kind').innerHTML = kindBildHtml(k);
   const grid = $('#grid');
   grid.innerHTML = '';
-  const frei = freigeschaltet();
-  buchstabenReihenfolge().forEach((i) => {
-    const eintrag = BUCHSTABEN[i];
-    const offen = frei.has(eintrag.b);
-    const btn = document.createElement('button');
-    btn.className = `kachel${offen ? '' : ' gesperrt'}`;
-    btn.setAttribute('aria-label', offen ? `${eintrag.b} wie ${eintrag.wort}` : `${eintrag.b} – kommt später`);
-    // Sterne nur im Album/Elternbereich – auf jeder Kachel verleiten sie zum Sammeln statt zum Spuren
-    btn.innerHTML = `<span class="zeichen">${zeichenHtml(eintrag)}</span>`
-      + `<span class="mini">${offen ? bildHtml(eintrag) : '🔒'}</span>`;
-    btn.addEventListener('click', () => {
-      if (offen) { buchstabeOeffnen(i); return; }
-      // Gesperrt: kurz wackeln
-      btn.classList.remove('wackeln-kachel');
-      void btn.offsetWidth;
-      btn.classList.add('wackeln-kachel');
-    });
-    grid.appendChild(btn);
-  });
+  grid.classList.toggle('montessori', montessori());
+  if (!montessori()) {
+    BUCHSTABEN.forEach((_, i) => grid.appendChild(kachelBauen(i)));
+    return;
+  }
+  const { aktuell, gelernt } = montessoriStand();
+  const schluessel = aktuell.join('');
+  const neu = gezeigteGruppe !== null && gezeigteGruppe !== schluessel;
+  gezeigteGruppe = schluessel;
+  aktuell.forEach((b) => grid.appendChild(kachelBauen(buchstabenIndex(b), ` jetzt${neu ? ' kommt-dazu' : ''}`)));
+  if (gelernt.length) {
+    if (aktuell.length) grid.insertAdjacentHTML('beforeend', '<div class="raster-trenner" aria-hidden="true"></div>');
+    gelernt.forEach((b) => grid.appendChild(kachelBauen(buchstabenIndex(b), aktuell.length ? ' gelernt' : '')));
+  }
 }
 
 // ---------- Nachspuren ----------
@@ -1623,6 +1644,13 @@ async function elternOeffnen() {
   const fertig = BUCHSTABEN.filter((e) => (zustand.sterne[e.b] || 0) >= MAX_STERNE).length;
   $('#fortschritt-text').textContent =
     `${gesamt} Sterne gesammelt, ${fertig} von ${BUCHSTABEN.length} Buchstaben mit allen ${MAX_STERNE} Sternen.`;
+  // Alle Buchstaben mit Sternen (die Kinder sehen sie nicht mehr auf den Kacheln); 🔒 = noch nicht eingeführt
+  const frei = freigeschaltet();
+  const reihe = montessori() ? MONTESSORI_GRUPPEN.flat() : BUCHSTABEN.map((e) => e.b);
+  $('#fortschritt-buchstaben').innerHTML = reihe.map((b) => {
+    const n = zustand.sterne[b] || 0;
+    return `<span class="${frei.has(b) ? '' : 'zu'}"><b>${b}</b>${frei.has(b) ? '⭐'.repeat(n) || '·' : '🔒'}</span>`;
+  }).join('');
   await elternZeichnen();
   zeigen('eltern');
 }
@@ -1691,7 +1719,7 @@ $('#btn-kind-neu').addEventListener('click', async () => {
     sterne: erstesKind ? speicher.lesen('sterne', {}) : {},
     profil: erstesKind ? speicher.lesen('profil', STANDARD.id) : STANDARD.id,
     album: erstesKind ? speicher.lesen('album', []) : [],
-    reihenfolge: erstesKind ? speicher.lesen('reihenfolge', 'alphabet') : 'alphabet',
+    reihenfolge: erstesKind ? speicher.lesen('reihenfolge', reihenfolgeStandard()) : 'montessori',
     farbe: erstesKind ? speicher.lesen('farbe', 'bunt') : 'bunt',
     funde: erstesKind ? speicher.lesen('funde', []) : [],
     erstellt: Date.now(),

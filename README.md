@@ -56,7 +56,7 @@ Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
 ## Spiele
 Die Startseite zeigt nur große Spiel-Kacheln (ohne Scrollen); die Buchstaben gibt es erst nach ✏️.
 
-- ✏️ **Nachspuren** – Buchstaben-Raster (eine Farbe, großes Bild, Sterne nur im Elternbereich); Reihenfolge pro Kind: A–Z (alles offen) oder Montessori (Gruppen m a s l → o i e n → …, nächste Gruppe ab 2 Sternen je Buchstabe)
+- ✏️ **Nachspuren** – Buchstaben-Raster (eine Farbe, großes Bild, Sterne nur im Elternbereich); Reihenfolge pro Kind: Montessori (Standard für neue Kinder/Geräte; Gruppen m a s l → o i e n → …, nächste Gruppe ab 2 Sternen je Buchstabe – sichtbar sind nur die aktuelle Gruppe groß und die gelernten klein, noch nicht eingeführte gar nicht) oder A–Z (alles offen). Sterne je Buchstabe sehen die Eltern im Elternbereich unter „Fortschritt“
 - 🎨 **Fingerfarben** – Farbwahl beim Nachspuren (bunt, 6 Farben, Regenbogen, Glitzer), pro Kind gespeichert
 - 📳 **Vibration** beim Nachspuren (Sandpapier-Gefühl, Android), im Elternbereich abschaltbar
 - ✍️ **Mein Name** – eigenen Namen Buchstabe für Buchstabe nachspuren (nur mit ausgewähltem Kind)

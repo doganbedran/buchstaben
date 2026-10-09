@@ -18,7 +18,9 @@
     pruefe(r.width >= 100, `${b.dataset.spiel} zu klein: ${Math.round(r.width)}`);
   });
 
-  // 2. ✏️ → Buchstaben: 30 Kacheln, eine Farbe, keine Sterne
+  // 2. ✏️ → Buchstaben (A–Z): 30 Kacheln, eine Farbe, keine Sterne
+  pruefe(zustand.reihenfolge === 'montessori', `Neues Gerät beginnt nicht mit Montessori: ${zustand.reihenfolge}`);
+  zustand.reihenfolge = 'alphabet';
   zustand.sterne = { a: 2 };
   document.querySelector('.spiel-btn[data-spiel="spuren"]').click();
   pruefe(aktiv('buchstaben'), 'Buchstaben nicht geöffnet');
