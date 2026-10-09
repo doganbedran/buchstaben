@@ -17,6 +17,8 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
   - `profile`, `kinder` (Ansicht `#wer`, `#home`, `#kind`, `#eltern`), `sichern`, `woerter` (`#eltern`, `#spuren`) – frisches Browserprofil
   - `startseite` – Startseite nur mit Spielen, Weg ✏️ → Buchstaben → Nachspuren → zurück
   - `zeigen` – Drei-Stufen-Lektion (Auswahl, alle Stufen, Daneben, Ende)
+  - `willkommen` – Begrüßung beim ersten Start
+  - `studio` – Stimme einsprechen im Elternbereich (künstlicher Ton statt Mikrofon)
   - `regal` – Spiele-Regal app-weit und je Kind, Standard für neue/alte Kinder, Sicherung
   - `hoeren`, `silben`, `legen`, `jagd`, `farben`, `montessori`, `memory`, `album`, `name` – je ein Spiel/eine Funktion
 - `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
@@ -24,6 +26,11 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 ## Lokal starten
     .venv/bin/python werkzeuge/testserver.py 8765     # oder: python3 -m http.server 8765
 Dann http://localhost:8765 öffnen.
+
+## Erster Start
+Auf einem neuen Gerät (keine Kinder, keine Profile, noch nie gespielt) erscheint einmal „Willkommen“ für die Eltern:
+„Kind anlegen“ oder „Gleich spielen“ (Fortschritt geht beim späteren ersten Kind nicht verloren) und der Hinweis aufs
+Zahnrad. Testseiten überspringen die Begrüßung (außer `tests/willkommen.js`).
 
 ## Elternbereich
 Zahnrad oben rechts **2 Sekunden gedrückt halten**. Dort: Profile, große/kleine Buchstaben, Sterne zurücksetzen.

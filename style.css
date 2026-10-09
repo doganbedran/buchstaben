@@ -637,3 +637,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .studio-meldung.warnung { color: #b8470b; }
 .studio-gut:not(:disabled) { border-color: #1d5fbf; color: #1d5fbf; font-weight: 700; }
 .studio-nav { opacity: 0.8; }
+
+/* Willkommen (erster Start, für Eltern) */
+.willkommen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  text-align: center; max-width: 440px; margin: 0 auto; padding: 20px 8px; }
+.willkommen h2 { margin: 0; font-size: 1.8rem; }
+.willkommen p { margin: 0; line-height: 1.45; }
+.willkommen-bild { font-size: 4.5rem; }
+.willkommen-btn { width: 100%; max-width: 320px; padding: 16px; border-radius: 20px; border: 3px solid #e3d8c6;
+  background: var(--papier); box-shadow: var(--schatten); font: inherit; font-size: 1.25rem; font-weight: 700; }
+.willkommen-btn.haupt { border-color: var(--akzent); background: #fde9d6; }
+.willkommen-btn:active { transform: scale(0.97); }

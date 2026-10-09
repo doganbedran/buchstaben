@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 41;
+const APP_VERSION = 42;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -1798,9 +1798,10 @@ function kinderListeZeichnen() {
   });
 }
 
-$('#btn-kind-neu').addEventListener('click', async () => {
+// Neues Kind: Name abfragen, anlegen, Formular öffnen; gibt das Kind zurück (oder null bei Abbruch)
+async function kindNeu() {
   const name = (prompt('Wie heißt das Kind?') || '').trim();
-  if (!name) return;
+  if (!name) return null;
   const erstesKind = kinder.length === 0;
   const kind = {
     id: `k-${Date.now().toString(36)}`,
@@ -1825,7 +1826,9 @@ $('#btn-kind-neu').addEventListener('click', async () => {
   await kinderLaden();
   if (!aktivesKind()) { zustand.kind = kind.id; speicher.schreiben('kind', kind.id); }
   kindBearbeiten(kind.id);
-});
+  return kind;
+}
+$('#btn-kind-neu').addEventListener('click', kindNeu);
 
 let kindInArbeit = null;
 
@@ -3834,6 +3837,24 @@ $('#sicherung-input').addEventListener('change', async (e) => {
   }
 });
 
+// ---------- Willkommen (erster Start) ----------
+
+// Nur auf einem wirklich neuen Gerät: keine Kinder, keine Profile, noch nie gespielt, noch nicht gesehen
+async function willkommenNoetig() {
+  return !kinder.length && neuesGeraet() && !speicher.lesen('willkommen', false) && !(await datenbank.profile()).length;
+}
+
+$('#btn-willkommen-los').addEventListener('click', () => {
+  speicher.schreiben('willkommen', true);
+  audio();
+  rasterZeichnen();
+  zeigen('home', false);
+});
+// Kind anlegen: derselbe Weg wie im Elternbereich (Name, dann Tier/Einstellungen); zurück führt zur Startseite
+$('#btn-willkommen-kind').addEventListener('click', async () => {
+  if (await kindNeu()) speicher.schreiben('willkommen', true);
+});
+
 // ---------- Start ----------
 
 rasterZeichnen();
@@ -3856,6 +3877,8 @@ const startFertig = (async () => {
     werZeichnen();
     zeigen('wer', false);
   }
+  // Allererster Start auf einem neuen Gerät: kurz für die Eltern erklären (einmalig)
+  else if ((await willkommenNoetig()) && $('#home').classList.contains('active')) zeigen('willkommen', false);
 })();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

@@ -8,6 +8,8 @@ cd "$(dirname "$0")/.."
 # seite <name> <Wartezeit ms oder 0> [Skript, das vor letters.js läuft (alter Datenstand)]
 seite() {
   local name=$1 warten=$2 vorher=${3:-}
+  # Begrüßung beim ersten Start überspringen (außer im Test dafür)
+  [ "$name" != willkommen ] && vorher='  localStorage.setItem("willkommen", "true");'$'\n'"$vorher"
   local nachher="  <script src=\"tests/$name.js\"></script>"
   [ "$warten" != 0 ] && nachher+=$'\n'"  <iframe src=\"/_warten?ms=$warten\" hidden></iframe>"
   VORHER="$vorher" NACHHER="$nachher" /usr/bin/python3 - "$name" <<'PY'
@@ -44,4 +46,5 @@ seite startseite 3000
 seite regal 12000
 seite zeigen 12000
 seite studio 12000
+seite willkommen 6000
 echo "Testseiten erzeugt"
