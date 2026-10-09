@@ -276,6 +276,47 @@
     </div>
   </section>
 
+  <!-- Elternbereich: Stimme einsprechen (Laute, Wörter, Lob) – Aufnahmen bleiben auf dem Gerät -->
+  <section id="studio" class="screen eltern">
+    <header class="topbar">
+      <button id="btn-studio-zurueck" class="icon-btn" aria-label="Zurück">⬅️</button>
+      <h2 id="studio-titel">Stimme einsprechen</h2>
+      <span></span>
+    </header>
+    <div class="eltern-inhalt studio">
+      <div class="karte studio-hinweis" id="studio-hinweis" hidden>
+        <h3>Bevor es losgeht</h3>
+        <p class="hinweis">Ihre Aufnahmen bleiben nur auf diesem Gerät – nichts wird gesendet. Bitte in ruhiger Umgebung
+          aufnehmen, ohne Kinderstimmen oder Namen im Hintergrund. Wer die App oder die Browserdaten löscht, verliert
+          die Aufnahmen – dafür gibt es „Sichern &amp; Übertragen“. Die Sicherungsdatei enthält dann Ihre Stimme:
+          behandeln Sie sie wie ein Familienfoto.</p>
+        <button id="btn-studio-ok" class="text-btn">Verstanden</button>
+      </div>
+      <div class="studio-reiter" id="studio-reiter"></div>
+      <div class="studio-balken"><span id="studio-balken"></span></div>
+      <div class="karte studio-karte">
+        <div class="studio-bild" id="studio-bild"></div>
+        <div class="studio-text" id="studio-text"></div>
+        <p class="hinweis" id="studio-tipp"></p>
+        <div class="knopf-reihe studio-hoeren">
+          <button id="btn-studio-standard" class="text-btn">▶ Standard</button>
+          <button id="btn-studio-meins" class="text-btn">▶ Meins</button>
+        </div>
+        <button id="btn-studio-mikro" class="studio-mikro" aria-label="Gedrückt halten zum Aufnehmen">🎙️</button>
+        <p class="hinweis studio-meldung" id="studio-meldung">Gedrückt halten und sprechen, dann loslassen.</p>
+        <div class="knopf-reihe">
+          <button id="btn-studio-gut" class="text-btn studio-gut" disabled>✓ Gut, weiter</button>
+        </div>
+        <div class="knopf-reihe studio-nav">
+          <button id="btn-studio-vor" class="text-btn">← vorheriges</button>
+          <button id="btn-studio-weiter" class="text-btn">überspringen →</button>
+        </div>
+        <button id="btn-studio-zuruecksetzen" class="text-btn warnung">↩️ Auf Standard zurück</button>
+      </div>
+      <button id="btn-studio-alle-weg" class="text-btn warnung">Alle Aufnahmen dieses Bereichs auf Standard zurück</button>
+    </div>
+  </section>
+
   <!-- Kind bearbeiten -->
   <section id="kind" class="screen eltern">
     <header class="topbar">

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 40;
+const APP_VERSION = 41;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -74,6 +74,7 @@ const datenbank = (() => {
         const req = fn(tx.objectStore(store));
         tx.oncomplete = () => resolve(req && req.result);
         tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);   // z. B. Speicher voll: kommt oft nur als abort
       });
     } catch { return undefined; }
   }
@@ -363,14 +364,22 @@ function abspielen(quelle) {
 // persönliche Wörter des Profils. Jede Wahl liefert Bild, Ansage ("mmm … mmm … Maus") und das Wort allein.
 const blobQuelle = (blob) => ({ url: URL.createObjectURL(blob), eigen: true });
 
+// "Laut … Laut … Wort": hat das Profil Laut oder Wort selbst eingesprochen, wird aus den Einzelteilen gespielt
+const teilEigen = (datei) => !!eigeneDatei(`audio/${datei}`);
+const lautUndWort = (d, wortDatei, ganzDatei) => (teilEigen(`${d}-laut.wav`) || teilEigen(wortDatei)
+  ? [{ url: `audio/${d}-laut.wav` }, { url: `audio/${wortDatei}` }] : [{ url: `audio/${ganzDatei}` }]);
+
 function hauptWahl(e) {
   const d = dateiName(e.b);
+  // Älteste Form: eine Aufnahme für den ganzen Clip "mmm … mmm … Maus" (Profil-Liste "Bilder & Stimme")
   const eigene = () => medien[e.b] && medien[e.b].stimme;
   return {
     art: 'haupt', b: e.b, wort: e.wort, gewicht: 1,
     bild: () => bildHtml(e),
-    ansage: () => [eigene() ? blobQuelle(eigene()) : { url: `audio/${d}.wav` }],
-    wortAllein: () => [eigene() ? blobQuelle(eigene()) : { url: `audio/${d}-wort.wav` }],
+    // Im Studio eingesprochene Teile gehen vor der alten Ganz-Aufnahme
+    ansage: () => (eigene() && !teilEigen(`${d}-laut.wav`) && !teilEigen(`${d}-wort.wav`)
+      ? [blobQuelle(eigene())] : lautUndWort(d, `${d}-wort.wav`, `${d}.wav`)),
+    wortAllein: () => [eigene() && !teilEigen(`${d}-wort.wav`) ? blobQuelle(eigene()) : { url: `audio/${d}-wort.wav` }],
   };
 }
 
@@ -380,7 +389,7 @@ function woerterFuer(e) {
   (e.mehr || []).forEach(([wort, bild], i) => vorrat.push({
     art: 'mehr', b: e.b, wort, gewicht: 1,
     bild: () => bild,
-    ansage: () => [{ url: `audio/${d}-${i + 2}.wav` }],
+    ansage: () => lautUndWort(d, `${d}-${i + 2}-wort.wav`, `${d}-${i + 2}.wav`),
     wortAllein: () => [{ url: `audio/${d}-${i + 2}-wort.wav` }],
   }));
   eigeneWoerter.filter((w) => w.b === e.b).forEach((w) => {
@@ -421,13 +430,23 @@ function wiedergabeFolge(eintrag, lob, kind, nameSagen = true, wahl = null) {
   return folge;
 }
 
+// Eltern-Stimme vor Standard: hat das Profil eine Datei selbst eingesprochen (Studio im Elternbereich),
+// wird statt audio/<name>.wav die eigene Aufnahme gespielt – in allen Spielen
+const eigeneDatei = (url) => {
+  const m = typeof url === 'string' && url.startsWith('audio/') && medien[`datei:${url.slice(6)}`];
+  return m && m.stimme ? m.stimme : null;
+};
+
 async function folgeAbspielen(folge, ersatzText) {
   wiedergabeStoppen();
   const nummer = wiedergabe.nummer;
   try {
     for (const q of folge) {
       if (nummer !== wiedergabe.nummer) return;
-      await abspielen(q.url);
+      const eigen = !q.eigen && !q.standard && eigeneDatei(q.url);   // standard: zum Vergleichen im Studio
+      if (!eigen) { await abspielen(q.url); continue; }
+      const url = URL.createObjectURL(eigen);
+      try { await abspielen(url); } finally { URL.revokeObjectURL(url); }
     }
   } catch {
     // Datei fehlt (z. B. offline ohne Cache): Notlösung Sprachausgabe des Geräts
@@ -484,6 +503,8 @@ window.addEventListener('popstate', async () => {
   clearTimeout(legen.timer);
   silbenTimerStoppen();
   zeigenStoppen();
+  studioAbbrechen();
+  studioMikrofonZu();
   stopAufnahme();
   const ziel = (history.state && history.state.screen) || 'home';
   if (ziel === 'eltern') {
@@ -1979,7 +2000,7 @@ async function profileZeichnen() {
   liste.forEach((p) => {
     const zeile = document.createElement('label');
     zeile.className = 'umschalter profil-zeile';
-    const beschreibung = p.id === STANDARD.id ? '<small>Thorsten &amp; mitgelieferte Bilder</small>' : '';
+    const beschreibung = p.id === STANDARD.id ? '<small>Stimme des App-Sprechers &amp; mitgelieferte Bilder</small>' : '';
     zeile.innerHTML = `<input type="radio" name="profil" value="${p.id}" ${p.id === zustand.profil ? 'checked' : ''}>`
       + `<span>${p.id === STANDARD.id ? '⭐ ' : ''}${htmlText(p.name)}${beschreibung ? '<br>' + beschreibung : ''}</span>`;
     zeile.querySelector('input').addEventListener('change', async () => {
@@ -2047,8 +2068,11 @@ function anpassenZeichnen() {
     box.querySelector('[data-a=neu]').addEventListener('click', profilNeu);
     return;
   }
-  box.innerHTML = '<p class="hinweis">Was Sie nicht ändern, kommt automatisch aus „Standard“. '
-    + 'Sprechen Sie z. B. „mmm … mmm … Maus“. Alles bleibt nur auf diesem Gerät.</p>';
+  box.innerHTML = '<p class="hinweis">Am einfachsten: Laute, Wörter und Lob einmal selbst einsprechen – die App '
+    + 'nutzt Ihre Stimme dann in allen Spielen. Was Sie nicht aufnehmen, kommt aus „Standard“. Alles bleibt nur auf diesem Gerät.</p>'
+    + '<button class="text-btn studio-start" data-a="studio">🎙️ Stimme einsprechen</button>'
+    + '<p class="hinweis">Fotos und Aufnahmen je Buchstabe (die ganze Ansage, z. B. „mmm … mmm … Maus“):</p>';
+  box.querySelector('[data-a=studio]').addEventListener('click', studioOeffnen);
   BUCHSTABEN.forEach((eintrag) => {
     const m = medien[eintrag.b] || {};
     const zeile = document.createElement('div');
@@ -2270,6 +2294,241 @@ async function aufnehmen(knopf, fertig) {
   // Sicherheitsstopp nach 5 Sekunden
   setTimeout(() => { if (r.state === 'recording') r.stop(); }, 5000);
 }
+
+// ---------- Stimme einsprechen (Elternbereich): Laute, Wörter, Lob – jedes Stück einmal, alles bleibt auf dem Gerät ----------
+
+const STUDIO_RATE = 22050;
+const STUDIO_BEREICHE = { laute: 'Laute', woerter: 'Wörter', lob: 'Lob' };
+const studio = { bereich: 'laute', pos: 0, aufnahme: null, stream: null, rekorder: null, startet: false, stoppTimer: null, lauf: 0 };
+// lauf: zählt bei jedem Wechsel/Verlassen hoch – späte Ergebnisse (Mikrofon, Aufbereitung) gehören dann nicht mehr hierher
+const studioAktuell = (lauf) => lauf === studio.lauf && $('#studio').classList.contains('active') && !document.hidden;
+
+// Stücke je Bereich; "schluessel" ist der Medien-Schlüssel im Profil (datei:… = ersetzt die Standard-Datei)
+function studioStuecke(bereich) {
+  if (bereich === 'laute') {
+    return BUCHSTABEN.map((e) => ({ schluessel: `datei:${dateiName(e.b)}-laut.wav`, b: e.b, art: 'laut', text: e.b === 'ß' ? 'ß' : `${grossVon(e.b)} ${e.b}`,
+      bild: bildHtml(e), tipp: `Nur den Laut, wie in „${e.wort}“ – nicht den Buchstabennamen („mmm“ statt „Em“).`,
+      standard: `audio/${dateiName(e.b)}-laut.wav` }));
+  }
+  if (bereich === 'woerter') {
+    return BUCHSTABEN.map((e) => ({ schluessel: `datei:${dateiName(e.b)}-wort.wav`, b: e.b, art: 'wort', text: e.wort, bild: bildHtml(e),
+      tipp: 'Das Wort einmal deutlich sprechen – den Laut davor setzt die App selbst dazu.', standard: `audio/${dateiName(e.b)}-wort.wav` }));
+  }
+  return LOB_SAETZE.map((satz, i) => ({ schluessel: `lob-${i + 1}`, art: 'lob', text: satz, bild: '⭐',
+    tipp: 'Echt freuen, nicht übertreiben. Sobald ein eigener Lob-Satz da ist, lobt die App nur noch mit Ihren Sätzen – am besten alle fünf aufnehmen.',
+    standard: `audio/lob-${i + 1}.wav` }));
+}
+
+const studioEigen = (st) => !!(medien[st.schluessel] && medien[st.schluessel].stimme);
+
+function studioZeichnen() {
+  const stuecke = studioStuecke(studio.bereich);
+  const st = stuecke[studio.pos];
+  $('#studio-reiter').innerHTML = '';
+  Object.entries(STUDIO_BEREICHE).forEach(([id, name]) => {
+    const btn = document.createElement('button');
+    btn.className = id === studio.bereich ? 'aktiv' : '';
+    btn.textContent = `${name} ${studioStuecke(id).filter(studioEigen).length}/${studioStuecke(id).length}`;
+    btn.addEventListener('click', () => { studioAbbrechen(); studio.bereich = id; studioErstesOffenes(); });
+    $('#studio-reiter').appendChild(btn);
+  });
+  $('#studio-balken').style.width = `${(stuecke.filter(studioEigen).length / stuecke.length) * 100}%`;
+  $('#studio-bild').innerHTML = st.bild;
+  $('#studio-text').textContent = st.text;
+  $('#studio-text').classList.toggle('eigen', studioEigen(st));
+  $('#studio-tipp').textContent = st.tipp;
+  $('#btn-studio-meins').disabled = !studioEigen(st);
+  $('#btn-studio-zuruecksetzen').hidden = !studioEigen(st);
+  $('#btn-studio-gut').disabled = !studio.aufnahme;
+  $('#btn-studio-vor').disabled = studio.pos === 0;
+  $('#btn-studio-weiter').disabled = studio.pos === stuecke.length - 1;
+  $('#btn-studio-alle-weg').hidden = !stuecke.some(studioEigen);
+}
+
+function studioMeldung(text, warnung = false) {
+  const m = $('#studio-meldung');
+  m.textContent = text;
+  m.classList.toggle('warnung', warnung);
+}
+
+function studioGehe(pos) {
+  studioAbbrechen();
+  studio.pos = Math.max(0, Math.min(studioStuecke(studio.bereich).length - 1, pos));
+  studioMeldung('Gedrückt halten und sprechen, dann loslassen.');
+  studioZeichnen();
+}
+
+function studioErstesOffenes() {
+  const i = studioStuecke(studio.bereich).findIndex((st) => !studioEigen(st));
+  studioGehe(i >= 0 ? i : 0);
+}
+
+async function studioOeffnen() {
+  if (zustand.profil === STANDARD.id) return;
+  const profil = await aktivesProfil();
+  $('#studio-titel').textContent = `Stimme: ${profil ? profil.name : ''}`;
+  $('#studio-hinweis').hidden = speicher.lesen('studioHinweis', false);
+  zeigen('studio');
+  studioErstesOffenes();
+}
+
+// Mikrofon nur, solange das Studio offen ist; beim Verlassen oder im Hintergrund ganz schließen
+function studioMikrofonZu() {
+  clearTimeout(studio.stoppTimer);
+  if (studio.rekorder && studio.rekorder.state === 'recording') { studio.rekorder.onstop = null; studio.rekorder.stop(); }
+  studio.rekorder = null;
+  if (studio.stream) studio.stream.getTracks().forEach((t) => t.stop());
+  studio.stream = null;
+  $('#btn-studio-mikro').classList.remove('aktiv');
+}
+
+function studioAbbrechen() {
+  studio.lauf++;
+  if (studio.rekorder) studioMikrofonZu();
+  studio.aufnahme = null;
+}
+
+async function studioAufnahmeStart() {
+  if (studio.rekorder || studio.startet) return;
+  if (!navigator.mediaDevices || !window.MediaRecorder) { studioMeldung('Aufnehmen geht nur in der installierten App bzw. über https.', true); return; }
+  studio.startet = true;
+  wiedergabeStoppen();
+  const lauf = studio.lauf;
+  try {
+    const stream = studio.stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true } });
+    // Inzwischen verlassen (z. B. während der Berechtigungsfrage): Mikrofon sofort wieder schließen
+    if (!studioAktuell(lauf)) { stream.getTracks().forEach((t) => t.stop()); studio.startet = false; return; }
+    studio.stream = stream;
+  } catch {
+    studio.startet = false;
+    studioMeldung('Kein Zugriff aufs Mikrofon. Bitte in den Einstellungen des Handys/Browsers das Mikrofon für diese App erlauben.', true);
+    return;
+  }
+  studio.startet = false;
+  if (!studio.gedrueckt) return;   // schon wieder losgelassen, während das Mikrofon aufging
+  const teile = [];
+  const r = new MediaRecorder(studio.stream);
+  studio.rekorder = r;
+  r.ondataavailable = (e) => { if (e.data.size) teile.push(e.data); };
+  const st = studioStuecke(studio.bereich)[studio.pos];   // gehört zu diesem Stück, auch wenn danach weitergeblättert wird
+  r.onstop = () => { studio.rekorder = null; $('#btn-studio-mikro').classList.remove('aktiv'); studioVerarbeiten(new Blob(teile, { type: r.mimeType }), st, lauf); };
+  r.start();
+  $('#btn-studio-mikro').classList.add('aktiv');
+  studioMeldung('Ich höre zu …');
+  // Sicherheitsstopp: Laute/Wörter kurz, Lob etwas länger
+  studio.stoppTimer = setTimeout(() => { if (r.state === 'recording') r.stop(); }, studio.bereich === 'lob' ? 6000 : 4000);
+}
+
+function studioAufnahmeStopp() {
+  studio.gedrueckt = false;
+  clearTimeout(studio.stoppTimer);
+  if (studio.rekorder && studio.rekorder.state === 'recording') studio.rekorder.stop();
+}
+
+// Auf 22050 Hz umrechnen, Stille abschneiden, Lautstärke angleichen (wie das Aufnahme-Studio am Laptop)
+async function studioAufbereiten(blob) {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new Ctx();
+  let puffer;
+  try { puffer = await ctx.decodeAudioData(await blob.arrayBuffer()); } finally { ctx.close(); }
+  const off = new OfflineAudioContext(1, Math.ceil(puffer.duration * STUDIO_RATE), STUDIO_RATE);
+  const q = off.createBufferSource();
+  q.buffer = puffer;
+  q.connect(off.destination);
+  q.start();
+  const d = (await off.startRendering()).getChannelData(0);
+  const fenster = Math.round(STUDIO_RATE * 0.01);
+  const energie = [];
+  for (let i = 0; i < d.length; i += fenster) {
+    let summe = 0;
+    for (let j = i; j < Math.min(d.length, i + fenster); j++) summe += d[j] * d[j];
+    energie.push(Math.sqrt(summe / fenster));
+  }
+  const spitze = Math.max(0, ...energie);
+  if (spitze < 0.01) return null;
+  const schwelle = Math.max(0.006, spitze * 0.1);
+  const erstes = energie.findIndex((e) => e >= schwelle);
+  const letztes = energie.length - 1 - [...energie].reverse().findIndex((e) => e >= schwelle);
+  if (letztes - erstes < 6) return null;   // nur ein Klick
+  const t = d.slice(Math.max(0, erstes - 4) * fenster, Math.min(energie.length, letztes + 10) * fenster);
+  const hoch = t.reduce((m, x) => Math.max(m, Math.abs(x)), 1e-6);
+  const blende = Math.round(STUDIO_RATE * 0.008);
+  return t.map((x, i) => x / hoch * 0.9 * Math.min(1, i / blende, (t.length - 1 - i) / blende));
+}
+
+function studioWav(...stuecke) {
+  const laenge = stuecke.reduce((n, s) => n + s.length, 0);
+  const buf = new ArrayBuffer(44 + laenge * 2);
+  const v = new DataView(buf);
+  const text = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); v.setUint32(4, 36 + laenge * 2, true); text(8, 'WAVE');
+  text(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, STUDIO_RATE, true); v.setUint32(28, STUDIO_RATE * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  text(36, 'data'); v.setUint32(40, laenge * 2, true);
+  let o = 44;
+  stuecke.forEach((s) => s.forEach((x) => { v.setInt16(o, Math.max(-1, Math.min(1, x)) * 32767, true); o += 2; }));
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+async function studioVerarbeiten(blob, st = studioStuecke(studio.bereich)[studio.pos], lauf = studio.lauf) {
+  let t = null;
+  try { t = await studioAufbereiten(blob); } catch { t = null; }
+  if (lauf !== studio.lauf || !$('#studio').classList.contains('active')) return;   // inzwischen weitergeblättert/verlassen
+  if (!t) { studio.aufnahme = null; studioZeichnen(); studioMeldung('Nichts gehört – bitte etwas lauter nochmal.', true); return; }
+  // Laut: einmal gesprochen, in der App "mmm … mmm"
+  studio.aufnahme = st.art === 'laut' ? studioWav(t, new Float32Array(Math.round(STUDIO_RATE * 0.35)), t) : studioWav(t);
+  studioZeichnen();
+  studioMeldung('So klingt es im Spiel. Gut? Dann „Gut, weiter“ – sonst einfach nochmal halten.');
+  studioVorschau(st);
+}
+
+// So, wie es im Spiel klingt (bei Wörtern mit dem Laut davor)
+function studioVorschau(st) {
+  const neu = studio.aufnahme ? blobQuelle(studio.aufnahme) : null;
+  const eigenOder = (datei) => (eigeneDatei(datei) ? blobQuelle(eigeneDatei(datei)) : { url: datei });
+  if (st.art === 'wort') folgeAbspielen([eigenOder(`audio/${dateiName(st.b)}-laut.wav`), neu || eigenOder(st.standard)]);
+  else folgeAbspielen([neu || eigenOder(st.standard)]);
+}
+
+async function studioSpeichern() {
+  if (!studio.aufnahme) return;
+  const st = studioStuecke(studio.bereich)[studio.pos];
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  const ok = await datenbank.medienSetzen(zustand.profil, st.schluessel, 'stimme', studio.aufnahme);
+  if (!ok) { studioMeldung('Speichern ging nicht – vielleicht ist der Speicher voll. Bitte „Sichern & Übertragen“ nutzen und Altes löschen.', true); return; }
+  (medien[st.schluessel] || (medien[st.schluessel] = {})).stimme = studio.aufnahme;
+  studio.aufnahme = null;
+  const naechstes = studioStuecke(studio.bereich).findIndex((x, i) => i > studio.pos && !studioEigen(x));
+  studioGehe(naechstes >= 0 ? naechstes : studio.pos);
+  studioMeldung(`„${st.text}“ gespeichert.`);
+}
+
+async function studioZuruecksetzen(alle) {
+  const stuecke = alle ? studioStuecke(studio.bereich).filter(studioEigen) : [studioStuecke(studio.bereich)[studio.pos]];
+  const frage = alle ? `${stuecke.length} eigene Aufnahme(n) bei „${STUDIO_BEREICHE[studio.bereich]}“ löschen? Dann gilt wieder die Standard-Stimme.`
+    : `Ihre Aufnahme für „${stuecke[0].text}“ löschen? Dann gilt wieder die Standard-Stimme.`;
+  if (!confirm(frage) || (alle && !confirm('Wirklich alle löschen?'))) return;
+  for (const st of stuecke) {
+    await datenbank.medienEntfernen(zustand.profil, st.schluessel, 'stimme');
+    if (medien[st.schluessel]) delete medien[st.schluessel].stimme;
+  }
+  studioZeichnen();
+}
+
+const mikro = $('#btn-studio-mikro');
+mikro.addEventListener('pointerdown', (e) => { e.preventDefault(); mikro.setPointerCapture(e.pointerId); studio.gedrueckt = true; studioAufnahmeStart(); });
+['pointerup', 'pointercancel'].forEach((ev) => mikro.addEventListener(ev, studioAufnahmeStopp));
+mikro.addEventListener('contextmenu', (e) => e.preventDefault());
+$('#btn-studio-gut').addEventListener('click', studioSpeichern);
+$('#btn-studio-standard').addEventListener('click', () => { const st = studioStuecke(studio.bereich)[studio.pos]; folgeAbspielen([{ url: st.standard, standard: true }]); });
+$('#btn-studio-meins').addEventListener('click', () => { const st = studioStuecke(studio.bereich)[studio.pos]; if (studioEigen(st)) folgeAbspielen([blobQuelle(medien[st.schluessel].stimme)]); });
+$('#btn-studio-vor').addEventListener('click', () => studioGehe(studio.pos - 1));
+$('#btn-studio-weiter').addEventListener('click', () => studioGehe(studio.pos + 1));
+$('#btn-studio-zuruecksetzen').addEventListener('click', () => studioZuruecksetzen(false));
+$('#btn-studio-alle-weg').addEventListener('click', () => studioZuruecksetzen(true));
+$('#btn-studio-ok').addEventListener('click', () => { speicher.schreiben('studioHinweis', true); $('#studio-hinweis').hidden = true; });
+$('#btn-studio-zurueck').addEventListener('click', () => { studioAbbrechen(); studioMikrofonZu(); history.back(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { studioAbbrechen(); studioMikrofonZu(); } });
 
 // ---------- Memory: Groß und klein ----------
 
@@ -3151,7 +3410,10 @@ function silbenRundenAnzeigen() {
 
 // Silbe abspielen, ohne auf das Ende zu warten (der Takt bestimmt das Tempo)
 function silbeSprechen(nr) {
-  const a = new Audio(silbenDatei(silben.wahl.wort, nr));
+  const datei = silbenDatei(silben.wahl.wort, nr);
+  const eigen = eigeneDatei(datei);
+  const a = new Audio(eigen ? URL.createObjectURL(eigen) : datei);
+  if (eigen) a.onended = () => URL.revokeObjectURL(a.src);
   wiedergabe.audio = a;
   a.play().catch(() => {});
   return a;
@@ -3384,7 +3646,17 @@ const blobZuText = (blob) => new Promise((resolve, reject) => {
   r.onerror = reject;
   r.readAsDataURL(blob);
 });
-const textZuBlob = async (daten) => (await fetch(daten)).blob();
+// Nur eingebettete Bilder/Töne annehmen – eine manipulierte Sicherung darf keine fremde Adresse abrufen lassen.
+// Typ z. B. "audio/ogg; codecs=opus" (Firefox, mit Leerzeichen) oder ohne Typ "application/octet-stream".
+// Ungültiges ergibt null und wird beim Einspielen übersprungen (nicht alles abbrechen).
+const DATEN_URL = /^data:((audio|image|video)\/[\w.+-]+|application\/octet-stream)?(;\s*[\w.+-]+=[\w."+-]+)*;base64,[A-Za-z0-9+/=]*$/;
+const textZuBlob = async (daten) => {
+  if (typeof daten !== 'string' || !DATEN_URL.test(daten)) return null;
+  try { return await (await fetch(daten)).blob(); } catch { return null; }
+};
+
+// Erlaubte Medien-Schlüssel eines Profils: Buchstabe, eigenes Wort, Lob-Platz oder Studio-Datei; Art bild/stimme
+const MEDIEN_SCHLUESSEL = /^[^|]+\|([a-zäöüß]|w-[\w-]+|lob-[1-9]|datei:[a-z0-9-]+\.wav)\|(bild|stimme)$/;
 
 // Alles Eigene einsammeln: Profile mit Medien, Kinder mit Foto/Namensaufnahme, App-weite Einstellungen
 async function sicherungErstellen() {
@@ -3434,28 +3706,39 @@ async function sicherungEinspielen(s) {
   }
   if (s.version > SICHERUNG_VERSION) throw new Error('Die Sicherung stammt aus einer neueren App-Version. Bitte die App aktualisieren.');
   const warFrisch = kinder.length === 0 && (await datenbank.profile()).length === 0;
+  let uebersprungen = 0;
+  const blobOderNull = async (daten) => {
+    const blob = daten ? await textZuBlob(daten) : null;
+    if (daten && !blob) uebersprungen++;
+    return blob;
+  };
   for (const { medien: medienListe, ...profil } of s.profile) {
-    if (!profil.id || !profil.name) continue;
-    // Alte Medien dieses Profils ersetzen, damit gelöschte Aufnahmen nicht wieder auftauchen
+    // Nur echte Profil-IDs (sonst könnte eine manipulierte Datei z. B. die Funde eines Kindes löschen)
+    if (typeof profil.id !== 'string' || !/^p-[a-z0-9-]+$/.test(profil.id) || !profil.name) { uebersprungen++; continue; }
+    // Erst alles prüfen und umwandeln, dann die alten Medien ersetzen – so geht bei Fehlern nichts verloren
+    const neu = [];
+    for (const m of medienListe || []) {
+      if (typeof m.schluessel !== 'string' || !m.schluessel.startsWith(`${profil.id}|`) || !MEDIEN_SCHLUESSEL.test(m.schluessel)) { uebersprungen++; continue; }
+      const blob = await blobOderNull(m.daten);
+      if (blob) neu.push([m.schluessel, blob]);
+    }
     await datenbank.profilLoeschen(profil.id);
     await datenbank.profilSpeichern(profil);
-    for (const m of medienListe || []) {
-      if (typeof m.schluessel === 'string' && m.schluessel.startsWith(`${profil.id}|`)) {
-        await datenbank.medienRoh(m.schluessel, await textZuBlob(m.daten));
-      }
-    }
+    for (const [schluessel, blob] of neu) await datenbank.medienRoh(schluessel, blob);
   }
   for (const k of s.kinder) {
     if (!k.id || !k.name) continue;
     await datenbank.kindSpeichern({
       ...k,
-      foto: k.foto ? await textZuBlob(k.foto) : null,
-      nameStimme: k.nameStimme ? await textZuBlob(k.nameStimme) : null,
+      foto: await blobOderNull(k.foto),
+      nameStimme: await blobOderNull(k.nameStimme),
       sterne: k.sterne || {},
     });
   }
   for (const f of s.funde || []) {
-    if (typeof f.schluessel === 'string' && f.schluessel.startsWith('fund-')) await datenbank.medienRoh(f.schluessel, await textZuBlob(f.daten));
+    if (typeof f.schluessel !== 'string' || !/^fund-[^|]+\|[^|]+\|[^|]+$/.test(f.schluessel)) { uebersprungen++; continue; }
+    const blob = await blobOderNull(f.daten);
+    if (blob) await datenbank.medienRoh(f.schluessel, blob);
   }
   // App-weite Einstellungen nur auf einem frischen Gerät übernehmen (sonst nichts überschreiben)
   if (warFrisch && s.einstellungen) {
@@ -3475,7 +3758,7 @@ async function sicherungEinspielen(s) {
     zustand.profil = STANDARD.id;
   }
   await medienLaden();
-  return { profile: s.profile.length, kinder: s.kinder.length };
+  return { profile: s.profile.length, kinder: s.kinder.length, uebersprungen };
 }
 
 function sicherungDateiname() {
@@ -3544,7 +3827,8 @@ $('#sicherung-input').addEventListener('change', async (e) => {
       + 'Gleiche Profile/Kinder werden aktualisiert, alles andere bleibt erhalten.')) return;
     const ergebnis = await sicherungEinspielen(inhalt);
     await elternOeffnen();
-    alert(`Fertig: ${ergebnis.profile} Profil(e) und ${ergebnis.kinder} Kind(er) übernommen.`);
+    alert(`Fertig: ${ergebnis.profile} Profil(e) und ${ergebnis.kinder} Kind(er) übernommen.`
+      + (ergebnis.uebersprungen ? `\n${ergebnis.uebersprungen} beschädigte Einträge wurden übersprungen.` : ''));
   } catch (fehler) {
     alert(fehler instanceof SyntaxError ? 'Die Datei ist keine gültige Sicherung.' : (fehler.message || 'Einspielen fehlgeschlagen.'));
   }

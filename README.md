@@ -32,6 +32,11 @@ Zahnrad oben rechts **2 Sekunden gedrückt halten**. Dort: Profile, große/klein
 (etwa jedes dritte Lob, nie zweimal hintereinander: „Toll gemacht! … Lina! … Apfel“; ohne Aufnahme kein Name), eigene Sterne, eigene Schrift und ein
 zugewiesenes Profil. Mit Kindern startet die App mit „Wer spielt?“. Ohne Kinder gelten die Einstellungen app-weit.
 
+**Stimme einsprechen** (eigenes Profil → „🎙️ Stimme einsprechen“): Laute, Wörter und Lob am Handy einmal
+einsprechen (🎙️ gedrückt halten). Die App schneidet die Stille ab, gleicht die Lautstärke an und nutzt die Aufnahme in
+allen Spielen (Medien-Schlüssel `datei:<name>.wav` ersetzt `audio/<name>.wav`; „Laut … Laut … Wort“ wird aus den
+Teilen zusammengesetzt). Je Stück oder Bereich auf Standard zurücksetzbar, alles auch in der Sicherung.
+
 **Profile:** „Standard“ (Thorsten + mitgelieferte Bilder) ist immer da und unveränderlich. Eigene Profile
 enthalten pro Buchstabe optional ein Foto und/oder eine Aufnahme; alles andere kommt aus „Standard“.
 Fotos, Aufnahmen und Sterne bleiben nur auf dem jeweiligen Gerät (IndexedDB, an die Adresse gebunden).

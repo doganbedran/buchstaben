@@ -43,4 +43,5 @@ seite silben 15000
 seite startseite 3000
 seite regal 12000
 seite zeigen 12000
+seite studio 12000
 echo "Testseiten erzeugt"

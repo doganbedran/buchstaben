@@ -54,6 +54,10 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 - Neue Geräte/Kinder: Montessori-Reihenfolge und kleines Regal (`START_REGAL`); bestehende behalten A–Z und alle Spiele
   (erkannt an fehlendem `sterne` in localStorage bzw. fehlendem Feld am Kind).
 - Profil „Standard“ ist kein DB-Eintrag und unveränderlich. Pro Buchstabe: Eigenes > Standard.
+- Eltern-Studio: Profil-Medien `<profil>|datei:<name>.wav|stimme` ersetzen beim Abspielen `audio/<name>.wav` (`eigeneDatei`
+  in `folgeAbspielen`); `{ standard: true }` umgeht das. Neue Sprech-Datei = automatisch einsprechbar, wenn im Studio gelistet.
+- Einspielen: nur `data:`-URLs (`textZuBlob`), nur bekannte Schlüssel (`MEDIEN_SCHLUESSEL`), Profil-IDs `p-…`; Kaputtes wird
+  übersprungen und gezählt, erst prüfen, dann ersetzen.
 - Sicherung (Elternbereich) = JSON mit Profilen, Medien, Kindern, Funden; Einspielen ergänzt nach ID, löscht nichts.
   Neue Felder an Kindern/Einstellungen auch in `einstellungenLaden/-Speichern`, beim ersten Kind und in der Sicherung ergänzen.
 
