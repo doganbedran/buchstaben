@@ -46,6 +46,7 @@
     <nav class="spiele-raster" aria-label="Spiele">
       <button class="spiel-btn" data-spiel="spuren" aria-label="Nachspuren">✏️</button>
       <button class="spiel-btn" data-spiel="zeigen" aria-label="Zeig mir">👆</button>
+      <button class="spiel-btn" data-spiel="kiste" aria-label="Wörterkiste">🧺</button>
       <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
       <button class="spiel-btn" data-spiel="silben" aria-label="Silben-Trommel" hidden>🥁</button>
       <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
@@ -148,6 +149,32 @@
     <div id="zeigen-karten" class="zeigen-karten"></div>
     <div id="zeigen-ablage" class="zeigen-ablage"></div>
     <div id="zeigen-jubel" class="jubel"><span>🏆</span></div>
+  </section>
+
+  <!-- Wörterkiste: Themen-Kisten (Wortschatz) und Erzähl-Bild für die Eltern -->
+  <section id="kiste" class="screen">
+    <header class="topbar">
+      <button id="btn-kiste-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div id="kiste-runden" class="zeigen-punkte"></div>
+      <button id="btn-kiste-laut" class="icon-btn" aria-label="Nochmal hören">🔊</button>
+    </header>
+    <nav id="kiste-wahl" class="spiele-raster kiste-wahl" aria-label="Kisten"></nav>
+    <div id="kiste-lektion" class="kiste-lektion" hidden>
+      <div id="kiste-symbol" class="zeigen-symbol" aria-hidden="true">👀</div>
+      <div id="kiste-karten" class="zeigen-karten"></div>
+      <button id="btn-kiste-daumen" class="kiste-daumen" aria-label="Gefunden" hidden>👍</button>
+      <div id="kiste-ablage" class="zeigen-ablage"></div>
+    </div>
+    <div id="kiste-erzaehlen" class="kiste-erzaehlen" hidden>
+      <div id="kiste-erzaehl-bilder" class="kiste-erzaehl-bilder" aria-hidden="true"></div>
+      <div class="kiste-fuer-eltern">
+        <p><b>Für Sie:</b> Erzählen Sie zusammen! Zum Beispiel:</p>
+        <ul id="kiste-fragen"></ul>
+        <p>Was Ihr Kind sagt, ruhig wiederholen und ein Stück erweitern – <span id="kiste-beispiel"></span></p>
+      </div>
+    </div>
+    <!-- nicht gezeigt (das Erzähl-Bild ist das Ende); spielEnde/spielEndeWeg erwarten ein .jubel -->
+    <div id="kiste-jubel" class="jubel"><span>🏆</span></div>
   </section>
 
   <!-- Silben-Trommel -->
@@ -393,6 +420,7 @@
   </section>
 
   <script src="letters.js"></script>
+  <script src="kisten.js"></script>
   <script src="striche.js"></script>
   <script src="app.js"></script>
 </body>

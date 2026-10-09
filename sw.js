@@ -1,17 +1,20 @@
 // Offline-Cache: Mit Internet immer die neueste Version laden, ohne Internet aus dem Cache.
-importScripts('letters.js');
+importScripts('letters.js', 'kisten.js');
 
-const CACHE = 'buchstaben-v42';   // gleiche Nummer wie APP_VERSION in app.js
+const CACHE = 'buchstaben-v43';   // gleiche Nummer wie APP_VERSION in app.js
 const DATEIEN = [
-  './', 'index.html', 'style.css', 'app.js', 'letters.js', 'striche.js', 'manifest.webmanifest',
+  './', 'index.html', 'style.css', 'app.js', 'letters.js', 'kisten.js', 'striche.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png',
   ...[1, 2, 3, 4, 5].map((i) => `audio/lob-${i}.wav`),
   ...BUCHSTABEN.filter(({ bild }) => bild.startsWith('bilder/')).map(({ bild }) => bild),
   ...BUCHSTABEN.flatMap(({ b }) => [`audio/${dateiName(b)}.wav`, `audio/${dateiName(b)}-wort.wav`, `audio/${dateiName(b)}-laut.wav`]),
   ...['hoeren', 'hoeren-nochmal', 'runde-geschafft', 'sticker', 'memory', 'neue-buchstaben', 'jagd', 'legen',
     'silben', 'silben-erinnerung', 'silben-hoermal', 'silben-jetzt-du', 'silben-zusammen',
-    'silben-hoerzu', 'silben-zusammen-geschafft', 'zeigen-das-ist', 'zeigen-zeig-mir', 'zeigen-was-ist-das'].map((a) => `audio/ansage-${a}.wav`),
+    'silben-hoerzu', 'silben-zusammen-geschafft', 'zeigen-das-ist', 'zeigen-zeig-mir', 'zeigen-was-ist-das',
+    'kiste-wo-ist', 'kiste-wo-ist-bei-dir', 'kiste-wie-macht', 'kiste-aussuchen'].map((a) => `audio/ansage-${a}.wav`),
   ...BUCHSTABEN.flatMap(({ b, mehr }) => (mehr || []).flatMap((_, i) => [`audio/${dateiName(b)}-${i + 2}.wav`, `audio/${dateiName(b)}-${i + 2}-wort.wav`])),
+  ...KISTEN.flatMap((k) => k.woerter.map(([id]) => kisteDatei(id))),
+  ...Object.keys(TIERLAUTE).map(tierDatei),
 ];
 // Silben-Aufnahmen kommen nach und nach dazu: fehlende Dateien dürfen die Installation nicht verhindern
 const SILBEN_DATEIEN = Object.entries(SILBEN).flatMap(([wort, teile]) => teile.map((_, i) => silbenDatei(wort, i + 1)));

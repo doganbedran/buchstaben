@@ -63,9 +63,13 @@ ANSAGEN = {
     'zeigen-das-ist': 'Das ist',
     'zeigen-zeig-mir': 'Zeig mir',
     'zeigen-was-ist-das': 'Was ist das? Sag es!',
+    'kiste-wo-ist': 'Wo ist',
+    'kiste-wo-ist-bei-dir': 'Wo ist bei dir',
+    'kiste-wie-macht': 'Wie macht',
+    'kiste-aussuchen': 'Such dir eine Kiste aus!',
 }
 
-TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen']
+TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen', 'kisten']
 
 
 def woerter_aus_letters_js():
@@ -80,6 +84,14 @@ def weitere_woerter_aus_letters_js():
     for b, liste in re.findall(r"b: '(\w)'.*?mehr: \[(.*?)\] \}", text):
         ergebnis[b] = re.findall(r"\['([^']+)', '[^']+'\]", liste)
     return ergebnis
+
+
+def kisten_aus_kisten_js():
+    """Wörter der Wörterkiste (id -> 'die Tasse') und Tierlaute (id -> 'Muuh') aus kisten.js."""
+    text = (PROJEKT / 'kisten.js').read_text(encoding='utf-8')
+    woerter = dict(re.findall(r"\['(\w+)', '([^']+)', '[^']+'(?:, '[^']+')?\]", text))
+    tiere = dict(re.findall(r"(\w+): '([^']+)'", text.split('const TIERLAUTE')[1].split('};')[0]))
+    return woerter, tiere
 
 
 def synth(stimme, text, tempo=1.0):
@@ -149,6 +161,12 @@ def erzeugen(modell, ziel, teile):
     if 'ansagen' in teile:
         for name, satz in ANSAGEN.items():
             speichern(ziel / f'ansage-{name}.wav', synth(stimme, satz, tempo=1.05), rate)
+    if 'kisten' in teile:
+        woerter, tiere = kisten_aus_kisten_js()
+        for wid, wort in woerter.items():
+            speichern(ziel / f'kiste-{wid}.wav', synth(stimme, wort, tempo=1.1), rate)
+        for tid, laut in tiere.items():
+            speichern(ziel / f'tier-{tid}.wav', synth(stimme, laut, tempo=1.0), rate)
     print('fertig:', ziel, ', '.join(teile))
 
 

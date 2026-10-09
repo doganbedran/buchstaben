@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 42;
+const APP_VERSION = 43;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -170,8 +170,8 @@ const reihenfolgeStandard = () => (neuesGeraet() ? 'montessori' : 'alphabet');
 // Spiele-Regal: welche Spiele ein Kind auf der Startseite sieht (Montessori: ein Material kommt erst ins Regal,
 // wenn es gezeigt wurde). Neue Kinder/Geräte beginnen mit wenigen Spielen, wer die App schon nutzt, behält alle.
 // Gespeichert wird, was AUSGEBLENDET ist – so erscheinen neue Spiele nach einem Update von selbst.
-const ALLE_SPIELE = ['spuren', 'zeigen', 'hoeren', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
-const START_REGAL = ['spuren', 'zeigen', 'hoeren', 'silben', 'name', 'album'];
+const ALLE_SPIELE = ['spuren', 'zeigen', 'kiste', 'hoeren', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
+const START_REGAL = ['spuren', 'zeigen', 'kiste', 'hoeren', 'silben', 'name', 'album'];
 const ausVon = (sichtbar) => ALLE_SPIELE.filter((id) => !sichtbar.includes(id));
 const START_AUS = ausVon(START_REGAL);
 // Version 37 speicherte die sichtbaren Spiele ("spiele"); damals gab es diese acht
@@ -503,6 +503,7 @@ window.addEventListener('popstate', async () => {
   clearTimeout(legen.timer);
   silbenTimerStoppen();
   zeigenStoppen();
+  kisteStoppen();
   studioAbbrechen();
   studioMikrofonZu();
   stopAufnahme();
@@ -597,6 +598,8 @@ function spieleZeigen() {
     btn.hidden = !regal.includes(id) || (id === 'name' && !(k && nameZeichen(k.name).length))
       || (id === 'silben' && !silbenGenug());
   });
+  // Viele Spiele im Regal: kleinere Kacheln, damit alles ohne Scrollen passt
+  $('#home .spiele-raster').classList.toggle('viele', document.querySelectorAll('#home .spiel-btn:not([hidden])').length > 8);
 }
 
 // Auswahl fürs Regal im Elternbereich (je Kind oder app-weit); das letzte Spiel lässt sich nicht abwählen
@@ -3063,6 +3066,7 @@ function zeigenStoppen() {
   clearTimeout(lektion.timer);
   lektion.nummer++;
   lektion.gesperrt = true;
+  lektion.wechsel = false;
 }
 
 function zeigenPunkteZeichnen() {
@@ -3239,19 +3243,19 @@ async function zeigenNaechsteStufe() {
   lektion.stufe++;
   lektion.schritt = 0;
   zeigenPunkteZeichnen();
+  lektion.auftraege = lektion.stufe === 1 ? zeigenAuftraege(lektion.buchstaben) : mischen(lektion.buchstaben);
+  lektion.wechsel = true;   // 🔊 wartet, bis die neue Stufe aufgebaut ist
   await warten(700);
   if (!zeigenAktuell(nr)) return;
+  lektion.wechsel = false;
   zeigenSymbol();
   $('#zeigen-ablage').hidden = true;
   if (lektion.stufe === 1) {
     // Die drei kommen zusammen: Plätze einmal mischen, dann fest
-    lektion.auftraege = zeigenAuftraege(lektion.buchstaben);
     const box = $('#zeigen-karten');
     box.className = 'zeigen-karten reihe';
     box.innerHTML = '';
     mischen(lektion.buchstaben).forEach((b) => box.appendChild(zeigenKarte(b, ' kommt')));
-  } else {
-    lektion.auftraege = mischen(lektion.buchstaben);
   }
   zeigenSchritt();
 }
@@ -3298,9 +3302,361 @@ function zeigenStarten() {
 $('#btn-zeigen-home').addEventListener('click', () => { zeigenStoppen(); wiedergabeStoppen(); zurStartseite(); });
 // 🔊: aktuellen Schritt von vorn (Ansage nochmal); geht immer – rettet auch einen hängen gebliebenen Ton
 $('#btn-zeigen-laut').addEventListener('click', () => {
+  if (lektion.wechsel) return;
   audio();
   lektion.gesperrt = true;
   zeigenSchritt();
+});
+
+// ---------- Wörterkiste: Nomenklatur nach Themen (Das ist … / Wo ist … / Was ist das? / bei dir) + Erzähl-Bild ----------
+
+const KISTE_STUFEN = [3, 6, 3];   // Schritte je Stufe; Stufe 4 (bei dir / Tierlaut) ist ein Schritt mehr
+// Symbole je Stufe; in der Körper-Kiste nicht 👀/👂 (wären zugleich die Wörter Auge/Ohr); Stufe 4 nicht 🏠 (= Zurück)
+const kisteSymbole = () => [...(kiste.kiste && kiste.kiste.id === 'koerper' ? ['✨', '🔎'] : ['👀', '👂']), '🗣️',
+  kiste.kiste && kiste.kiste.stufe4 === 'tiere' ? '🎵' : '👉'];
+const KISTE_ZEIT_BEI_DIR = { koerper: 20000 };   // sonst 40 s: Löffel oder Seife holen dauert
+const KISTE_NACHMACHEN = 5500;                   // Zeit, das Tier nachzumachen
+const kiste = { kiste: null, woerter: [], stufe: 0, schritt: 0, punkte: 0, auftraege: [], ziel: null, daneben: new Set(),
+  gesperrt: true, wechsel: false, fertig: false, fehlversuche: 0, beiDir: null, timer: null, nummer: 0, letzterTipp: 0, zuletzt: {} };
+
+const kisteAktuell = (nr) => nr === kiste.nummer && $('#kiste').classList.contains('active');
+const kisteWort = (id) => kiste.kiste.woerter.find((w) => w[0] === id);
+const kisteQuelle = (id) => ({ url: kisteDatei(id) });
+const kisteText = (id) => kisteWort(id)[1];
+const kistePunkteGesamt = () => KISTE_STUFEN.reduce((a, b) => a + b, 0) + (kiste.kiste && kiste.kiste.stufe4 ? 1 : 0);
+
+// 3 der 6 Wörter: zuerst die, die beim letzten Mal nicht dran waren; nie zwei zu ähnliche zusammen
+function kisteAuswahl(k) {
+  const vorher = kiste.zuletzt[k.id] || [];
+  const ids = [...mischen(k.woerter.map((w) => w[0]).filter((id) => !vorher.includes(id))), ...mischen(vorher)];
+  const wahl = [];
+  ids.forEach((id) => {
+    if (wahl.length < 3 && !wahl.some((x) => KISTEN_NICHT_ZUSAMMEN.some((p) => p.includes(x) && p.includes(id)))) wahl.push(id);
+  });
+  kiste.zuletzt[k.id] = wahl;
+  return wahl;
+}
+
+function kisteStoppen() {
+  clearTimeout(kiste.timer);
+  kiste.nummer++;
+  kiste.gesperrt = true;
+  kiste.wechsel = false;
+  $('#btn-kiste-daumen').hidden = true;
+}
+
+async function kisteSagen(nr, folge, text) {
+  await folgeAbspielen(folge, text);
+  return kisteAktuell(nr);
+}
+
+function kistePunkteZeichnen() {
+  const gruppen = [...KISTE_STUFEN, ...(kiste.kiste && kiste.kiste.stufe4 ? [1] : [])];
+  let n = 0;
+  $('#kiste-runden').innerHTML = gruppen.map((anzahl) => `<span class="punkt-gruppe">${
+    Array.from({ length: anzahl }, () => `<span class="${n++ < kiste.punkte ? 'voll' : ''}"></span>`).join('')}</span>`).join('');
+}
+
+function kisteKarte(id, extra = '') {
+  const btn = document.createElement('button');
+  btn.className = `zeigen-karte kiste-karte${extra}`;
+  btn.textContent = kisteWort(id)[2];
+  btn.setAttribute('aria-label', kisteText(id));
+  btn.addEventListener('click', () => kisteGetippt(id, btn));
+  return btn;
+}
+
+function kisteEinzeln(id) {
+  const box = $('#kiste-karten');
+  box.className = 'zeigen-karten einzeln';
+  box.innerHTML = '';
+  box.appendChild(kisteKarte(id, ' kommt'));
+  return box.firstChild;
+}
+
+function kisteSymbol() {
+  const s = $('#kiste-symbol');
+  s.textContent = kisteSymbole()[kiste.stufe];
+  karteAnimieren(s, 'huepft');
+}
+
+// Kisten-Wahl: große Kacheln mit dem Symbol der Kiste (ohne Text)
+function kistenWahlZeigen() {
+  kisteStoppen();
+  spielEndeWeg('kiste');
+  $('#kiste-lektion').hidden = true;
+  $('#kiste-erzaehlen').hidden = true;
+  $('#btn-kiste-laut').hidden = true;   // 🔊 nur in der Lektion
+  $('#kiste-runden').innerHTML = '';
+  const box = $('#kiste-wahl');
+  box.hidden = false;
+  box.innerHTML = '';
+  folgeAbspielen([{ url: 'audio/ansage-kiste-aussuchen.wav' }], 'Such dir eine Kiste aus!');
+  KISTEN.forEach((k) => {
+    const btn = document.createElement('button');
+    btn.className = 'spiel-btn kiste-wahl-btn';
+    btn.textContent = k.bild;
+    btn.setAttribute('aria-label', k.name);
+    btn.addEventListener('click', () => { audio(); kisteNeu(k); });
+    box.appendChild(btn);
+  });
+}
+
+function kisteNeu(k) {
+  kisteStoppen();
+  spielEndeWeg('kiste');
+  kiste.kiste = k;
+  kiste.woerter = kisteAuswahl(k);
+  kiste.stufe = 0;
+  kiste.schritt = 0;
+  kiste.punkte = 0;
+  kiste.daneben = new Set();
+  kiste.fertig = false;
+  $('#kiste-wahl').hidden = true;
+  $('#kiste-erzaehlen').hidden = true;
+  $('#kiste-lektion').hidden = false;
+  $('#btn-kiste-laut').hidden = false;
+  $('#kiste-symbol').textContent = kisteSymbole()[0];
+  const ablage = $('#kiste-ablage');
+  ablage.hidden = false;
+  ablage.innerHTML = '';
+  kiste.woerter.forEach((id) => {
+    const feld = document.createElement('button');
+    feld.className = 'zeigen-feld kiste-feld';
+    feld.setAttribute('aria-label', 'Ablage');
+    feld.addEventListener('click', () => { if (feld.classList.contains('voll') && !kiste.gesperrt) { audio(); folgeAbspielen([kisteQuelle(id)]); } });
+    ablage.appendChild(feld);
+  });
+  kistePunkteZeichnen();
+  kisteSchritt();
+}
+
+function kisteSchritt() {
+  if (kiste.stufe === 0) kisteVorstellen();
+  else if (kiste.stufe === 1) kisteAuftrag();
+  else if (kiste.stufe === 2) kisteFrage();
+  else kisteBeiDir();
+}
+
+// Stufe 1: Das ist … die Tasse (Tipp = Wort nochmal, dann in die Ablage; ohne Tipp geht es von selbst weiter)
+async function kisteVorstellen(id = kiste.woerter[kiste.schritt]) {
+  kisteStoppen();
+  const nr = kiste.nummer;
+  const karte = kisteEinzeln(id);
+  if (!(await kisteSagen(nr, [{ url: 'audio/ansage-zeigen-das-ist.wav' }, kisteQuelle(id)], `Das ist ${kisteText(id)}`))) return;
+  kiste.gesperrt = false;
+  karte.classList.add('pulsiert');
+  kiste.timer = setTimeout(async () => {
+    if (!kisteAktuell(nr)) return;
+    await kisteSagen(nr, [kisteQuelle(id)], kisteText(id));
+    kiste.timer = setTimeout(() => kisteAktuell(nr) && !kiste.gesperrt && kisteWeiter(nr), 8000);
+  }, 6000);
+}
+
+// Stufe 2: Wo ist … die Tasse? (drei Bilder, Plätze nach der Hälfte einmal getauscht)
+async function kisteAuftrag() {
+  kisteStoppen();
+  const nr = kiste.nummer;
+  kiste.ziel = kiste.auftraege[kiste.schritt];
+  kiste.fehlversuche = 0;
+  document.querySelectorAll('#kiste-karten .zeigen-karte').forEach((k) => k.classList.remove('blass', 'richtig', 'pulsiert'));
+  if (kiste.schritt === 3) {
+    const box = $('#kiste-karten');
+    const alt = [...box.children];
+    let neu = mischen(alt);
+    while (neu.every((k, i) => k === alt[i])) neu = mischen(alt);
+    neu.forEach((k) => { k.classList.remove('kommt'); void k.offsetWidth; k.classList.add('kommt'); box.appendChild(k); });
+    await warten(500);
+    if (!kisteAktuell(nr)) return;
+  }
+  if (!(await kisteSagen(nr, [{ url: 'audio/ansage-kiste-wo-ist.wav' }, kisteQuelle(kiste.ziel)], `Wo ist ${kisteText(kiste.ziel)}?`))) return;
+  kiste.gesperrt = false;
+  kisteWiederholen(nr, 2);
+}
+
+function kisteWiederholen(nr, rest) {
+  clearTimeout(kiste.timer);
+  if (!rest) return;
+  kiste.timer = setTimeout(async () => {
+    if (!kisteAktuell(nr) || kiste.gesperrt) return;
+    await kisteSagen(nr, [{ url: 'audio/ansage-kiste-wo-ist.wav' }, kisteQuelle(kiste.ziel)], `Wo ist ${kisteText(kiste.ziel)}?`);
+    kisteWiederholen(nr, rest - 1);
+  }, 8000);
+}
+
+// Stufe 3: Was ist das? Sag es! (Ruhe zum Selbersagen, Tipp = Vergleich; Unsicheres nochmal vorstellen)
+async function kisteFrage() {
+  const id = kiste.auftraege[kiste.schritt];
+  if (kiste.daneben.has(id)) { kisteVorstellen(id); return; }
+  kisteStoppen();
+  const nr = kiste.nummer;
+  const karte = kisteEinzeln(id);
+  if (!(await kisteSagen(nr, [{ url: 'audio/ansage-zeigen-was-ist-das.wav' }], 'Was ist das? Sag es!'))) return;
+  kiste.timer = setTimeout(() => {
+    if (!kisteAktuell(nr)) return;
+    kiste.gesperrt = false;
+    karte.classList.add('pulsiert');
+    kiste.timer = setTimeout(async () => {
+      if (!kisteAktuell(nr) || kiste.gesperrt) return;
+      kiste.gesperrt = true;
+      if (await kisteSagen(nr, [kisteQuelle(id)], kisteText(id))) kisteWeiter(nr);
+    }, 7000);
+  }, 3000);
+}
+
+// Stufe 4: „Wo ist bei dir …?“ (zeigen/holen, dann 👍) oder „Wie macht …?“ (nachmachen, dann der Tierlaut)
+async function kisteBeiDir() {
+  kisteStoppen();
+  const nr = kiste.nummer;
+  // Einmal gewählt bleibt das Wort (auch wenn 🔊 die Frage wiederholt)
+  const id = kiste.beiDir || (kiste.beiDir = zufall(kiste.woerter));
+  kisteEinzeln(id);
+  if (kiste.kiste.stufe4 === 'tiere') {
+    if (!(await kisteSagen(nr, [{ url: 'audio/ansage-kiste-wie-macht.wav' }, kisteQuelle(id)], `Wie macht ${kisteText(id)}?`))) return;
+    await warten(KISTE_NACHMACHEN);
+    if (!kisteAktuell(nr)) return;
+    if (!(await kisteSagen(nr, [{ url: tierDatei(id) }], TIERLAUTE[id]))) return;
+    kisteGeschafft(nr);
+    return;
+  }
+  if (!(await kisteSagen(nr, [{ url: 'audio/ansage-kiste-wo-ist-bei-dir.wav' }, kisteQuelle(id)], `Wo ist bei dir ${kisteText(id)}?`))) return;
+  kiste.gesperrt = false;
+  $('#btn-kiste-daumen').hidden = false;
+  // Ohne Tipp freundlich weiter (kein Warten auf den Daumen); Tipp aufs Bild zählt wie 👍
+  kiste.timer = setTimeout(() => kisteAktuell(nr) && !kiste.gesperrt && kisteGeschafft(nr),
+    KISTE_ZEIT_BEI_DIR[kiste.kiste.id] || 40000);
+}
+
+async function kisteGeschafft(nr) {
+  if (kiste.fertig) return;
+  kiste.fertig = true;
+  kiste.gesperrt = true;
+  clearTimeout(kiste.timer);
+  $('#btn-kiste-daumen').hidden = true;
+  kiste.punkte++;
+  kistePunkteZeichnen();
+  glockenspiel();
+  if (!(await kisteSagen(nr, [lobQuelle()], 'Super!'))) return;
+  kisteErzaehlen();
+}
+
+async function kisteGetippt(id, btn) {
+  const jetzt = performance.now();
+  // Stufe 3 in der Ruhe zum Selbersagen: sanft wackeln, damit es nicht kaputt wirkt (zählt nicht)
+  if (kiste.gesperrt && kiste.stufe === 2 && !btn.classList.contains('pulsiert')) { karteAnimieren(btn, 'wackelt'); return; }
+  if (kiste.gesperrt || jetzt - kiste.letzterTipp < 400) return;
+  kiste.letzterTipp = jetzt;
+  audio();
+  const nr = kiste.nummer;
+  if (kiste.stufe === 3) {   // Stufe 4: Tipp aufs Bild = „gezeigt“ (wie 👍); bei den Tieren nur anschauen
+    if (kiste.kiste.stufe4 === 'bei-dir') kisteGeschafft(nr);
+    return;
+  }
+  clearTimeout(kiste.timer);
+  if (kiste.stufe === 1 && id !== kiste.ziel) {
+    // Kein "falsch": wackeln, das getippte Bild benennen, dann nochmal fragen
+    kiste.gesperrt = true;
+    btn.classList.add('blass');
+    karteAnimieren(btn, 'wackelt');
+    if (!(await kisteSagen(nr, [kisteQuelle(id)], kisteText(id)))) return;
+    await warten(400);
+    if (!(await kisteSagen(nr, [{ url: 'audio/ansage-kiste-wo-ist.wav' }, kisteQuelle(kiste.ziel)], `Wo ist ${kisteText(kiste.ziel)}?`))) return;
+    btn.classList.remove('blass');
+    kiste.daneben.add(kiste.ziel);
+    // Nach zwei Fehlversuchen: das gesuchte Bild pulsiert sanft (Hinweis, kein „falsch“)
+    if (++kiste.fehlversuche >= 2) document.querySelectorAll('#kiste-karten .zeigen-karte').forEach((k) => k.getAttribute('aria-label') === kisteText(kiste.ziel) && k.classList.add('pulsiert'));
+    kiste.gesperrt = false;
+    kisteWiederholen(nr, 2);
+    return;
+  }
+  kiste.gesperrt = true;
+  btn.classList.remove('pulsiert');
+  karteAnimieren(btn, 'huepft');
+  if (kiste.stufe === 1) { btn.classList.add('richtig'); glockenspiel(); }
+  if (!(await kisteSagen(nr, [kisteQuelle(id), ...(kiste.stufe === 1 ? [lobQuelle()] : [])], kisteText(id)))) return;
+  await warten(kiste.stufe === 1 ? 900 : 600);
+  if (kisteAktuell(nr)) kisteWeiter(nr);
+}
+
+function kisteWeiter(nr) {
+  if (!kisteAktuell(nr)) return;
+  kiste.punkte++;
+  if (kiste.stufe === 0 && kiste.schritt < kiste.woerter.length) {
+    const feld = $('#kiste-ablage').children[kiste.schritt];
+    feld.textContent = kisteWort(kiste.woerter[kiste.schritt])[2];
+    feld.classList.add('voll');
+  }
+  kiste.schritt++;
+  kistePunkteZeichnen();
+  if (kiste.schritt < KISTE_STUFEN[kiste.stufe]) { kisteSchritt(); return; }
+  kisteNaechsteStufe();
+}
+
+async function kisteNaechsteStufe() {
+  kisteStoppen();
+  const nr = kiste.nummer;
+  glockenspiel();
+  if (kiste.stufe === 2 && !kiste.kiste.stufe4) { kisteErzaehlen(); return; }
+  kiste.stufe++;
+  kiste.schritt = 0;
+  if (kiste.stufe === 1) kiste.auftraege = zeigenAuftraege(kiste.woerter);
+  else if (kiste.stufe === 2) kiste.auftraege = mischen(kiste.woerter);
+  else kiste.beiDir = null;
+  kiste.wechsel = true;   // 🔊 wartet, bis die neue Stufe aufgebaut ist
+  await warten(700);
+  if (!kisteAktuell(nr)) return;
+  kiste.wechsel = false;
+  kisteSymbol();
+  $('#kiste-ablage').hidden = true;
+  if (kiste.stufe === 1) {
+    const box = $('#kiste-karten');
+    box.className = 'zeigen-karten reihe';
+    box.innerHTML = '';
+    mischen(kiste.woerter).forEach((id) => box.appendChild(kisteKarte(id, ' kommt')));
+  }
+  kisteSchritt();
+}
+
+// Erzähl-Bild: die drei Bilder der Runde und Gesprächsfragen für die Eltern; dann 🏠 / 🔁
+// Erzähl-Bild: die drei Bilder der Runde (antippen = Wort) und je Wort eine Gesprächsfrage für die Eltern.
+// 🏠/🔁 erst nach einer Weile – zuerst soll erzählt werden; 🔁 führt zur Kisten-Wahl (Abwechslung)
+const KISTE_ERZAEHLZEIT = 15000;
+function kisteErzaehlen() {
+  kisteStoppen();
+  $('#kiste-lektion').hidden = true;
+  $('#btn-kiste-laut').hidden = true;
+  const box = $('#kiste-erzaehlen');
+  box.hidden = false;
+  const bilder = $('#kiste-erzaehl-bilder');
+  bilder.innerHTML = '';
+  kiste.woerter.forEach((id) => {
+    const btn = document.createElement('button');
+    btn.textContent = kisteWort(id)[2];
+    btn.setAttribute('aria-label', kisteText(id));
+    btn.addEventListener('click', () => { audio(); folgeAbspielen([kisteQuelle(id)]); });
+    bilder.appendChild(btn);
+  });
+  $('#kiste-fragen').innerHTML = kiste.woerter.map((id) => `<li>${htmlText(kisteWort(id)[3])}</li>`).join('');
+  $('#kiste-beispiel').textContent = kiste.kiste.beispiel;
+  folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
+  const nr = kiste.nummer;
+  kiste.timer = setTimeout(() => kisteAktuell(nr) && spielEnde('kiste', kistenWahlZeigen), KISTE_ERZAEHLZEIT);
+}
+
+function kisteStarten() {
+  zeigen('kiste');
+  kistenWahlZeigen();
+}
+
+$('#btn-kiste-home').addEventListener('click', () => { kisteStoppen(); wiedergabeStoppen(); zurStartseite(); });
+$('#btn-kiste-daumen').addEventListener('click', () => { if (!kiste.gesperrt) { audio(); kisteGeschafft(kiste.nummer); } });
+// 🔊: aktuellen Schritt von vorn (rettet auch einen hängen gebliebenen Ton)
+$('#btn-kiste-laut').addEventListener('click', () => {
+  if ($('#kiste-lektion').hidden || kiste.wechsel || kiste.fertig) return;
+  audio();
+  kiste.gesperrt = true;
+  $('#btn-kiste-daumen').hidden = true;
+  kisteSchritt();
 });
 
 // ---------- Silben-Trommel: pro Silbe einmal auf die Trommel hauen ----------
@@ -3629,7 +3985,7 @@ function buchstabenZeigen() {
 }
 $('#btn-buchstaben-home').addEventListener('click', zurStartseite);
 
-const SPIELE = { spuren: buchstabenZeigen, zeigen: zeigenStarten, hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
+const SPIELE = { spuren: buchstabenZeigen, zeigen: zeigenStarten, kiste: kisteStarten, hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();

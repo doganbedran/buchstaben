@@ -35,6 +35,7 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 
 ## Struktur
 - `index.html`, `style.css`, `app.js` – die ganze App (keine Build-Schritte, keine Abhängigkeiten)
+- `kisten.js` – Wörterkiste (Themen, Wörter mit Artikel, Fragen für Eltern, Tierlaute)
 - `letters.js` – Alphabet: `wort`/`bild`/`laut` + weitere Wörter `mehr`; `dateiName()` (ä→ae, ö→oe, ü→ue, ß→ss)
 - `striche.js` – Strichfolge aller 60 Zeichen (Vierlinien-System y: 0 Ober-, 50 Mittel-, 100 Grund-, 140 Unterlinie);
   `_striche.html` zeigt alle mit Nummern/Richtung zur Kontrolle

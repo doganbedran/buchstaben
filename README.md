@@ -19,6 +19,7 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
   - `zeigen` – Drei-Stufen-Lektion (Auswahl, alle Stufen, Daneben, Ende)
   - `willkommen` – Begrüßung beim ersten Start
   - `studio` – Stimme einsprechen im Elternbereich (künstlicher Ton statt Mikrofon)
+  - `kiste` – Wörterkiste (Auswahl, alle Stufen, Stufe 4, Erzähl-Bild)
   - `regal` – Spiele-Regal app-weit und je Kind, Standard für neue/alte Kinder, Sicherung
   - `hoeren`, `silben`, `legen`, `jagd`, `farben`, `montessori`, `memory`, `album`, `name` – je ein Spiel/eine Funktion
 - `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
@@ -73,6 +74,10 @@ Welche Spiele dort stehen, legen die Eltern je Kind fest (gespeichert wird, was 
 beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Regal stellen, wenn man es zusammen ausprobiert hat.
 
 - ✏️ **Nachspuren** – Buchstaben-Raster (eine Farbe, großes Bild, Sterne nur im Elternbereich); Reihenfolge pro Kind: Montessori (Standard für neue Kinder/Geräte; Gruppen m a s l → o i e n → …, nächste Gruppe ab 2 Sternen je Buchstabe – sichtbar sind nur die aktuelle Gruppe groß und die gelernten klein, noch nicht eingeführte gar nicht) oder A–Z (alles offen). Sterne je Buchstabe sehen die Eltern im Elternbereich unter „Fortschritt“
+- 🧺 **Wörterkiste** – Wortschatz nach Themen (`kisten.js`: Körper, Frühstück, Bad, Bauernhof, Straße; je 6 Wörter mit
+  Artikel). Je Runde 3 Wörter: 👀 „Das ist …“ → 👂 „Wo ist …?“ → 🗣️ „Was ist das? Sag es!“ → 👉 „Wo ist bei dir …?“
+  (zeigen/holen, 👍 oder Bild) bzw. 🎵 „Wie macht …?“ (Tierlaut). Danach ein Erzähl-Bild mit je einer Gesprächsfrage
+  pro Wort für die Eltern; 🏠/🔁 erst nach 15 s. Aufnahmen `audio/kiste-<id>.wav`, `audio/tier-<id>.wav`.
 - 👆 **Zeig mir** – Montessori-Drei-Stufen-Lektion mit 3 Buchstaben (aktuelle Gruppe; nie ähnlich aussehend oder
   klingend, siehe `AEHNLICHE_FORMEN`/`AEHNLICHE_LAUTE`): 👀 „Das ist …“ → 👂 „Zeig mir …“ (6 Aufträge, Plätze einmal
   getauscht) → 🗣️ „Was ist das? Sag es!“ (Kind spricht, Tipp = Vergleich). Unsichere Buchstaben werden in Stufe 3
@@ -93,7 +98,7 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
 
 ## Aufnahme-Studio (Sprecher-Stimme)
 Testserver starten, dann http://localhost:8765/werkzeuge/aufnahme-studio.html öffnen (Mikrofon erlauben).
-Bereiche: **Laute, Ansagen, Wörter, Lob, Silben** – jedes Stück einmal sprechen; Leertaste = Aufnahme an/aus,
+Bereiche: **Laute, Ansagen, Wörter, Lob, Kisten, Silben** – jedes Stück einmal sprechen; Leertaste = Aufnahme an/aus,
 A = anhören, Enter = speichern. Das Studio schneidet die Stille ab, gleicht die Lautstärke an und baut die
 zusammengesetzten Clips selbst („mmm“ → `m-laut.wav` = „mmm … mmm“, `m.wav` = „mmm … mmm … Maus“).
 Silben: pro Wort einmal mit kleinen Pausen („Ba – na – ne“). Gespeichert wird über den Testserver
