@@ -44,7 +44,7 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 - `audio/` – Sprecher-Aufnahmen `silbe-<wort>-<nr>.wav` (Stimme des Users); Thorstens Clips: `<b>.wav`, `<b>-wort.wav`, `<b>-laut.wav`, `<b>-2.wav`…, `lob-*.wav`, `ansage-*.wav`
 - `bilder/` – eigene SVGs, wo es kein Emoji gibt (Xylophon, Yak)
 - `fonts/` – Schrift Andika (SIL OFL, `fonts/OFL.txt`), latin + latin-ext, 400/700; im Offline-Speicher. Elternbereich nutzt die Systemschrift
-- Gestaltungsrichtlinie „Zaunkönig“ (Absender der Nest-Apps): https://claude.ai/artifact/Gz3dEtZzQPZcjPagrsc398
+- Gestaltungsrichtlinie „Lauschling“ (Absender der Nest-Apps): https://claude.ai/artifact/Gz3dEtZzQPZcjPagrsc398
 - `tests/` – ein Test je Funktion (`<name>.js`); die Seiten `<name>.html` erzeugt das Skript (nicht im Repo)
 - `werkzeuge/` – `audio_erzeugen.py`, `testserver.py`, `alle_tests.sh`, `testseiten_erzeugen.sh`,
   `aufnahme-studio.html` (Sprecher-Aufnahmen über den Testserver nach `audio/`, Liste in `audio/sprecher.json`)

@@ -8,7 +8,7 @@ hinzufügen“. Kostenlos, ohne Werbung, ohne Konto; alle Daten (Kinder, Fotos, 
 Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als Issue hier auf GitHub.
 
 Name: Seit Version 68 heißt die App **Wortnest** (Symbol: das „a“ sitzt im Nest). Adresse und Repo bleiben `buchstaben` –
-daran hängen alle Fotos, Aufnahmen und Sterne auf den Geräten. Absender aller Nest-Apps: **Zaunkönig** („Wortnest · eine App vom Zaunkönig“).
+daran hängen alle Fotos, Aufnahmen und Sterne auf den Geräten. Absender aller Nest-Apps: **Lauschling** („Wortnest · eine App vom Lauschling“).
 Schrift: Andika von SIL International, mitgeliefert in `fonts/` (SIL Open Font License 1.1, `fonts/OFL.txt`).
 
 ## Lizenz
