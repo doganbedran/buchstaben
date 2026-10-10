@@ -71,6 +71,10 @@
   pruefe(papa && kinder.every((k) => k.profil === papa.id), `Profil nicht zugewiesen: ${kinder.map((k) => k.profil)}`);
   history.back(); await warte(300);
 
+  // Jedes Spiel ist für Eltern erklärt; Spiele, die einen Erwachsenen brauchen, sind markiert
+  pruefe(ALLE_SPIELE.every((id) => SPIEL_INFO[id] && SPIEL_INFO[id].text), 'Spiel ohne Erklärung');
+  pruefe(SPIEL_INFO.jagd.eltern && SPIEL_INFO.kiste.eltern, 'Hinweis „mit Erwachsenem“ fehlt');
+
   // Ansicht: Kind-Formular mit Regal (zur Regal-Karte gescrollt)
   await elternOeffnen();
   kindBearbeiten(emil.id); await warte(400);

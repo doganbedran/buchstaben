@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 59;
+const APP_VERSION = 60;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -676,14 +676,31 @@ function spieleZeigen() {
 }
 
 // Auswahl fürs Regal im Elternbereich (je Kind oder app-weit); das letzte Spiel lässt sich nicht abwählen
+// Für Eltern: was jedes Spiel tut (die Kacheln zeigen den Kindern nur ein Bild); eltern = braucht einen Erwachsenen dabei
+const SPIEL_INFO = {
+  spuren: { text: 'Buchstaben in Schreibrichtung nachspuren' },
+  zeigen: { text: 'Laut und Buchstabe verbinden (Drei-Stufen-Lektion)' },
+  kiste: { text: 'Wortschatz nach Themen, danach zusammen erzählen', eltern: 'Erzählen am Ende' },
+  hoeren: { text: 'Anlaut hören, passendes Bild antippen' },
+  reime: { text: 'Was reimt sich? (eher ab 4)' },
+  silben: { text: 'Pro Silbe einmal trommeln' },
+  name: { text: 'Den eigenen Namen nachspuren' },
+  memory: { text: 'Groß- und Kleinbuchstaben finden' },
+  jagd: { text: 'Etwas mit dem Laut zu Hause finden und fotografieren', eltern: 'Kamera' },
+  legen: { text: 'Wörter aus Buchstaben legen (eher ab 4–5)' },
+  album: { text: 'Gesammelte Sticker, Funde und Erzählungen' },
+};
+
 function regalWahlZeichnen(box, gewaehlt, aendern) {
   box.innerHTML = '';
   ALLE_SPIELE.forEach((id) => {
     const vorlage = document.querySelector(`#home .spiel-btn[data-spiel="${id}"]`);
     const btn = document.createElement('button');
     const an = gewaehlt.includes(id);
+    const info = SPIEL_INFO[id] || {};
     btn.className = `regal-spiel${an ? ' gewaehlt' : ''}`;
-    btn.innerHTML = `<span>${vorlage.textContent}</span>${vorlage.getAttribute('aria-label')}`;
+    btn.innerHTML = `<span>${vorlage.textContent}</span><b>${vorlage.getAttribute('aria-label')}</b>`
+      + `<small>${info.text || ''}${info.eltern ? ` · <em>mit Erwachsenem: ${info.eltern}</em>` : ''}</small>`;
     btn.setAttribute('aria-pressed', an);
     btn.addEventListener('click', () => {
       const neu = an ? gewaehlt.filter((x) => x !== id) : ALLE_SPIELE.filter((x) => x === id || gewaehlt.includes(x));
@@ -1849,6 +1866,7 @@ function pauseWahlZeichnen() {
 
 function spieleWahlZeichnen() {
   pauseWahlZeichnen();
+  $('#zu-zweit').checked = speicher.lesen('zuZweit', false);
   $('#reim-hoeren').checked = !!zustand.reimHoeren;
   regalWahlZeichnen($('#spiele-wahl'), zustand.spiele || ALLE_SPIELE, (neu) => {
     zustand.spiele = neu;
@@ -4296,8 +4314,7 @@ function zuZweitSetzen(an) {
   silben.zuZweit = an;
   $('#silben-trommel-2').hidden = !an;
   $('.silben-trommeln').classList.toggle('zwei', an);
-  $('#btn-silben-zwei').classList.toggle('aktiv', an);
-  $('#btn-silben-zwei').setAttribute('aria-pressed', an);
+  speicher.schreiben('zuZweit', an);
 }
 
 const BOGEN_SVG = '<svg viewBox="0 0 72 40"><path d="M6 8 Q36 52 66 8"/></svg>';
@@ -4512,6 +4529,7 @@ function silbenGeschafft() {
 }
 
 function silbenStarten() {
+  zuZweitSetzen(speicher.lesen('zuZweit', false));
   silben.runde = 0;
   silben.teile = [];
   silben.zusammenVorher = false;
@@ -4524,7 +4542,8 @@ function silbenStarten() {
   $(sel).addEventListener('pointerdown', (e) => { e.preventDefault(); trommelGeschlagen(i); });
   $(sel).addEventListener('contextmenu', (e) => e.preventDefault());
 });
-$('#btn-silben-zwei').addEventListener('click', () => { audio(); zuZweitSetzen(!silben.zuZweit); });
+// 👫 stellen die Eltern ein (Kinder sollen nicht aus Versehen umschalten)
+$('#zu-zweit').addEventListener('change', (e) => zuZweitSetzen(e.target.checked));
 $('#btn-silben-home').addEventListener('click', () => { silbenTimerStoppen(); wiedergabeStoppen(); zurStartseite(); });
 // Wort nochmal hören: laufender Versuch beginnt von vorn (nicht, während die App selbst spricht oder trommelt)
 const silbenWortNochmal = () => { if (silben.phase === 'trommeln') { audio(); silbenVorsprechen(false); } };

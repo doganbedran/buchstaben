@@ -16,8 +16,9 @@
     <div class="willkommen">
       <div class="willkommen-bild" aria-hidden="true">🌈</div>
       <h2>Willkommen!</h2>
-      <p>Spielen mehrere Kinder? Dann legen Sie für jedes ein Profil an – so sammelt jedes Kind eigene Sterne
-        und lernt in seinem Tempo.</p>
+      <p><b>Buchstaben spuren, Laute hören, kleine Spiele</b> – für Kinder ab 3. Kostenlos, ohne Werbung,
+        funktioniert auch ohne Internet.</p>
+      <p>Spielen mehrere Kinder? Dann legen Sie für jedes Kind einen Eintrag an – so lernt jedes in seinem Tempo.</p>
       <button id="btn-willkommen-kind" class="willkommen-btn haupt">👧 Kind anlegen</button>
       <button id="btn-willkommen-los" class="willkommen-btn">▶️ Gleich spielen</button>
       <p class="hinweis">Später geht alles im Elternbereich: <b>⚙️ oben rechts 2 Sekunden gedrückt halten</b>.
@@ -251,7 +252,6 @@
     <header class="topbar">
       <button id="btn-silben-home" class="icon-btn" aria-label="Zurück">🏠</button>
       <div id="silben-runden" class="runden-punkte"></div>
-      <button id="btn-silben-zwei" class="icon-btn" aria-label="Zu zweit trommeln" aria-pressed="false">👫</button>
       <button id="btn-silben-wort" class="icon-btn" aria-label="Wort anhören">🔊</button>
     </header>
     <div class="silben-inhalt">
@@ -390,7 +390,9 @@
       </div>
 
       <div class="karte">
-        <h3>Pause 😴</h3>
+        <h3>Zusammen spielen 👫</h3>
+        <label class="umschalter"><input type="checkbox" id="zu-zweit"> Silben-Trommel zu zweit (zwei Trommeln für Geschwister)</label>
+        <h3 class="unter">Pause 😴</h3>
         <p class="hinweis">Nach der gewählten Spielzeit kommt beim nächsten Spielende ein ruhiges Pausen-Bild – nie mitten im Spiel.
           Gilt für dieses Gerät. Zur Einordnung: Für 3–4-Jährige empfehlen die WHO und Fachgesellschaften höchstens etwa
           eine Stunde Bildschirm am Tag – weniger ist besser.</p>
