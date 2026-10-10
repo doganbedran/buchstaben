@@ -95,7 +95,8 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
   Sticker-Album unter 💬.
   Eigene Fotos: Eltern-Studio → Kisten → 📷 – das Foto (z. B. eure echte Tasse) ersetzt das Emoji
   (Profil-Medium `datei:kiste-<id>.wav|bild`, gleicher Schlüssel wie die Aufnahme). Aufnahmen `audio/kiste-<id>.wav`, `audio/tier-<id>.wav`.
-- 👆 **Zeig mir** – Montessori-Drei-Stufen-Lektion mit 3 Buchstaben (aktuelle Gruppe; nie ähnlich aussehend oder
+- 👆 **Zeig mir** – Montessori-Drei-Stufen-Lektion mit 3 Buchstaben (in Stufe 1 wird jeder Buchstabe nach dem Antippen
+  einmal auf der Spur-Tafel nachgespurt – wie der Sandpapier-Buchstabe; ➡️ dort = ohne Spuren zurück, keine Sterne) (aktuelle Gruppe; nie ähnlich aussehend oder
   klingend, siehe `AEHNLICHE_FORMEN`/`AEHNLICHE_LAUTE`): 👀 „Das ist …“ → 👂 „Zeig mir …“ (6 Aufträge, Plätze einmal
   getauscht) → 🗣️ „Was ist das? Sag es!“ (Kind spricht, Tipp = Vergleich). Unsichere Buchstaben werden in Stufe 3
   nochmal vorgestellt. 🔊 wiederholt jederzeit den aktuellen Schritt.

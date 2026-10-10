@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 52;
+const APP_VERSION = 53;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -506,6 +506,7 @@ window.addEventListener('popstate', async () => {
   clearTimeout(legen.timer);
   silbenTimerStoppen();
   zeigenStoppen();
+  zustand.lektionSpur = null;
   kisteStoppen();
   reimStoppen();
   studioAbbrechen();
@@ -1499,6 +1500,7 @@ function pruefen() {
 
 function geschafft() {
   if (zustand.nameModus) { nameSchrittGeschafft(); return; }
+  if (zustand.lektionSpur) { lektionSpurGeschafft(); return; }
   tafelZustand.geschafft = true;
   const eintrag = BUCHSTABEN[zustand.index];
   const freiVorher = freigeschaltet().size;
@@ -1631,7 +1633,7 @@ function nameModusBeenden() {
   nameLeisteZeichnen();
 }
 
-function buchstabeOeffnen(i) {
+function buchstabeOeffnen(i, verlauf = true) {
   nameModusBeenden();
   const gleicherBuchstabe = zustand.index === i && zustand.wahl;
   zustand.index = i;
@@ -1639,7 +1641,7 @@ function buchstabeOeffnen(i) {
   zustand.wahl = wortWaehlen(eintrag, gleicherBuchstabe ? zustand.wahl : null);
   $('#bild').innerHTML = zustand.wahl.bild();
   $('#fortschritt').textContent = sterneText(zustand.sterne[eintrag.b] || 0);
-  if (!$('#trace').classList.contains('active')) zeigen('trace');
+  if (!$('#trace').classList.contains('active')) zeigen('trace', verlauf);
   // Layout erst nach dem Anzeigen messen
   requestAnimationFrame(tafelAufbauen);
   lautAbspielen(eintrag);
@@ -1647,6 +1649,8 @@ function buchstabeOeffnen(i) {
 
 $('#btn-home').addEventListener('click', zurStartseite);
 $('#btn-weiter').addEventListener('click', () => {
+  // In „Zeig mir“: ohne Spuren zurück zur Lektion (niemand bleibt hängen)
+  if (zustand.lektionSpur) { lektionSpurZurueck(); return; }
   // Bei "Mein Name": zum nächsten Buchstaben des Namens (überspringen)
   if (zustand.nameModus) {
     if (zustand.nameModus.pos < zustand.nameModus.zeichen.length - 1) { zustand.nameModus.pos++; nameSchrittZeigen(); }
@@ -3292,10 +3296,38 @@ async function zeigenGetippt(b, btn) {
   lektion.gesperrt = true;
   btn.classList.remove('pulsiert');
   karteAnimieren(btn, 'huepft');
+  // Stufe 1 wie beim Sandpapier-Buchstaben: einmal mit dem Finger nachspuren (Hören, Sehen, Tasten)
+  if (lektion.stufe === 0) { await warten(500); if (zeigenAktuell(nr)) zeigenSpuren(b, nr); return; }
   if (lektion.stufe === 1) { btn.classList.add('richtig'); glockenspiel(); }
   // Treffer in Stufe 2 bekommen ein kurzes Lob
   if (!(await zeigenSagen(nr, [lautQuelle(b), ...(lektion.stufe === 1 ? [lobQuelle()] : [])], lautText(b)))) return;
   await warten(lektion.stufe === 1 ? 900 : 600);
+  if (zeigenAktuell(nr)) zeigenWeiter(nr);
+}
+
+// Spur-Tafel für den Buchstaben öffnen (ohne Verlauf, ohne Sterne/Sticker); danach zurück in die Lektion
+function zeigenSpuren(b, nr) {
+  zustand.lektionSpur = { nr, b };
+  buchstabeOeffnen(BUCHSTABEN.findIndex((e) => e.b === b), false);
+}
+
+function lektionSpurGeschafft() {
+  tafelZustand.geschafft = true;
+  glockenspiel();
+  sterneFliegen();
+  vibrieren([30, 40, 30]);
+  folgeAbspielen([lautQuelle(zustand.lektionSpur.b)], lautText(zustand.lektionSpur.b));
+  clearTimeout(tafelZustand.jubelTimer);
+  tafelZustand.jubelTimer = setTimeout(lektionSpurZurueck, 1400);
+}
+
+function lektionSpurZurueck() {
+  if (!zustand.lektionSpur) return;
+  clearTimeout(tafelZustand.jubelTimer);
+  const { nr } = zustand.lektionSpur;
+  zustand.lektionSpur = null;
+  wiedergabeStoppen();
+  zeigen('zeigen', false);
   if (zeigenAktuell(nr)) zeigenWeiter(nr);
 }
 

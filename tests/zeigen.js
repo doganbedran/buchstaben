@@ -42,15 +42,27 @@
   pruefe(lektion.stufe === 0 && karten().length === 1, 'Stufe 1 zeigt nicht einen Buchstaben');
   pruefe(gespielt.some((f) => f[0] === 'audio/ansage-zeigen-das-ist.wav' && f[1].endsWith('-laut.wav')), 'Keine Ansage „Das ist“ + Laut');
 
-  // 3. Stufe 1: Tippen legt den Buchstaben in die Ablage; ohne Tipp geht es von selbst weiter
+  // 3. Stufe 1: Tippen öffnet die Spur-Tafel mit dem Buchstaben (ohne Verlauf); geschafft → zurück, Buchstabe in die Ablage
+  const spurB = lektion.buchstaben[0];
+  const verlauf = history.length;
+  const sterneVorher = JSON.stringify(zustand.sterne);
   tippe(karten()[0]);
+  await bis(() => $('#trace').classList.contains('active'));
+  pruefe($('#trace').classList.contains('active') && zustand.lektionSpur && BUCHSTABEN[zustand.index].b === spurB, 'Spur-Tafel nicht geöffnet');
+  pruefe(history.length === verlauf, 'Spur-Tafel legt einen Verlaufseintrag an');
+  geschafft();
   await bis(() => lektion.schritt === 1);
+  pruefe($('#zeigen').classList.contains('active') && !zustand.lektionSpur, 'Nicht zurück in der Lektion');
+  pruefe(JSON.stringify(zustand.sterne) === sterneVorher, 'Spuren in der Lektion gibt Sterne');
   pruefe(document.querySelectorAll('.zeigen-feld.voll').length === 1, 'Ablage nicht gefüllt');
   await offen();
   await bis(() => lektion.schritt === 2, 2000);   // nicht tippen: 6 s + 8 s (im Zeitraffer)
   pruefe(lektion.schritt === 2, 'Stufe 1 geht ohne Tipp nicht weiter');
   await offen();
   tippe(karten()[0]);
+  // ➡️ auf der Spur-Tafel: ohne Spuren zurück (niemand bleibt hängen)
+  await bis(() => $('#trace').classList.contains('active'));
+  $('#btn-weiter').click();
   await bis(() => lektion.stufe === 1 && karten().length === 3);
   pruefe(lektion.stufe === 1 && karten().length === 3 && $('#zeigen-ablage').hidden, 'Stufe 2 nicht erreicht');
   const plaetze = karten().map((k) => k.getAttribute('aria-label')).join('');
