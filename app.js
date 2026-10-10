@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 64;
+const APP_VERSION = 65;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -689,7 +689,7 @@ const SPIEL_INFO = {
   hoeren: { text: 'Anlaut hören, passendes Bild antippen' },
   reime: { text: 'Was reimt sich? (eher ab 4)' },
   silben: { text: 'Pro Silbe einmal trommeln' },
-  name: { text: 'Den eigenen Namen nachspuren' },
+  name: { text: 'Den eigenen Namen nachspuren – auch die der Geschwister und aus „Meine Leute“' },
   memory: { text: 'Groß- und Kleinbuchstaben finden' },
   jagd: { text: 'Etwas mit dem Laut zu Hause finden und fotografieren', eltern: 'Kamera' },
   legen: { text: 'Wörter aus Buchstaben legen (eher ab 4–5)' },
@@ -1656,7 +1656,8 @@ function sterneFliegen() {
 
 // Wie in der Schule: erster Buchstabe groß, Rest klein; Zeichen ohne Strichdaten (z. B. "-") werden übersprungen
 function nameZeichen(name) {
-  return [...name.trim()]
+  // NFC: iPhones speichern Umlaute manchmal als Buchstabe + Pünktchen
+  return [...name.normalize('NFC').trim()]
     .map((c, i) => (i === 0 ? (c === 'ß' ? 'ẞ' : c.toUpperCase()) : c.toLowerCase()))
     .filter((c) => STRICHE[c]);
 }
@@ -1681,19 +1682,57 @@ function nameSchrittZeigen() {
   folgeAbspielen([{ url: `audio/${dateiName(BUCHSTABEN[zustand.index].b)}-laut.wav` }]);
 }
 
-function nameStarten() {
+// Namen zum Nachspuren: zuerst das Kind selbst, dann Geschwister und „Meine Leute“ (Oma, Papa …).
+// Fremde Namen nur aus einem Wort, das die Tafel ganz schreiben kann, und höchstens NAMEN_HOECHSTENS.
+const NAMEN_HOECHSTENS = 6;
+const nameTaugt = (n) => /^\S{2,8}$/.test(n.normalize('NFC').trim()) && nameZeichen(n).length === [...n.normalize('NFC').trim()].length;
+function namenZumSpuren() {
   const k = aktivesKind();
-  if (!k) return;
-  const zeichenListe = nameZeichen(k.name);
-  if (!zeichenListe.length) return;
-  zustand.nameModus = { zeichen: zeichenListe, pos: 0 };
+  if (!k || !nameZeichen(k.name).length) return [];
+  const kachel = (url, ersatz) => (url ? `<img class="kiste-foto" src="${url}" alt="">` : htmlText(ersatz || '') || '🙂');
+  const liste = [{ name: k.name, eigen: true, bild: kindBildHtml(k), kachel: kachel(kindFotos[k.id], k.tier), stimme: k.nameStimme }];
+  // Geschwister nach derselben Regel wie der eigene Name (sonst sieht eins das andere, aber nicht umgekehrt)
+  kinder.filter((x) => x.id !== k.id && nameZeichen(x.name || '').length).forEach((x) => liste.push({
+    name: x.name, bild: kindBildHtml(x) || '🙂', kachel: kachel(kindFotos[x.id], x.tier), stimme: x.nameStimme }));
+  // „Meine Leute“ nur, wenn die Eltern es je Person erlaubt haben (w.name), z. B. nicht bei jemandem, der nicht mehr kommt
+  eigeneKistenWoerter.filter((w) => w.kiste === 'leute' && w.name && kistenWortFertig(w) && nameTaugt(w.wort)).forEach((w) => {
+    const m = medien[`w-${w.id}`];
+    liste.push({ name: w.wort, bild: `<img class="bild-datei foto" src="${m.bildUrl}" alt="">`, kachel: kachel(m.bildUrl), stimme: m.stimme });
+  });
+  const gleich = (a, b) => a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
+  return liste.filter((p, i) => liste.findIndex((q) => gleich(p, q)) === i).slice(0, NAMEN_HOECHSTENS);
+}
+
+function nameStarten() {
+  const namen = namenZumSpuren();
+  if (!namen.length) return;
+  if (namen.length === 1) { nameSpurStarten(namen[0]); return; }
+  // Auswahl über Gesichter (Kinder können nicht lesen): das eigene steht vorn
+  const box = $('#name-wahl-raster');
+  box.innerHTML = '';
+  namen.forEach((p) => {
+    const btn = document.createElement('button');
+    btn.className = 'spiel-btn kiste-wahl-btn';
+    btn.innerHTML = p.kachel;
+    btn.setAttribute('aria-label', p.name);
+    btn.addEventListener('click', () => { audio(); nameSpurStarten(p, false); });
+    box.appendChild(btn);
+  });
+  zeigen('name-wahl');
+  folgeAbspielen([{ url: 'audio/ansage-name-aussuchen.wav' }], 'Such dir einen Namen aus!');
+}
+
+function nameSpurStarten(person, verlauf = true) {
+  zustand.nameModus = { zeichen: nameZeichen(person.name), pos: 0, person };
   zustand.wahl = null;
-  $('#bild').innerHTML = kindBildHtml(k);
+  $('#bild').innerHTML = person.bild;
   $('#fortschritt').textContent = '';
-  zeigen('trace');
+  // Aus der Auswahl: die Auswahl im Verlauf ersetzen (Zurück führt dann zur Startseite)
+  if (verlauf) zeigen('trace');
+  else { document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'trace')); history.replaceState({ screen: 'trace' }, ''); }
   nameSchrittZeigen();
   // Zum Start einmal den Namen hören, falls aufgenommen
-  if (k.nameStimme) folgeAbspielen([blobQuelle(k.nameStimme)]);
+  if (person.stimme) folgeAbspielen([blobQuelle(person.stimme)]);
 }
 
 function nameSchrittGeschafft() {
@@ -1708,14 +1747,16 @@ function nameSchrittGeschafft() {
     tafelZustand.jubelTimer = setTimeout(nameSchrittZeigen, 1300);
     return;
   }
-  // Ganzer Name geschafft: großer Jubel mit Bild des Kindes, Lob und (falls aufgenommen) dem Namen
-  const k = aktivesKind();
+  // Ganzer Name geschafft: großer Jubel mit dem Bild der Person, Lob und (falls aufgenommen) dem Namen
+  const p = n.person;
   const jubel = $('#jubel');
-  $('#jubel-bild').innerHTML = k ? kindBildHtml(k) : '🏆';
+  $('#jubel-bild').innerHTML = p.bild || '🏆';
   jubel.classList.remove('zeigen');
   void jubel.offsetWidth;
   jubel.classList.add('zeigen');
-  folgeAbspielen([lobQuelle(), ...(k && k.nameStimme ? [blobQuelle(k.nameStimme)] : [])], 'Super!');
+  // Fremder Name: erst der Name als Ergebnis („Oma“), dann das Lob für das Kind, das gespurt hat
+  folgeAbspielen(p.eigen ? [lobQuelle(), ...(p.stimme ? [blobQuelle(p.stimme)] : [])]
+    : [...(p.stimme ? [blobQuelle(p.stimme)] : []), ...lobMitName()], 'Super!');
   tafelZustand.jubelTimer = setTimeout(() => {
     jubel.classList.remove('zeigen');
     zustand.nameModus = null;
@@ -1728,6 +1769,7 @@ function nameModusBeenden() {
   zustand.nameModus = null;
   nameLeisteZeichnen();
 }
+$('#btn-name-wahl-home').addEventListener('click', zurStartseite);
 
 // vonKachel: das Bild der Kachel (Hauptwort) zeigen; weitere Wörter kommen beim Wiederholen und mit ➡️
 function buchstabeOeffnen(i, verlauf = true, vonKachel = false) {
@@ -1800,8 +1842,8 @@ $('#btn-bild').addEventListener('click', () => {
   void karte.offsetWidth;
   karte.classList.add('wackeln');
   if (zustand.nameModus) {
-    const k = aktivesKind();
-    if (k && k.nameStimme) folgeAbspielen([blobQuelle(k.nameStimme)]);
+    const p = zustand.nameModus.person;
+    if (p.stimme) folgeAbspielen([blobQuelle(p.stimme)]);
     else nameLautWiederholen();
     return;
   }
@@ -2321,9 +2363,19 @@ function eigeneKistenBox() {
       + `<p class="hinweis">${htmlText(def.hinweis)}</p>`;
     const liste = document.createElement('div');
     liste.className = 'eigene-woerter';
-    alle.forEach((w) => liste.appendChild(eigenesWortZeile(w,
-      () => { const m = medien[`w-${w.id}`]; if (m && m.stimme) folgeAbspielen([blobQuelle(m.stimme)]); },
-      () => eigenesWortLoeschen(w, 'kistenWoerter'), true)));
+    alle.forEach((w) => {
+      liste.appendChild(eigenesWortZeile(w,
+        () => { const m = medien[`w-${w.id}`]; if (m && m.stimme) folgeAbspielen([blobQuelle(m.stimme)]); },
+        () => eigenesWortLoeschen(w, 'kistenWoerter'), true));
+      // Je Person: auch bei ✍️ „Mein Name“ nachspuren (nur Namen aus einem Wort, die die Tafel schreiben kann)
+      if (def.werIst && nameTaugt(w.wort)) {
+        const schalter = document.createElement('label');
+        schalter.className = 'name-schalter';
+        schalter.innerHTML = `<input type="checkbox" ${w.name ? 'checked' : ''}> auch bei ✍️ „Mein Name“`;
+        schalter.querySelector('input').addEventListener('change', (e) => kistenWortName(w, e.target.checked));
+        liste.appendChild(schalter);
+      }
+    });
     if (alle.length < KISTE_MAX) {
       const neu = document.createElement('button');
       neu.className = 'text-btn klein';
@@ -2337,6 +2389,14 @@ function eigeneKistenBox() {
   return box;
 }
 
+async function kistenWortName(w, an) {
+  const profil = await aktivesProfil();
+  if (!profil) return;
+  profil.kistenWoerter = (profil.kistenWoerter || []).map((x) => (x.id === w.id ? { ...x, name: an } : x));
+  await datenbank.profilSpeichern(profil);
+  await medienLaden();
+}
+
 async function kistenWortNeu(def) {
   let wort = (prompt(`${def.eingabe} für „${def.name}“, z. B. ${def.beispielWort}:`) || '').trim().slice(0, 30);
   // Namen ohne Artikel („die Oma“ → „Oma“), sonst hieße die Frage „Was machst du gern mit die Oma?“
@@ -2344,7 +2404,7 @@ async function kistenWortNeu(def) {
   if (!wort) return;
   const profil = await aktivesProfil();
   if (!profil) return;
-  profil.kistenWoerter = [...(profil.kistenWoerter || []), { id: Date.now().toString(36), kiste: def.id, wort }];
+  profil.kistenWoerter = [...(profil.kistenWoerter || []), { id: Date.now().toString(36), kiste: def.id, wort, ...(def.werIst ? { name: true } : {}) }];
   await datenbank.profilSpeichern(profil);
   await medienLaden();
   medienZeichnen();
@@ -3769,7 +3829,8 @@ const EIGENE_KISTEN = [
     hinweis: 'Menschen aus dem Leben Ihres Kindes: Oma, Opa, Geschwister, Freunde (bei Kindern: deren Eltern fragen), die Erzieherin – besonders hilfreich bei neuen '
       + 'Menschen, z. B. vor und in der Eingewöhnung. Ein Foto je Person, Gesicht groß, möglichst allein im Bild. Nur den Namen '
       + 'sprechen, langsam und deutlich („Oma“, nicht „Das ist Oma“ – das sagt die App selbst). Nur mit Einverständnis der Person. '
-      + 'Wer nicht mehr da ist oder nicht mehr kommt, lieber gemeinsam im Fotoalbum anschauen als im Spiel.' },
+      + 'Wer nicht mehr da ist oder nicht mehr kommt, lieber gemeinsam im Fotoalbum anschauen als im Spiel. '
+      + 'Namen aus einem Wort (Oma, Papa, Ela) kann Ihr Kind auch bei ✍️ „Mein Name“ nachspuren – je Person ein- und ausschaltbar.' },
   { id: 'kita', name: 'Meine Kita', bild: '🏫', beispiel: '„Ja, an der Garderobe hängt deine Jacke.“',
     frage: (wort, i) => ['Was machst du da am liebsten?', 'Was spielst du da?', 'Zeig mal, wie du das da machst!'][i % 3], beispielWort: 'die Rutsche',
     eingabe: 'Wort mit Artikel',
@@ -4774,7 +4835,7 @@ function profilSauber(p) {
     .map((w) => ({ id: w.id, b: w.b, wort: w.wort.slice(0, 30) })).slice(0, 500);
   const kistenWoerter = (Array.isArray(p.kistenWoerter) ? p.kistenWoerter : [])
     .filter((w) => w && typeof w.id === 'string' && /^[a-z0-9]+$/.test(w.id) && EIGENE_KISTEN.some((k) => k.id === w.kiste) && typeof w.wort === 'string')
-    .map((w) => ({ id: w.id, kiste: w.kiste, wort: w.wort.slice(0, 30) })).slice(0, EIGENE_KISTEN.length * KISTE_MAX);
+    .map((w) => ({ id: w.id, kiste: w.kiste, wort: w.wort.slice(0, 30), ...(w.name === true ? { name: true } : {}) })).slice(0, EIGENE_KISTEN.length * KISTE_MAX);
   return { id: p.id, name: textFeld(p.name, 30).trim() || 'Profil', erstellt: Number(p.erstellt) || Date.now(), woerter, kistenWoerter };
 }
 

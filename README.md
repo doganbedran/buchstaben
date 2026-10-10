@@ -116,6 +116,10 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
 - 🎨 **Fingerfarben** – Farbwahl beim Nachspuren (bunt, 6 Farben, Regenbogen, Glitzer), pro Kind gespeichert
 - 📳 **Vibration** beim Nachspuren (Sandpapier-Gefühl, Android), im Elternbereich abschaltbar
 - ✍️ **Mein Name** – eigenen Namen Buchstabe für Buchstabe nachspuren (nur mit ausgewähltem Kind)
+  Gibt es weitere Namen – Geschwister (andere Kinder) und Personen aus „Meine Leute“ mit Foto und Aufnahme, die die
+  Eltern je Person „auch bei ✍️ Mein Name“ freigeben (`kistenWoerter[].name`; nur ein Wort, 2–8 Zeichen) –, wählt das Kind
+  zuerst über Gesichter (eigenes vorn, höchstens 6, Ansage „Such dir einen Namen aus!“). Am Ende bei fremden Namen erst der
+  Name, dann das Lob für das spurende Kind.
 - 🧩 **Groß & klein** – Memory mit 4 Paaren (A/a); gleich aussehende Paare (C/c, O/o …) und i+l zusammen ausgeschlossen
 - 🔍 **Buchstaben-Jagd** – etwas mit dem Anlaut zu Hause finden, fotografieren, Wort aufnehmen; Funde im Album (pro Kind)
 - 🔤 **Wörter legen** – bewegliches Alphabet: Bild + leere Felder, Buchstaben antippen; nur lautgetreue Wörter + persönliche Wörter
