@@ -62,22 +62,7 @@
   // Elternbereich: beschreiben statt Sterne zählen
   pruefe(uebtGerade({ reihenfolge: 'montessori', sterne: {} }) === 'übt gerade m a s l' && uebtGerade({ reihenfolge: 'alphabet' }).startsWith('alle'), 'uebtGerade');
 
-  // Pause: Standard aus; eingestellt → am nächsten Spielende ruhiges Pausen-Bild statt 🏠/🔁, Zähler danach zurück
-  pruefe(speicher.lesen('pauseNach', 0) === 0 && !pauseFaellig(), 'Pause nicht standardmäßig aus');
-  await elternOeffnen();
-  [...$('#pause-wahl').children][1].click();
-  pruefe(speicher.lesen('pauseNach') === 10, 'Pausen-Einstellung nicht gespeichert');
-  history.back(); await pause(300);
-  spielzeit.ms = 11 * 60000;
-  zeigen('memory', false);
-  spielEnde('memory', () => {});
-  pruefe($('#memory .spiel-pause') && !$('#memory .spiel-pause').hidden && (!$('#memory .spiel-ende') || $('#memory .spiel-ende').hidden), 'Kein Pausen-Bild');
-  pruefe(spielzeit.ms === 0, 'Spielzeit nach der Pause nicht zurückgesetzt');
-  spielEnde('memory', () => {});
-  pruefe(!$('#memory .spiel-ende').hidden, 'Nach der Pause kein normales Ende');
-  spielEndeWeg('memory');
-  speicher.schreiben('pauseNach', 0);
-  zeigen('home', false);
+  // Pause: eigener Test tests/pause.js (gemeinsam mit Zahlennest)
 
   // Ansicht: Buchstaben-Bildschirm
   document.querySelector('.spiel-btn[data-spiel="spuren"]').click();

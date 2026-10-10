@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 70;
+const APP_VERSION = 71;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -621,29 +621,60 @@ window.addEventListener('popstate', async () => {
 
 // Spiel-Ende: Pokal bleibt stehen, dann großes Haus und kleineres Nochmal.
 // Kein automatisches Weiterspielen – Kinder sollen ein natürliches Ende erleben.
-// Sanfte Pause (Elternbereich, pro Gerät, Standard aus): nach X Minuten Spielzeit kommt am nächsten Spielende statt
-// 🏠/🔁 ein ruhiges Pausen-Bild – nie mitten im Spiel, kein Countdown, keine Sperre. Gezählt wird nur sichtbare Spielzeit;
-// nach 30 Minuten ohne Benutzung beginnt die Zählung neu.
-const PAUSE_NEUSTART = 30 * 60000;
-const spielzeit = { ms: 0, letzte: 0 };
-(() => {
-  const gespeichert = speicher.lesen('spielzeit', null);
-  if (gespeichert && Date.now() - gespeichert.letzte < PAUSE_NEUSTART) Object.assign(spielzeit, gespeichert);
-})();
-setInterval(() => {
-  const jetzt = Date.now();
-  const elternSicht = document.querySelector('.screen.eltern.active');
-  if (document.hidden || elternSicht) return;   // nur sichtbare Spielzeit zählt
-  if (spielzeit.letzte && jetzt - spielzeit.letzte > PAUSE_NEUSTART) spielzeit.ms = 0;
-  spielzeit.ms += Math.min(10000, spielzeit.letzte ? jetzt - spielzeit.letzte : 10000);
-  spielzeit.letzte = jetzt;
-  speicher.schreiben('spielzeit', spielzeit);
-}, 10000);
+// Sanfte Pause (Elternbereich, je Gerät, Standard aus), GEMEINSAM MIT ZAHLENNEST: nach X Minuten Spielzeit beider Apps
+// kommt am nächsten Spielende statt 🏠/🔁 ein ruhiges Pausen-Bild – nie mitten im Spiel, kein Countdown, keine Sperre.
+// Danach zeigt jede der beiden Apps beim Öffnen eines Spiels eine halbe Stunde lang wieder das Pausen-Bild (wer zur
+// anderen App wechselt, landet nicht im nächsten Spiel); Eltern können die Pause beenden. Gezählt wird nur sichtbare
+// Spielzeit; nach 30 Minuten ohne Benutzung beginnt die Zählung neu.
+// Gemeinsame Schlüssel – Format genau wie in Zahlennest (app.js, Abschnitt „Pause“), nie ändern ohne beide Apps:
+//   nest:spielzeit = { ms: Spielzeit seit der letzten Pause, letzte: Zeitpunkt, tag: 'JJJJ-MM-TT', heute: ms an diesem Tag }
+//   nest:pauseNach = Minuten (0 = aus) · nest:pauseAm = Zeitpunkt der letzten Pause (ms)
+const PAUSE_NEUSTART = 30 * 60000;   // so lange nicht gespielt = Zählung beginnt neu
+const PAUSE_DAUER = 30 * 60000;      // so lange gilt eine Pause (in beiden Apps)
+const PAUSE_WAHL = [0, 10, 15, 20, 30];
+const heuteTag = () => new Date().toLocaleDateString('sv');   // „2026-10-11“ in Ortszeit
 
-const pauseFaellig = () => {
-  const minuten = speicher.lesen('pauseNach', 0);
-  return minuten > 0 && spielzeit.ms >= minuten * 60000;
+// Einmalig: die alte Wortnest-Einstellung („pauseNach“, „spielzeit“) auf die gemeinsamen Schlüssel übertragen
+(() => {
+  const alt = speicher.lesen('pauseNach', null);
+  if (alt !== null && speicher.lesen('nest:pauseNach', null) === null) speicher.schreiben('nest:pauseNach', Number(alt) || 0);
+  try { localStorage.removeItem('pauseNach'); localStorage.removeItem('spielzeit'); } catch { /* egal */ }
+})();
+
+function spielzeitLesen() {
+  const s = speicher.lesen('nest:spielzeit', null) || {};
+  const z = { ms: Number(s.ms) || 0, letzte: Number(s.letzte) || 0, tag: s.tag, heute: Number(s.heute) || 0 };
+  if (z.letzte && Date.now() - z.letzte > PAUSE_NEUSTART) z.ms = 0;
+  if (z.tag !== heuteTag()) { z.tag = heuteTag(); z.heute = 0; }
+  return z;
+}
+
+// Nur sichtbare Spielzeit zählt (nicht im Elternbereich, nicht im Hintergrund)
+function spielzeitZaehlen() {
+  if (document.hidden || document.querySelector('.screen.eltern.active')) return;
+  const z = spielzeitLesen();
+  const jetzt = Date.now();
+  const dazu = Math.max(0, Math.min(10000, z.letzte ? jetzt - z.letzte : 10000));
+  z.ms += dazu;
+  z.heute += dazu;
+  z.letzte = jetzt;
+  speicher.schreiben('nest:spielzeit', z);
+}
+setInterval(spielzeitZaehlen, 10000);
+
+const pauseNach = () => Number(speicher.lesen('nest:pauseNach', 0)) || 0;
+const pauseFaellig = () => pauseNach() > 0 && spielzeitLesen().ms >= pauseNach() * 60000;
+const pauseLaeuft = () => {
+  const seit = Date.now() - (Number(speicher.lesen('nest:pauseAm', 0)) || 0);
+  return pauseNach() > 0 && seit >= 0 && seit < PAUSE_DAUER;
 };
+
+function pauseBeginnen() {
+  speicher.schreiben('nest:pauseAm', Date.now());
+  const z = spielzeitLesen();
+  z.ms = 0;   // nach der Pause darf wieder gespielt werden – die Eltern entscheiden
+  speicher.schreiben('nest:spielzeit', z);
+}
 
 function pauseZeigen(screen) {
   let pause = screen.querySelector('.spiel-pause');
@@ -657,13 +688,12 @@ function pauseZeigen(screen) {
   pause.hidden = false;
   screen.querySelector('.jubel').classList.remove('zeigen');
   folgeAbspielen([{ url: 'audio/ansage-pause.wav' }], 'Jetzt machen wir eine Pause.');
-  spielzeit.ms = 0;   // nach der Pause darf wieder gespielt werden – die Eltern entscheiden
-  speicher.schreiben('spielzeit', spielzeit);
 }
 
 function spielEnde(id, nochmal) {
   const screen = $(`#${id}`);
-  if (pauseFaellig()) { pauseZeigen(screen); return; }
+  if (pauseFaellig()) pauseBeginnen();
+  if (pauseLaeuft()) { pauseZeigen(screen); return; }
   let ende = screen.querySelector('.spiel-ende');
   if (!ende) {
     ende = document.createElement('div');
@@ -1973,17 +2003,23 @@ async function elternOeffnen() {
 
 function pauseWahlZeichnen() {
   const box = $('#pause-wahl');
-  const aktuell = speicher.lesen('pauseNach', 0);
+  const aktuell = pauseNach();
   box.innerHTML = '';
-  [0, 10, 15, 20].forEach((min) => {
+  PAUSE_WAHL.forEach((min) => {
     const btn = document.createElement('button');
     btn.className = `regal-spiel${min === aktuell ? ' gewaehlt' : ''}`;
     btn.textContent = min ? `nach ${min} Minuten` : 'aus';
     btn.setAttribute('aria-pressed', min === aktuell);
-    btn.addEventListener('click', () => { speicher.schreiben('pauseNach', min); pauseWahlZeichnen(); });
+    btn.addEventListener('click', () => { speicher.schreiben('nest:pauseNach', min); pauseWahlZeichnen(); });
     box.appendChild(btn);
   });
+  // Nur für Eltern, gerundet: Spielzeit beider Apps an diesem Tag
+  const min = Math.round(spielzeitLesen().heute / 60000);
+  $('#spielzeit-heute').textContent = `Heute gespielt: ${min < 1 ? 'noch keine Minute' : `ca. ${min} Min.`} (Wortnest und Zahlennest zusammen).`;
+  $('#btn-pause-aus').hidden = !pauseLaeuft();
 }
+$('#btn-pause-aus').addEventListener('click', () => { speicher.schreiben('nest:pauseAm', 0); pauseWahlZeichnen(); });
+$('#btn-pause-home').addEventListener('click', zurStartseite);
 
 function spieleWahlZeichnen() {
   pauseWahlZeichnen();
@@ -4884,6 +4920,8 @@ document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();
     const start = SPIELE[btn.dataset.spiel];
+    // Pause läuft (auch wenn sie in Zahlennest begonnen hat): ruhiges Pausen-Bild statt Spiel
+    if (start && pauseLaeuft()) { zeigen('pause'); folgeAbspielen([{ url: 'audio/ansage-pause.wav' }], 'Jetzt machen wir eine Pause.'); return; }
     if (start) start();
   });
 });

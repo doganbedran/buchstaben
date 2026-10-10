@@ -27,6 +27,14 @@
     </div>
   </section>
 
+  <!-- Pause läuft (auch aus Zahlennest): ruhiges Bild statt Spiel -->
+  <section id="pause" class="screen">
+    <div class="spiel-pause">
+      <div class="pause-bild" aria-hidden="true">😴</div>
+      <button id="btn-pause-home" class="ende-home" aria-label="Fertig">🏠</button>
+    </div>
+  </section>
+
   <!-- Mitmachen: Oma, Erzieherin … nimmt auf dem eigenen Handy auf und schickt ein Stimm-Paket (hier wird nichts gespeichert) -->
   <section id="mitmachen" class="screen eltern">
     <header class="topbar">
@@ -430,9 +438,12 @@
         <label class="umschalter"><input type="checkbox" id="zu-zweit"> Silben-Trommel zu zweit (zwei Trommeln für Geschwister)</label>
         <h3 class="unter">Pause 😴</h3>
         <p class="hinweis">Nach der gewählten Spielzeit kommt beim nächsten Spielende ein ruhiges Pausen-Bild – nie mitten im Spiel.
-          Gilt für dieses Gerät. Zur Einordnung: Für 3–4-Jährige empfehlen die WHO und Fachgesellschaften höchstens etwa
-          eine Stunde Bildschirm am Tag – weniger ist besser.</p>
+          Danach zeigt jedes Spiel eine halbe Stunde lang das Pausen-Bild. Gilt für dieses Gerät und <b>für Wortnest und
+          Zahlennest zusammen</b>. Zur Einordnung: Für 3- bis 6-Jährige empfehlen Fachgesellschaften höchstens etwa
+          30 Minuten Bildschirm an einzelnen Tagen, am besten gemeinsam mit einem Erwachsenen – für alle Apps zusammen.</p>
         <div id="pause-wahl" class="regal-wahl"></div>
+        <p class="hinweis" id="spielzeit-heute"></p>
+        <button id="btn-pause-aus" class="text-btn" hidden>▶️ Pause jetzt beenden</button>
       </div>
 
       <div class="karte">
