@@ -24,6 +24,9 @@
   const falsch = legen.steine.find((s) => s.b !== legen.buchstaben[0]);
   steinBtn(falsch).click();
   pruefe(legen.pos === 0 && !falsch.weg, 'Falscher Stein wurde gelegt');
+  pruefe(!document.querySelector('.legen-stein.hinweis'), 'Hinweis schon nach einem Fehler');
+  steinBtn(falsch).click();
+  pruefe(document.querySelectorAll('.legen-stein.hinweis').length === 1, 'Kein Hinweis nach zwei Fehlversuchen');
 
   // 4. Drei Wörter richtig legen
   for (let runde = 1; runde <= LEGEN_RUNDEN; runde++) {

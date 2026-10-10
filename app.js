@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 56;
+const APP_VERSION = 57;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -659,7 +659,7 @@ function kachelBauen(i, extra = '') {
   btn.setAttribute('aria-label', `${eintrag.b} wie ${eintrag.wort}`);
   // Sterne nur im Album/Elternbereich – auf jeder Kachel verleiten sie zum Sammeln statt zum Spuren
   btn.innerHTML = `<span class="zeichen">${zeichenHtml(eintrag)}</span><span class="mini">${bildHtml(eintrag)}</span>`;
-  btn.addEventListener('click', () => buchstabeOeffnen(i));
+  btn.addEventListener('click', () => buchstabeOeffnen(i, true, true));
   return btn;
 }
 
@@ -1653,12 +1653,13 @@ function nameModusBeenden() {
   nameLeisteZeichnen();
 }
 
-function buchstabeOeffnen(i, verlauf = true) {
+// vonKachel: das Bild der Kachel (Hauptwort) zeigen; weitere Wörter kommen beim Wiederholen und mit ➡️
+function buchstabeOeffnen(i, verlauf = true, vonKachel = false) {
   nameModusBeenden();
   const gleicherBuchstabe = zustand.index === i && zustand.wahl;
   zustand.index = i;
   const eintrag = BUCHSTABEN[i];
-  zustand.wahl = wortWaehlen(eintrag, gleicherBuchstabe ? zustand.wahl : null);
+  zustand.wahl = vonKachel ? hauptWahl(eintrag) : wortWaehlen(eintrag, gleicherBuchstabe ? zustand.wahl : null);
   $('#bild').innerHTML = zustand.wahl.bild();
   $('#fortschritt').textContent = sterneText(zustand.sterne[eintrag.b] || 0);
   if (!$('#trace').classList.contains('active')) zeigen('trace', verlauf);
@@ -2074,6 +2075,14 @@ async function profilNeu() {
   // Browser bitten, Fotos und Aufnahmen nicht bei Speicherknappheit zu löschen
   speicherSchuetzen();
   await profilAktivieren(profil.id);
+  // Mit Kindern: sonst hört das Kind die eingesprochene Stimme nie (es hört sein eigenes, im Kind eingestelltes Profil)
+  for (const k of kinder) {
+    if (kinder.length === 1 || confirm(`Soll ${k.name} die Stimme und Fotos von „${profil.name}“ hören und sehen?`)) {
+      k.profil = profil.id;
+      await datenbank.kindSpeichern(k);
+    }
+  }
+  if (kinder.length) await kinderLaden();
   elternZeichnen();
 }
 
@@ -2310,17 +2319,27 @@ function medienAufnehmen(b, knopf) {
 }
 
 // Mikrofon-Aufnahme (höchstens 5 s); "fertig" bekommt die Aufnahme als Blob
-async function aufnehmen(knopf, fertig, hoechstens = 5000) {
+// fuerKind: kein Text-Fenster bei Fehlern (Kinder können nicht lesen) – der Knopf wackelt nur
+// Ist das Mikrofon schon erlaubt? (Eltern erlauben es einmal, z. B. im Studio.) Unbekannt = nein
+async function mikrofonErlaubt() {
+  try {
+    const p = await navigator.permissions.query({ name: 'microphone' });
+    return p.state === 'granted';
+  } catch { return false; }
+}
+
+async function aufnehmen(knopf, fertig, hoechstens = 5000, fuerKind = false) {
   if (rekorder && rekorder.state === 'recording') { stopAufnahme(); return; }
-  if (!navigator.mediaDevices || !window.MediaRecorder) {
-    alert('Aufnehmen geht nur über https bzw. in der installierten App.');
-    return;
-  }
+  const fehler = (text) => {
+    if (!fuerKind) { alert(text); return; }
+    knopf.classList.remove('wackelt'); void knopf.offsetWidth; knopf.classList.add('wackelt');
+  };
+  if (!navigator.mediaDevices || !window.MediaRecorder) { fehler('Aufnehmen geht nur über https bzw. in der installierten App.'); return; }
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch {
-    alert('Kein Zugriff auf das Mikrofon.');
+    fehler('Kein Zugriff auf das Mikrofon.');
     return;
   }
   wiedergabeStoppen();
@@ -2847,7 +2866,7 @@ $('#jagd-input').addEventListener('change', async (e) => {
   if (!datei) return;
   try { jagdFotoGesetzt(await fotoVerkleinern(datei)); } catch { alert('Das Foto konnte nicht geladen werden.'); }
 });
-$('#btn-jagd-stimme').addEventListener('click', (e) => aufnehmen(e.currentTarget, async (blob) => jagdStimmeGesetzt(blob)));
+$('#btn-jagd-stimme').addEventListener('click', (e) => aufnehmen(e.currentTarget, async (blob) => jagdStimmeGesetzt(blob), 5000, true));
 $('#btn-jagd-fertig').addEventListener('click', jagdSpeichern);
 
 // ---------- Wörter legen (bewegliches Alphabet) ----------
@@ -2855,7 +2874,7 @@ $('#btn-jagd-fertig').addEventListener('click', jagdSpeichern);
 // Nur lautgetreue Wörter: so geschrieben, wie man sie hört (kein sch/ch/ei/au, kein stummes h)
 const LEGEN_NICHT = ['Uhr', 'Ohr', 'Kuh', 'Ähre', 'Fuß'];
 const LEGEN_RUNDEN = 3;
-const legen = { wahl: null, buchstaben: [], pos: 0, runde: 0, steine: [], timer: null, vorher: [] };
+const legen = { wahl: null, buchstaben: [], pos: 0, runde: 0, steine: [], timer: null, vorher: [], fehlversuche: 0 };
 
 function lautgetreu(wort) {
   const w = wort.toLowerCase();
@@ -2880,6 +2899,7 @@ function legenNeuesWort() {
   legen.vorher = [...legen.vorher.slice(-4), legen.wahl.wort];
   legen.buchstaben = [...legen.wahl.wort.toLowerCase()];
   legen.pos = 0;
+  legen.fehlversuche = 0;
   // Steine: alle Buchstaben des Wortes + 2 andere
   const andere = mischen(BUCHSTABEN.map((e) => e.b).filter((b) => !legen.buchstaben.includes(b) && !'cqvxyß'.includes(b))).slice(0, 2);
   legen.steine = mischen([...legen.buchstaben, ...andere]).map((b, i) => ({ b, i, weg: false }));
@@ -2921,8 +2941,15 @@ function legenSteinGetippt(st, btn) {
     void btn.offsetWidth;
     btn.classList.add('falsch');
     folgeAbspielen([{ url: `audio/${dateiName(st.b)}-laut.wav` }]);
+    // Nach zwei Fehlversuchen: der passende Stein pulsiert sanft (Hinweis, kein „falsch“)
+    if (++legen.fehlversuche >= 2) {
+      const i = legen.steine.findIndex((x) => !x.weg && x.b === legen.buchstaben[legen.pos]);
+      const richtig = document.querySelectorAll('.legen-stein')[i];
+      if (richtig) richtig.classList.add('hinweis');
+    }
     return;
   }
+  legen.fehlversuche = 0;
   st.weg = true;
   legen.pos++;
   if (legen.pos < legen.buchstaben.length) {
@@ -3805,6 +3832,8 @@ function kisteErzaehlen() {
   $('#kiste-beispiel').textContent = kiste.kiste.beispiel;
   kiste.erzaehlId = null;   // eine Erzählung je Runde (nochmal aufnehmen ersetzt sie)
   $('#btn-kiste-erzaehlen').classList.remove('fertig');
+  $('#btn-kiste-erzaehlen').hidden = true;
+  mikrofonErlaubt().then((ja) => { $('#btn-kiste-erzaehlen').hidden = !ja; });
   folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
   const nr = kiste.nummer;
   kiste.timer = setTimeout(() => kisteAktuell(nr) && spielEnde('kiste', kistenWahlZeigen), KISTE_ERZAEHLZEIT);
@@ -3831,7 +3860,7 @@ function kisteStarten() {
 }
 
 $('#btn-kiste-home').addEventListener('click', () => { kisteStoppen(); wiedergabeStoppen(); zurStartseite(); });
-$('#btn-kiste-erzaehlen').addEventListener('click', (e) => { audio(); aufnehmen(e.currentTarget, kisteErzaehlungGesetzt, 15000); });
+$('#btn-kiste-erzaehlen').addEventListener('click', (e) => { audio(); aufnehmen(e.currentTarget, kisteErzaehlungGesetzt, 15000, true); });
 $('#btn-kiste-daumen').addEventListener('click', () => { if (!kiste.gesperrt) { audio(); kisteGeschafft(kiste.nummer); } });
 // 🔊: aktuellen Schritt von vorn (rettet auch einen hängen gebliebenen Ton)
 $('#btn-kiste-laut').addEventListener('click', () => {
@@ -4698,6 +4727,7 @@ const startFertig = (async () => {
   await medienLaden();
   if (kinder.length || profile.length) speicherSchuetzen();
   rasterZeichnen();
+  document.body.classList.remove('laedt');
   // Mit Kindern beginnt die App mit "Wer spielt?"
   if (kinder.length && $('#home').classList.contains('active')) {
     werZeichnen();

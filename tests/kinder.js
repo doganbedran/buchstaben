@@ -79,8 +79,12 @@
 
   // 5. Profil pro Kind
   window.prompt = () => 'Papa';
+  window.confirm = (frage) => frage.includes('Emil');   // neue Rückfrage „Soll … diese Stimme hören?“: nur Emil
   await profilNeu();
+  window.confirm = () => true;
   const papa = (await datenbank.profile()).find((p) => p.name === 'Papa');
+  pruefe(kinder.find((k) => k.id === emil.id).profil === papa.id && kinder.find((k) => k.id === lina.id).profil === 'standard',
+    'Neues Profil nicht wie gewählt zugewiesen');
   await datenbank.medienSetzen(papa.id, 'a', 'bild', await fotoVerkleinern(await new Promise((r) => {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d'); g.fillStyle = '#3d8fd1'; g.fillRect(0, 0, 64, 64); c.toBlob(r);

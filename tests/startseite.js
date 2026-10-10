@@ -37,6 +37,8 @@
   // 3. Buchstabe → Nachspuren → 🏠 zurück zu den Buchstaben → 🏠 zur Startseite
   kacheln[0].click();
   pruefe(aktiv('trace'), 'Nachspuren nicht geöffnet');
+  pruefe(zustand.wahl.art === 'haupt', `Von der Kachel kein Kachel-Wort: ${zustand.wahl.wort}`);
+  pruefe(!document.body.classList.contains('laedt'), 'Startseite bleibt verborgen');
   $('#btn-home').click();
   await pause(300);
   pruefe(aktiv('buchstaben'), 'Vom Nachspuren nicht zurück zu den Buchstaben');

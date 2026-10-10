@@ -62,6 +62,15 @@
   const sicherung = await sicherungErstellen();
   pruefe(sicherung.kinder.some((k) => Array.isArray(k.spieleAus)) && Array.isArray(sicherung.einstellungen.spieleAus), 'Regal fehlt in der Sicherung');
 
+  // Neues Eltern-Profil wird den Kindern zugewiesen (sonst hören sie die eingesprochene Stimme nie)
+  window.confirm = () => true;
+  window.prompt = () => 'Papa';
+  await elternOeffnen();
+  await profilNeu(); await warte(300);
+  const papa = (await datenbank.profile()).find((p) => p.name === 'Papa');
+  pruefe(papa && kinder.every((k) => k.profil === papa.id), `Profil nicht zugewiesen: ${kinder.map((k) => k.profil)}`);
+  history.back(); await warte(300);
+
   // Ansicht: Kind-Formular mit Regal (zur Regal-Karte gescrollt)
   await elternOeffnen();
   kindBearbeiten(emil.id); await warte(400);

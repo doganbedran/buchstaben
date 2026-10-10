@@ -65,7 +65,7 @@
   pruefe(!$('#kiste .spiel-ende') || $('#kiste .spiel-ende').hidden, '🏠/🔁 kommen zu früh');
   pruefe(kiste.punkte === kistePunkteGesamt(), `Punkte ${kiste.punkte}/${kistePunkteGesamt()}`);
   // Erzählen: Aufnahme des Kindes wird gespeichert (eine je Runde) und erscheint im Album
-  pruefe(!$('#btn-kiste-erzaehlen').hidden, 'Kein 🎙️ auf dem Erzähl-Bild');
+  pruefe($('#btn-kiste-erzaehlen').hidden, '🎙️ sichtbar, obwohl das Mikrofon nicht erlaubt ist (Browser-Frage vor dem Kind)');
   const ton = new Blob(['x'], { type: 'audio/webm' });
   await kisteErzaehlungGesetzt(ton);
   await kisteErzaehlungGesetzt(ton);   // nochmal aufnehmen ersetzt

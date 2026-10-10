@@ -717,3 +717,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .studio-pegel span { display: block; height: 100%; width: 0; background: #1d5fbf; transition: width 0.06s linear; }
 
 #sicherung-erinnerung.warnung { color: #b8470b; font-weight: 700; }
+
+/* Bis Kinder/Regal geladen sind keine Spiel-Kacheln zeigen (sonst springen sie, und ein Kind trifft das falsche Spiel) */
+body.laedt #home .spiele-raster { visibility: hidden; }
+/* Wörter legen: Hinweis nach zwei Fehlversuchen */
+.legen-stein.hinweis { animation: trommelwarten 1.4s ease-in-out infinite; box-shadow: 0 0 0 4px #1d5fbf; }
+.kiste-mikro[hidden] { display: none; }
+.kiste-mikro.wackelt { animation: wackeln 0.6s ease; }
+#btn-jagd-stimme.wackelt { animation: wackeln 0.6s ease; }
