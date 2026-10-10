@@ -1,4 +1,4 @@
-# Buchstaben-Spuren – Arbeitsanweisung für Claude
+# Wortnest (früher „Buchstaben-Spuren“) – Arbeitsanweisung für Claude
 
 Montessori-inspirierte Lern-App (PWA) für Kinder ab 3: Buchstaben in Schreibrichtung nachspuren, Anlaute hören,
 kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: https://doganbedran.github.io/buchstaben/

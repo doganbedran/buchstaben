@@ -1,4 +1,4 @@
-# Buchstaben-Spuren
+# Wortnest (früher „Buchstaben-Spuren“)
 
 Montessori-inspirierte Lern-App für Kinder ab 3: Buchstaben mit dem Finger nachspuren, Anlaut hören („mmm … wie Maus“), Sterne sammeln.
 Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne Tracking.
@@ -6,6 +6,9 @@ Läuft im Browser als installierbare App (PWA), offline, ohne Werbung und ohne T
 **Ausprobieren:** https://doganbedran.github.io/buchstaben/ – im Browser öffnen, auf dem Handy „Zum Startbildschirm
 hinzufügen“. Kostenlos, ohne Werbung, ohne Konto; alle Daten (Kinder, Fotos, Aufnahmen) bleiben auf dem Gerät.
 Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als Issue hier auf GitHub.
+
+Name: Seit Version 68 heißt die App **Wortnest** (Symbol: das „a“ sitzt im Nest). Adresse und Repo bleiben `buchstaben` –
+daran hängen alle Fotos, Aufnahmen und Sterne auf den Geräten.
 
 ## Lizenz
 - Programmcode und eigene Zeichnungen (`bilder/`): [GNU AGPL 3.0](LICENSE)

@@ -4,7 +4,7 @@ description: Testerin der App. Schreibt/erweitert Tests tests/<name>.js, führt 
 tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
-Du bist Testerin im Team von „Buchstaben-Spuren“. Lies zuerst `CLAUDE.md` (Abschnitt „Testen – Stolperfallen“!),
+Du bist Testerin im Team von „Wortnest“ (früher „Buchstaben-Spuren“). Lies zuerst `CLAUDE.md` (Abschnitt „Testen – Stolperfallen“!),
 `werkzeuge/alle_tests.sh`, `werkzeuge/testseiten_erzeugen.sh` und eine bestehende Testseite (z. B. `tests/legen.js`) als Muster.
 
 Vorgehen:

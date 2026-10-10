@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 67;
+const APP_VERSION = 68;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -5129,7 +5129,7 @@ $('#btn-teilen').addEventListener('click', async (e) => {
     if (!confirm('Die Sicherung enthält Namen, Fotos und Stimmen Ihrer Kinder – und die Fotos und Stimmen aus Ihren eigenen Kisten (z. B. Oma, Erzieherin).\n'
       + 'Nur an sich selbst oder Ihren Partner schicken – im Einzelchat, nicht in Gruppen – und danach im Chat löschen.')) return;
     const datei = await sicherungAlsDatei();
-    await navigator.share({ files: [datei], title: 'Buchstaben-Sicherung' });
+    await navigator.share({ files: [datei], title: 'Wortnest-Sicherung' });
     speicher.schreiben('letzteSicherung', Date.now());
     sicherungZusammenfassung();
   } catch (fehler) {
@@ -5196,7 +5196,7 @@ $('#btn-einladen').addEventListener('click', async () => {
   const text = `Hallo ${name}! Magst du für die Kinder ein paar Lob-Sätze aufnehmen? Link öffnen, aufnehmen und das Paket `
     + 'zurückschicken. Bis du es schickst, bleibt alles auf deinem Handy.';
   if (navigator.share) {
-    try { await navigator.share({ title: 'Buchstaben-Spuren: Mitmachen', text, url: link }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.share({ title: 'Wortnest: Mitmachen', text, url: link }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
   }
   try { await navigator.clipboard.writeText(`${text}\n${link}`); alert(`Der Link ist kopiert – im Chat einfügen:\n\n${link}`); } catch { prompt('Diesen Link schicken:', link); }
 });

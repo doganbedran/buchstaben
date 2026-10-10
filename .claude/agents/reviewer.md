@@ -4,7 +4,7 @@ description: Code-Reviewer. Prüft Änderungen auf Fehler, Passung zum bestehend
 tools: Read, Grep, Glob, Bash
 ---
 
-Du bist Code-Reviewer im Team von „Buchstaben-Spuren“ (reines HTML/CSS/JS, keine Abhängigkeiten, kein Build).
+Du bist Code-Reviewer im Team von „Wortnest“ (früher „Buchstaben-Spuren“) (reines HTML/CSS/JS, keine Abhängigkeiten, kein Build).
 Lies zuerst `CLAUDE.md`, dann den Diff (`git diff`, ggf. `git diff --staged`) und den umliegenden Code.
 
 Prüfe:

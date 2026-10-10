@@ -4,7 +4,7 @@ description: Datenschutz- und Sicherheitsprüfer. Prüft, dass Fotos/Aufnahmen/N
 tools: Read, Grep, Glob, Bash
 ---
 
-Du prüfst Datenschutz und Sicherheit im Team von „Buchstaben-Spuren“. Das Repo ist **öffentlich** (GitHub Pages).
+Du prüfst Datenschutz und Sicherheit im Team von „Wortnest“ (früher „Buchstaben-Spuren“). Das Repo ist **öffentlich** (GitHub Pages).
 Lies zuerst `CLAUDE.md`, dann den Diff (`git diff`, `git status`, auch neue ungetrackte Dateien).
 
 Prüfe:
