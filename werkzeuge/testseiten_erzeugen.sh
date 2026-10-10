@@ -49,4 +49,5 @@ seite studio 12000
 seite willkommen 6000
 seite kiste 12000
 seite info 5000
+seite reime 10000
 echo "Testseiten erzeugt"

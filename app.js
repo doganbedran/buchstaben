@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 46;
+const APP_VERSION = 47;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -170,7 +170,7 @@ const reihenfolgeStandard = () => (neuesGeraet() ? 'montessori' : 'alphabet');
 // Spiele-Regal: welche Spiele ein Kind auf der Startseite sieht (Montessori: ein Material kommt erst ins Regal,
 // wenn es gezeigt wurde). Neue Kinder/Geräte beginnen mit wenigen Spielen, wer die App schon nutzt, behält alle.
 // Gespeichert wird, was AUSGEBLENDET ist – so erscheinen neue Spiele nach einem Update von selbst.
-const ALLE_SPIELE = ['spuren', 'zeigen', 'kiste', 'hoeren', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
+const ALLE_SPIELE = ['spuren', 'zeigen', 'kiste', 'hoeren', 'reime', 'silben', 'name', 'memory', 'jagd', 'legen', 'album'];
 const START_REGAL = ['spuren', 'zeigen', 'kiste', 'hoeren', 'silben', 'name', 'album'];
 const ausVon = (sichtbar) => ALLE_SPIELE.filter((id) => !sichtbar.includes(id));
 const START_AUS = ausVon(START_REGAL);
@@ -504,6 +504,7 @@ window.addEventListener('popstate', async () => {
   silbenTimerStoppen();
   zeigenStoppen();
   kisteStoppen();
+  reimStoppen();
   studioAbbrechen();
   studioMikrofonZu();
   stopAufnahme();
@@ -2310,7 +2311,7 @@ async function aufnehmen(knopf, fertig) {
 // ---------- Stimme einsprechen (Elternbereich): Laute, Wörter, Lob – jedes Stück einmal, alles bleibt auf dem Gerät ----------
 
 const STUDIO_RATE = 22050;
-const STUDIO_BEREICHE = { laute: 'Laute', woerter: 'Wörter', lob: 'Lob', ansagen: 'Ansagen', kisten: 'Kisten', silben: 'Silben' };
+const STUDIO_BEREICHE = { laute: 'Laute', woerter: 'Wörter', lob: 'Lob', ansagen: 'Ansagen', kisten: 'Kisten', reime: 'Reime', silben: 'Silben' };
 const studio = { bereich: 'laute', pos: 0, aufnahme: null, stream: null, rekorder: null, startet: false, stoppTimer: null, lauf: 0 };
 // lauf: zählt bei jedem Wechsel/Verlassen hoch – späte Ergebnisse (Mikrofon, Aufbereitung) gehören dann nicht mehr hierher
 const studioAktuell = (lauf) => lauf === studio.lauf && $('#studio').classList.contains('active') && !document.hidden;
@@ -2348,6 +2349,10 @@ function studioStuecke(bereich) {
       ...Object.entries(TIERLAUTE).map(([id, laut]) => studioDatei(`tier-${id}.wav`, { text: laut,
         bild: KISTEN.flatMap((k) => k.woerter).find((w) => w[0] === id)[2], tipp: 'Tierlaut für „Wie macht …?“ – so, wie Sie ihn zu Hause machen.' })),
     ];
+  }
+  if (bereich === 'reime') {
+    return REIME.flatMap((p) => p.woerter).filter((w) => w[3].startsWith('audio/reim-')).map(([, wort, bild, datei]) =>
+      studioDatei(datei.replace('audio/', ''), { text: wort, bild, tipp: 'Wort für die Reim-Paare – ohne Artikel, deutlich sprechen.' }));
   }
   // Silben einzeln (am Handy verlässlicher als eine Aufnahme schneiden)
   const bildVon = (wort) => (BUCHSTABEN.find((e) => e.wort === wort) || {}).bild
@@ -3690,6 +3695,163 @@ $('#btn-kiste-laut').addEventListener('click', () => {
   kisteSchritt();
 });
 
+// ---------- Reim-Paare: Was reimt sich auf …? (eher fürs 4-jährige Kind) ----------
+
+const REIM_RUNDEN = ['leicht', 'leicht', 'leicht', 'mittel', 'mittel'];   // Stufe je Runde
+const reim = { runde: 0, paar: null, ziel: null, partner: null, karten: [], gesperrt: true, treffer: false, timer: null, nummer: 0, letzterTipp: 0, vorher: [] };
+
+const reimAktuell = (nr) => nr === reim.nummer && $('#reime').classList.contains('active');
+const reimQuelle = (w) => ({ url: w[3] });
+
+function reimStoppen() {
+  clearTimeout(reim.timer);
+  reim.nummer++;
+  reim.gesperrt = true;
+}
+
+async function reimSagen(nr, folge, text) {
+  await folgeAbspielen(folge, text);
+  return reimAktuell(nr);
+}
+
+// Ablenker: aus einem anderen Paar, anderer betonter Vokal, anderer Anlaut als das Ziel (sonst wählt das Kind nach Klang)
+function reimAblenker(paar, ziel) {
+  const andere = REIME.filter((p) => p !== paar && p.vokal !== paar.vokal).flatMap((p) => p.woerter);
+  const kandidaten = andere.filter((w) => reimAnlaut(w[1]) !== reimAnlaut(ziel[1]));
+  return zufall(kandidaten.length ? kandidaten : andere);   // Schutz, falls künftige Daten keinen passenden Ablenker hergeben
+}
+
+function reimKarte(w, extra = '') {
+  const btn = document.createElement('button');
+  btn.className = `zeigen-karte kiste-karte reim-karte${extra}`;
+  btn.textContent = w[2];
+  btn.setAttribute('aria-label', w[1]);
+  return btn;
+}
+
+function reimRundenAnzeigen() {
+  $('#reime-runden').innerHTML = REIM_RUNDEN.map((_, i) => `<span class="${i < reim.runde ? 'voll' : ''}"></span>`).join('');
+}
+
+// Wörter unten nacheinander vorsprechen (das Kind muss die Bilder nicht selbst benennen)
+async function reimKartenVorsprechen(nr) {
+  for (const btn of document.querySelectorAll('#reime-karten .reim-karte')) {
+    karteAnimieren(btn, 'huepft');
+    if (!(await reimSagen(nr, [reimQuelle(reim.karten.find((w) => w[1] === btn.getAttribute('aria-label')))], btn.getAttribute('aria-label')))) return false;
+  }
+  return true;
+}
+
+// Einmal pro Spielstart vormachen: „Hör mal: Maus … Haus. Das reimt sich!“
+async function reimVormachen() {
+  reimStoppen();
+  const nr = reim.nummer;
+  const [a, b] = REIME[0].woerter;
+  $('#reime-ziel').innerHTML = '';
+  $('#reime-ziel').appendChild(reimKarte(a));
+  const box = $('#reime-karten');
+  box.innerHTML = '';
+  box.appendChild(reimKarte(b, ' kommt'));
+  reimRundenAnzeigen();
+  if (!(await reimSagen(nr, [{ url: 'audio/ansage-reim-hoer-mal.wav' }, reimQuelle(a), reimQuelle(b), { url: 'audio/ansage-reim-das-reimt.wav' }],
+    `Hör mal: ${a[1]} … ${b[1]}. Das reimt sich!`))) return;
+  await warten(600);
+  if (reimAktuell(nr)) reimNeueRunde();
+}
+
+async function reimNeueRunde() {
+  reimStoppen();
+  const nr = reim.nummer;
+  const stufe = REIM_RUNDEN[reim.runde];
+  const auswahl = REIME.filter((p) => p.stufe === stufe && !reim.vorher.includes(p));
+  reim.paar = zufall(auswahl.length ? auswahl : REIME.filter((p) => p.stufe === stufe));
+  reim.vorher = [...reim.vorher.slice(-3), reim.paar];
+  const i = Math.random() < 0.5 ? 0 : 1;
+  reim.ziel = reim.paar.woerter[i];
+  reim.partner = reim.paar.woerter[1 - i];
+  reim.karten = mischen([reim.partner, reimAblenker(reim.paar, reim.ziel)]);
+  reim.treffer = false;
+  reimRundenAnzeigen();
+  $('#reime-ziel').innerHTML = '';
+  $('#reime-ziel').appendChild(reimKarte(reim.ziel, ' kommt'));
+  const box = $('#reime-karten');
+  box.innerHTML = '';
+  reim.karten.forEach((w) => {
+    const btn = reimKarte(w, ' kommt');
+    btn.addEventListener('click', () => reimGetippt(w, btn));
+    box.appendChild(btn);
+  });
+  await reimFragen(nr);
+}
+
+async function reimFragen(nr) {
+  reim.gesperrt = true;
+  if (!(await reimSagen(nr, [{ url: 'audio/ansage-reim-frage.wav' }, reimQuelle(reim.ziel)], `Was reimt sich auf ${reim.ziel[1]}?`))) return;
+  if (!(await reimKartenVorsprechen(nr))) return;
+  reim.gesperrt = false;
+}
+
+async function reimGetippt(w, btn) {
+  const jetzt = performance.now();
+  if (reim.gesperrt || btn.classList.contains('blass') || jetzt - reim.letzterTipp < 400) return;
+  reim.letzterTipp = jetzt;
+  audio();
+  const nr = reim.nummer;
+  reim.gesperrt = true;
+  if (w !== reim.partner) {
+    // Kein „falsch“: beide Wörter hören („Maus … Hund“), dann der Hinweis; das passende Bild pulsiert
+    btn.classList.add('blass');
+    karteAnimieren(btn, 'wackelt');
+    if (!(await reimSagen(nr, [reimQuelle(reim.ziel), reimQuelle(w), { url: 'audio/ansage-hoeren-nochmal.wav' }], `${reim.ziel[1]} … ${w[1]}`))) return;
+    document.querySelectorAll('#reime-karten .reim-karte').forEach((k) => k.getAttribute('aria-label') === reim.partner[1] && k.classList.add('pulsiert'));
+    reim.gesperrt = false;
+    return;
+  }
+  // Treffer: das Paar zusammen hören – „Maus – Haus. Das reimt sich!“
+  reim.treffer = true;
+  btn.classList.remove('pulsiert');
+  btn.classList.add('richtig');
+  karteAnimieren(btn, 'huepft');
+  glockenspiel();
+  reim.runde++;
+  reimRundenAnzeigen();
+  if (!(await reimSagen(nr, [reimQuelle(reim.ziel), reimQuelle(w), { url: 'audio/ansage-reim-das-reimt.wav' }], `${reim.ziel[1]} – ${w[1]}. Das reimt sich!`))) return;
+  reim.timer = setTimeout(() => {
+    if (!reimAktuell(nr)) return;
+    if (reim.runde >= REIM_RUNDEN.length) reimGeschafft(); else reimNeueRunde();
+  }, 900);
+}
+
+function reimGeschafft() {
+  const nr = reim.nummer;
+  const jubel = $('#reime-jubel');
+  jubel.classList.remove('zeigen');
+  void jubel.offsetWidth;
+  jubel.classList.add('zeigen');
+  glockenspiel();
+  folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
+  reim.timer = setTimeout(() => reimAktuell(nr) && spielEnde('reime', () => { reim.runde = 0; reimNeueRunde(); }), 2200);
+}
+
+function reimStarten() {
+  reim.runde = 0;
+  reim.vorher = [REIME[0]];   // das vorgemachte Paar nicht gleich als erste Aufgabe
+  spielEndeWeg('reime');
+  zeigen('reime');
+  reimVormachen();
+}
+
+$('#btn-reime-home').addEventListener('click', () => { reimStoppen(); wiedergabeStoppen(); zurStartseite(); });
+// 🔊: Frage und beide Wörter nochmal – geht immer (rettet auch einen hängen gebliebenen Ton), nur nicht nach dem Treffer
+$('#btn-reime-laut').addEventListener('click', () => {
+  if (!reim.ziel || reim.treffer) return;
+  audio();
+  reimStoppen();
+  reimFragen(reim.nummer);
+});
+// Zielbild antippen = Zielwort nochmal
+$('#reime-ziel').addEventListener('click', () => { if (!reim.gesperrt && reim.ziel) { audio(); folgeAbspielen([reimQuelle(reim.ziel)]); } });
+
 // ---------- Silben-Trommel: pro Silbe einmal auf die Trommel hauen ----------
 
 // Silbenzahl je Runde: mit 2 beginnen, 1 Silbe nicht direkt nach dem ersten Erfolg, mit einem leichteren Wort enden
@@ -4016,7 +4178,7 @@ function buchstabenZeigen() {
 }
 $('#btn-buchstaben-home').addEventListener('click', zurStartseite);
 
-const SPIELE = { spuren: buchstabenZeigen, zeigen: zeigenStarten, kiste: kisteStarten, hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
+const SPIELE = { spuren: buchstabenZeigen, zeigen: zeigenStarten, kiste: kisteStarten, reime: reimStarten, hoeren: hoerSpielStarten, silben: silbenStarten, name: nameStarten, memory: memoryStarten, jagd: jagdStarten, legen: legenStarten, album: albumOeffnen };
 document.querySelectorAll('.spiel-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     audio();

@@ -100,6 +100,7 @@
       <button class="spiel-btn" data-spiel="zeigen" aria-label="Zeig mir">👆</button>
       <button class="spiel-btn" data-spiel="kiste" aria-label="Wörterkiste">🧺</button>
       <button class="spiel-btn" data-spiel="hoeren" aria-label="Ich höre was">👂</button>
+      <button class="spiel-btn" data-spiel="reime" aria-label="Reim-Paare">🎶</button>
       <button class="spiel-btn" data-spiel="silben" aria-label="Silben-Trommel" hidden>🥁</button>
       <button class="spiel-btn" data-spiel="name" aria-label="Mein Name" hidden>✍️</button>
       <button class="spiel-btn" data-spiel="memory" aria-label="Groß und klein">🧩</button>
@@ -227,6 +228,21 @@
     </div>
     <!-- nicht gezeigt (das Erzähl-Bild ist das Ende); spielEnde/spielEndeWeg erwarten ein .jubel -->
     <div id="kiste-jubel" class="jubel"><span>🏆</span></div>
+  </section>
+
+  <!-- Reim-Paare: Was reimt sich auf …? -->
+  <section id="reime" class="screen">
+    <header class="topbar">
+      <button id="btn-reime-home" class="icon-btn" aria-label="Zurück">🏠</button>
+      <div id="reime-runden" class="runden-punkte"></div>
+      <button id="btn-reime-laut" class="icon-btn" aria-label="Nochmal hören">🔊</button>
+    </header>
+    <div class="reime-inhalt">
+      <div id="reime-ziel" class="reime-ziel"></div>
+      <div class="reime-pfeil" aria-hidden="true">🎶</div>
+      <div id="reime-karten" class="zeigen-karten reime-karten"></div>
+    </div>
+    <div id="reime-jubel" class="jubel"><span>🏆</span></div>
   </section>
 
   <!-- Silben-Trommel -->
@@ -480,6 +496,7 @@
   <script src="letters.js"></script>
   <script src="kisten.js"></script>
   <script src="ansagen.js"></script>
+  <script src="reime.js"></script>
   <script src="striche.js"></script>
   <script src="app.js"></script>
 </body>

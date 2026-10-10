@@ -1,7 +1,7 @@
 // Offline-Cache: Mit Internet immer die neueste Version laden, ohne Internet aus dem Cache.
-importScripts('letters.js', 'kisten.js', 'ansagen.js', 'ansagen.js');
+importScripts('letters.js', 'kisten.js', 'ansagen.js', 'reime.js', 'ansagen.js');
 
-const CACHE = 'buchstaben-v46';   // gleiche Nummer wie APP_VERSION in app.js
+const CACHE = 'buchstaben-v47';   // gleiche Nummer wie APP_VERSION in app.js
 const DATEIEN = [
   './', 'index.html', 'style.css', 'app.js', 'letters.js', 'kisten.js', 'striche.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png',
@@ -12,6 +12,8 @@ const DATEIEN = [
   ...BUCHSTABEN.flatMap(({ b, mehr }) => (mehr || []).flatMap((_, i) => [`audio/${dateiName(b)}-${i + 2}.wav`, `audio/${dateiName(b)}-${i + 2}-wort.wav`])),
   ...KISTEN.flatMap((k) => k.woerter.map(([id]) => kisteDatei(id))),
   ...Object.keys(TIERLAUTE).map(tierDatei),
+  // nur die neuen Reim-Wörter (die übrigen stehen schon oben; addAll darf keine Datei doppelt haben)
+  ...REIME.flatMap((p) => p.woerter).map((w) => w[3]).filter((d) => d.startsWith('audio/reim-')),
 ];
 // Silben-Aufnahmen kommen nach und nach dazu: fehlende Dateien dürfen die Installation nicht verhindern
 const SILBEN_DATEIEN = Object.entries(SILBEN).flatMap(([wort, teile]) => teile.map((_, i) => silbenDatei(wort, i + 1)));

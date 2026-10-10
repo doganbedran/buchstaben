@@ -61,7 +61,7 @@
   pruefe(medien['lob-1'] && medien['lob-1'].stimme && lobQuelle().eigen, 'Lob nicht übernommen');
   const anzahl = (b) => studioStuecke(b).length;
   pruefe([...$('#studio-reiter').children].map((b) => b.textContent).join('|')
-    === `Laute 1/30|Wörter 1/${anzahl('woerter')}|Lob 1/5|Ansagen 0/${anzahl('ansagen')}|Kisten 0/${anzahl('kisten')}|Silben 0/${anzahl('silben')}`, `Reiter: ${$('#studio-reiter').textContent}`);
+    === `Laute 1/30|Wörter 1/${anzahl('woerter')}|Lob 1/5|Ansagen 0/${anzahl('ansagen')}|Kisten 0/${anzahl('kisten')}|Reime 0/${anzahl('reime')}|Silben 0/${anzahl('silben')}`, `Reiter: ${$('#studio-reiter').textContent}`);
   pruefe(anzahl('woerter') > 60 && anzahl('ansagen') === Object.keys(ANSAGEN).length && anzahl('kisten') === 36 && anzahl('silben') > 70, 'Bereichsgrößen');
   // Neue Bereiche ersetzen die passende Standard-Datei in den Spielen
   [...$('#studio-reiter').children][3].click();
@@ -70,7 +70,7 @@
   [...$('#studio-reiter').children][4].click();
   await sprechen(0.5); await studioSpeichern();
   pruefe(eigeneDatei('audio/kiste-nase.wav'), 'Kisten-Wort nicht übernommen');
-  [...$('#studio-reiter').children][5].click();
+  [...$('#studio-reiter').children][6].click();
   await sprechen(0.3); await studioSpeichern();
   pruefe(eigeneDatei(studioStuecke('silben')[0].standard), 'Silbe nicht übernommen');
   // Weitere Wörter (mehr): Ansage aus eigenem Laut/Wort-Teil

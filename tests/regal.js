@@ -18,7 +18,7 @@
   const knopf = (box, id) => [...$(box).querySelectorAll('.regal-spiel')][ALLE_SPIELE.indexOf(id)];
   knopf('#spiele-wahl', 'memory').click();
   knopf('#spiele-wahl', 'album').click();
-  pruefe(speicher.lesen('spieleAus').join(',') === 'jagd,legen,album', `Gespeichert (aus): ${speicher.lesen('spieleAus')}`);
+  pruefe(speicher.lesen('spieleAus').join(',') === 'reime,jagd,legen,album', `Gespeichert (aus): ${speicher.lesen('spieleAus')}`);
   ['spuren', 'zeigen', 'kiste', 'hoeren', 'silben', 'name', 'memory'].forEach((id) => knopf('#spiele-wahl', id).click());
   pruefe(zustand.spiele.length === 1, `Letztes Spiel abwählbar: ${zustand.spiele}`);
   history.back(); await warte(300);
@@ -53,7 +53,7 @@
   aktivesKind().spiele = REGAL_V37.slice(); einstellungenLaden(); rasterZeichnen();
   pruefe(sichtbar().split(',').length === ALLE_SPIELE.length, `Kind mit alter Liste: ${sichtbar()}`);
   aktivesKind().spiele = ['spuren', 'hoeren']; einstellungenLaden();
-  pruefe(zustand.spiele.join(',') === 'spuren,zeigen,kiste,hoeren', `Alte kleine Liste: ${zustand.spiele}`);
+  pruefe(zustand.spiele.join(',') === 'spuren,zeigen,kiste,hoeren,reime', `Alte kleine Liste: ${zustand.spiele}`);
   await einstellungenSpeichern();
   const gespeichert = (await datenbank.kinder()).find((k) => k.id === aktivesKind().id);
   pruefe(!gespeichert.spiele && Array.isArray(gespeichert.spieleAus), 'Alte Liste nicht umgeschrieben');

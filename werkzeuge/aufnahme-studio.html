@@ -75,6 +75,7 @@
 <script src="../letters.js"></script>
 <script src="../kisten.js"></script>
 <script src="../ansagen.js"></script>
+<script src="../reime.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
@@ -91,6 +92,7 @@ const BEREICHE = {
   woerter: { name: 'Wörter', tipp: 'Das Wort einmal deutlich sprechen. Den Laut davor („mmm … mmm …“) setzt das Studio selbst dazu.' },
   lob: { name: 'Lob', tipp: 'Echt freuen, nicht übertreiben.' },
   kisten: { name: 'Kisten', tipp: 'Das Wort MIT Artikel sprechen („die Tasse“). Tierlaute so, wie ihr sie zu Hause macht.' },
+  reime: { name: 'Reime', tipp: 'Wörter für die Reim-Paare – ohne Artikel, deutlich sprechen.' },
   silben: { name: 'Silben', tipp: 'Silben wie beim Klatschen, mit kleiner Pause dazwischen: „Ba – na – ne“.' },
 };
 
@@ -100,7 +102,9 @@ BUCHSTABEN.forEach((e) => { bilder[e.wort] = e.bild; (e.mehr || []).forEach(([w,
 const zeichen = (b) => (b === 'ß' ? 'ß' : `${b.toUpperCase()} ${b}`);
 
 function auftraegeBauen(ansagen, lob) {
-  const a = { laute: [], ansagen: [], woerter: [], lob: [], kisten: [], silben: [] };
+  const a = { laute: [], ansagen: [], woerter: [], lob: [], kisten: [], reime: [], silben: [] };
+  REIME.flatMap((p) => p.woerter).filter((w) => w[3].startsWith('audio/reim-')).forEach(([, wort, bild, datei]) =>
+    a.reime.push({ titel: wort, text: wort, hinweis: 'Reim-Paare', bild, dateien: [datei], art: 'satz' }));
   KISTEN.forEach((k) => k.woerter.forEach(([id, wort, bild]) => a.kisten.push({ titel: wort, text: wort, hinweis: `Wörterkiste ${k.bild}`,
     bild, dateien: [kisteDatei(id)], art: 'satz' })));
   Object.entries(TIERLAUTE).forEach(([id, laut]) => a.kisten.push({ titel: `${laut} (${id})`, text: laut, hinweis: 'Wie macht …? – Tierlaut',

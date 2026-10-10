@@ -13,6 +13,7 @@ Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als I
 - Vorläufige Aufnahmen: Piper „Thorsten“ (Datensatz CC0, Modell MIT)
 
 ## Dateien
+- `reime.js` – Reim-Paare (Wörter, Emoji, Audio, betonter Vokal)
 - `ansagen.js` – Texte aller Ansagen (eine Quelle für App, Studios, Offline-Speicher und Piper)
 - `letters.js` – Buchstaben, Wörter, Bilder, Laute (hier neue Wörter eintragen)
 - `striche.js` – Strichfolge in Schreibrichtung (Vierlinien-System) für alle Buchstaben, groß und klein; daraus werden Vorlage, Kacheln und Prüfung gebaut (Zeichen ohne Eintrag nutzen die Schrift + Flächenprüfung)
@@ -31,6 +32,7 @@ Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als I
   - `studio` – Stimme einsprechen im Elternbereich (künstlicher Ton statt Mikrofon)
   - `kiste` – Wörterkiste (Auswahl, alle Stufen, Stufe 4, Erzähl-Bild)
   - `info` – Über die App & Datenschutz (Texte, Links, Zurück-Weg)
+  - `reime` – Reim-Paare (Ablenker-Regel, Vormachen, Runden, 🔊-Rettung)
   - `regal` – Spiele-Regal app-weit und je Kind, Standard für neue/alte Kinder, Sicherung
   - `hoeren`, `silben`, `legen`, `jagd`, `farben`, `montessori`, `memory`, `album`, `name` – je ein Spiel/eine Funktion
 - `werkzeuge/alle_tests.sh` – alle Tests auf einmal (Testserver muss laufen)
@@ -102,6 +104,10 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
 - 📒 **Sticker-Album** – pro geschafftem Buchstaben ein Sticker des gezeigten Wortes, Album pro Kind
 - 👂 **Ich höre was** – Laut hören („mmm …“), passendes Bild von dreien antippen; 5 Runden. Ähnlich klingende
   Anlaute (f/v, k/c/q/x, e/ä, j/y) nie in derselben Runde, ß ausgenommen. Nutzt `audio/<b>-laut.wav`.
+- 🎶 **Reim-Paare** – „Was reimt sich auf … Maus?“: Ziel-Bild oben, zwei Bilder unten (beide werden vorgesprochen).
+  Einmal vorgemacht (Maus – Haus), dann 5 Runden (3 leichte, 2 mittlere Paare aus `reime.js`). Der Ablenker hat nie
+  denselben betonten Vokal oder Anlaut wie das Ziel. Daneben: beide Wörter hören, das passende Bild pulsiert.
+  Eher fürs 4-jährige Kind – steht nicht im Start-Regal. Neue Wörter in `audio/reim-<id>.wav`.
 - 🥁 **Silben-Trommel** – Wort hören, pro Silbe einmal auf die Trommel hauen (Silbenbögen erscheinen); die App
   spricht danach die Silben zu den Bögen. 5 Runden (2, 1, 2, 3, 3 Silben). Daneben: App trommelt vor, Kind nochmal;
   beim zweiten Mal gemeinsam. Wörter und Trennung in `SILBEN` (`letters.js`), Aufnahmen `audio/silbe-<wort>-<nr>.wav`

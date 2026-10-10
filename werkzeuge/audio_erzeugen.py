@@ -46,7 +46,7 @@ LOB = ['Super!', 'Toll gemacht!', 'Prima!', 'Klasse!', 'Wunderbar!']
 # Ansagen der Spiele: Dateiname -> Text (aus ansagen.js, eine Quelle für App und Werkzeuge)
 ANSAGEN = dict(re.findall(r"'([a-z0-9-]+)': \['([^']+)'", (PROJEKT / 'ansagen.js').read_text(encoding='utf-8')))
 
-TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen', 'kisten']
+TEILE = ['buchstaben', 'laute', 'mehr', 'lob', 'ansagen', 'kisten', 'reime']
 
 
 def woerter_aus_letters_js():
@@ -69,6 +69,12 @@ def kisten_aus_kisten_js():
     woerter = dict(re.findall(r"\['(\w+)', '([^']+)', '[^']+'(?:, '[^']+')?\]", text))
     tiere = dict(re.findall(r"(\w+): '([^']+)'", text.split('const TIERLAUTE')[1].split('};')[0]))
     return woerter, tiere
+
+
+def reime_aus_reime_js():
+    """Neue Wörter der Reim-Paare (Datei audio/reim-<id>.wav -> Wort) aus reime.js."""
+    text = (PROJEKT / 'reime.js').read_text(encoding='utf-8')
+    return dict((f'reim-{i}', w) for i, w in re.findall(r"\['(\w+)', '([^']+)', '[^']+', 'audio/reim-\w+\.wav'\]", text))
 
 
 def synth(stimme, text, tempo=1.0):
@@ -144,6 +150,9 @@ def erzeugen(modell, ziel, teile):
             speichern(ziel / f'kiste-{wid}.wav', synth(stimme, wort, tempo=1.1), rate)
         for tid, laut in tiere.items():
             speichern(ziel / f'tier-{tid}.wav', synth(stimme, laut, tempo=1.0), rate)
+    if 'reime' in teile:
+        for datei, wort in reime_aus_reime_js().items():
+            speichern(ziel / f'{datei}.wav', synth(stimme, wort, tempo=1.15), rate)
     print('fertig:', ziel, ', '.join(teile))
 
 

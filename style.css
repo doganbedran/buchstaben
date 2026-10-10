@@ -670,9 +670,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .spiele-raster.viele { grid-template-columns: repeat(3, min(130px, 29vw, 17vh)); grid-auto-rows: min(130px, 29vw, 17vh); gap: 14px; }
 .spiele-raster.viele .spiel-btn { border-radius: 26px; font-size: clamp(2.2rem, 7vh, 4rem); }
 @media (orientation: landscape) {
-  .spiele-raster.viele { grid-template-columns: repeat(5, min(160px, 17vw, 30vh)); grid-auto-rows: min(160px, 17vw, 30vh); }
+  .spiele-raster.viele { grid-template-columns: repeat(6, min(150px, 15vw, 34vh)); grid-auto-rows: min(150px, 15vw, 34vh); }
 }
 
 /* Über die App & Datenschutz */
 .info .karte p { margin: 0 0 10px; line-height: 1.5; font-size: 0.95rem; }
 .info .karte a { color: #1d5fbf; }
+
+/* Reim-Paare */
+.reime-inhalt { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding-bottom: 30px; }
+.reime-ziel { width: min(210px, 52vw); }
+.reime-ziel .reim-karte { width: 100%; font-size: clamp(5rem, 28vw, 8rem); }
+.reime-pfeil { font-size: 2rem; opacity: 0.7; }
+.reime-karten { grid-template-columns: repeat(2, min(170px, 42vw)); flex: 0 0 auto; }

@@ -35,6 +35,7 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 
 ## Struktur
 - `index.html`, `style.css`, `app.js` – die ganze App (keine Build-Schritte, keine Abhängigkeiten)
+- `reime.js` – Reim-Paare; `ansagen.js` – Texte aller Ansagen
 - `kisten.js` – Wörterkiste (Themen, Wörter mit Artikel, Fragen für Eltern, Tierlaute)
 - `letters.js` – Alphabet: `wort`/`bild`/`laut` + weitere Wörter `mehr`; `dateiName()` (ä→ae, ö→oe, ü→ue, ß→ss)
 - `striche.js` – Strichfolge aller 60 Zeichen (Vierlinien-System y: 0 Ober-, 50 Mittel-, 100 Grund-, 140 Unterlinie);
@@ -81,6 +82,8 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 
 ## Testen – Stolperfallen
 - Firefox ist ein Snap: Profile/Screenshots nur unter `~/snap/firefox/common/lernapp-test/` (nicht /tmp).
+  `alle_tests.sh` startet Firefox direkt (`/snap/firefox/current/usr/lib/firefox/firefox`), weil die Snap-Hülle nach
+  langer Laufzeit mit „cannot create transient scope“ scheitern kann; für Einzel-Screenshots ebenso.
 - Bildprüfung mit System-`python3` (hat PIL), nicht mit `.venv`.
 - Testserver stoppen über die Portnummer: `kill $(ss -ltnpH 'sport = :8765' | grep -o 'pid=[0-9]*' | cut -d= -f2)` –
   **nicht** `pkill -f http.server…` im selben Befehl wie das Starten (beendet die eigene Shell).

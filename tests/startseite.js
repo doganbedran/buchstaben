@@ -19,7 +19,7 @@
   spiele.forEach((b) => {
     const r = b.getBoundingClientRect();
     pruefe(r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, `${b.dataset.spiel} ragt heraus`);
-    pruefe(r.width >= 100, `${b.dataset.spiel} zu klein: ${Math.round(r.width)}`);
+    pruefe(r.width >= 100 || (innerWidth > innerHeight && r.width >= 90), `${b.dataset.spiel} zu klein: ${Math.round(r.width)}`);
   });
 
   // 2. ✏️ → Buchstaben (A–Z): 30 Kacheln, eine Farbe, keine Sterne

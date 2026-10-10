@@ -8,6 +8,9 @@ cd "$(dirname "$0")/.."
 D=~/snap/firefox/common/lernapp-test   # Snap-Firefox darf nur in ~/snap schreiben
 mkdir -p "$D"
 URL=http://localhost:8765
+# Firefox direkt starten (die Snap-Hülle scheitert manchmal mit "cannot create transient scope"); sonst die Hülle
+FF=/snap/firefox/current/usr/lib/firefox/firefox
+[ -x "$FF" ] || FF=firefox
 LAEUFE=(
   "spur-handy|tests/spur.html|412,860|300"
   "spur-tablet|tests/spur.html|1280,800|300"
@@ -29,6 +32,7 @@ LAEUFE=(
   "startseite|tests/startseite.html|412,860|60"
   "start-klein|tests/startseite.html|360,640|60"
   "start-tab|tests/startseite.html|1280,800|60"
+  "start-quer|tests/startseite.html|860,412|60"
   "regal|tests/regal.html|412,860|90"
   "zeigen|tests/zeigen.html|412,860|90"
   "zeigen-tab|tests/zeigen.html|1280,800|90"
@@ -37,12 +41,14 @@ LAEUFE=(
   "kiste|tests/kiste.html|412,860|90"
   "kiste-klein|tests/kiste.html|360,640|90"
   "info|tests/info.html|412,860|60"
+  "reime|tests/reime.html|412,860|90"
+  "reime-klein|tests/reime.html|360,640|90"
 )
 fehler=0
 for lauf in "${LAEUFE[@]}"; do
   IFS='|' read -r name seite groesse zeit <<< "$lauf"
   rm -rf "$D/p-$name" "$D/t-$name.png"; mkdir -p "$D/p-$name"
-  timeout "$zeit" firefox --headless --profile "$D/p-$name" --window-size="$groesse" --screenshot "$D/t-$name.png" "$URL/$seite" >/dev/null 2>&1
+  timeout "$zeit" "$FF" --headless --profile "$D/p-$name" --window-size="$groesse" --screenshot "$D/t-$name.png" "$URL/$seite" >/dev/null 2>&1
   # System-Python (hat PIL), auch wenn .venv aktiv ist
   ergebnis=$(/usr/bin/python3 -c "
 from PIL import Image
