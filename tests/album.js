@@ -39,8 +39,12 @@
   await warte(300);   // Album lädt zuerst die Fotos der Buchstaben-Jagd
   const gesamt = alleSticker().length;
   pruefe($('#album').classList.contains('active'), 'Album nicht geöffnet');
-  pruefe($('#album-zahl').textContent === `2 / ${gesamt}`, `Zähler: ${$('#album-zahl').textContent}`);
-  pruefe(document.querySelectorAll('.sticker.hat').length === 2 && document.querySelectorAll('.sticker').length === gesamt, 'Sticker-Anzeige falsch');
+  // Erinnerungsbuch: nur Gesammeltes, kein Zähler, keine Fragezeichen (der Zähler steht im Elternbereich)
+  pruefe($('#album-zahl').textContent === '', `Zähler sichtbar: ${$('#album-zahl').textContent}`);
+  pruefe(document.querySelectorAll('.sticker.hat').length === 2 && document.querySelectorAll('.sticker').length === 2, 'Sticker-Anzeige falsch');
+  await elternOeffnen();
+  pruefe($('#fortschritt-text').textContent.includes(`2 von ${gesamt} Stickern`), `Zähler fehlt im Elternbereich: ${$('#fortschritt-text').textContent}`);
+  history.back(); await warte(300);
   pruefe(gesamt === BUCHSTABEN.reduce((s, e) => s + 1 + e.mehr.length, 0), `Anzahl Sticker ${gesamt}`);
 
   // 3. Erstes Kind übernimmt das Album, zweites Kind hat ein eigenes

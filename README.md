@@ -85,6 +85,8 @@ Großeltern). Der Elternbereich zeigt, wie viel Speicher belegt ist.
 
 ## Spiele
 Die Startseite zeigt nur große Spiel-Kacheln (ohne Scrollen); die Buchstaben gibt es erst nach ✏️.
+Jedes Spiel hat ein Ende (Pokal, 🏠 groß, 🔁 klein) – Nachspuren nach 5 Buchstaben, die Jagd nach 3 Funden.
+Im Elternbereich keine Sterne-Summen nebeneinander, sondern „übt gerade m a s l“ (keine Geschwister-Vergleiche).
 Welche Spiele dort stehen, legen die Eltern je Kind fest (gespeichert wird, was ausgeblendet ist – neue Spiele erscheinen nach Updates von selbst) (Elternbereich → Kind → „Spiele im Regal“). Neue Kinder
 beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Regal stellen, wenn man es zusammen ausprobiert hat.
 
@@ -108,7 +110,8 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
 - 🧩 **Groß & klein** – Memory mit 4 Paaren (A/a); gleich aussehende Paare (C/c, O/o …) und i+l zusammen ausgeschlossen
 - 🔍 **Buchstaben-Jagd** – etwas mit dem Anlaut zu Hause finden, fotografieren, Wort aufnehmen; Funde im Album (pro Kind)
 - 🔤 **Wörter legen** – bewegliches Alphabet: Bild + leere Felder, Buchstaben antippen; nur lautgetreue Wörter + persönliche Wörter
-- 📒 **Sticker-Album** – pro geschafftem Buchstaben ein Sticker des gezeigten Wortes, Album pro Kind
+- 📒 **Sticker-Album** – Erinnerungsbuch: pro geschafftem Buchstaben ein Sticker des gezeigten Wortes, dazu Funde und
+  Erzählungen; nur Gesammeltes, kein Zähler und keine „?“ (der Zähler steht im Elternbereich unter „Fortschritt“)
 - 👂 **Ich höre was** – Laut hören („mmm …“), passendes Bild von dreien antippen; 5 Runden. Ähnlich klingende
   Anlaute (f/v, k/c/q/x, e/ä, j/y) nie in derselben Runde, ß ausgenommen. Nutzt `audio/<b>-laut.wav`.
 - 🎶 **Reim-Paare** – „Was reimt sich auf … Maus?“: Ziel-Bild oben, zwei Bilder unten (beide werden vorgesprochen).

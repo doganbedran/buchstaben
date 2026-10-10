@@ -46,6 +46,22 @@
   await pause(300);
   pruefe(aktiv('home'), 'Nicht zurück zur Startseite');
 
+  // Natürliches Ende beim Nachspuren nach SPUR_ENDE_NACH geschafften Buchstaben; keine leeren Sterne vor dem Kind
+  document.querySelector('.spiel-btn[data-spiel="spuren"]').click();
+  document.querySelectorAll('#grid .kachel')[0].click();
+  pruefe($('#fortschritt').textContent === '', `Sterne auf der Spur-Seite: ${$('#fortschritt').textContent}`);
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  spurBesuch.geschafft = SPUR_ENDE_NACH - 1;
+  geschafft();
+  await pause(3500);
+  pruefe($('#trace .spiel-ende') && !$('#trace .spiel-ende').hidden, 'Nachspuren ohne Ende');
+  $('#trace .ende-nochmal').click();
+  pruefe(spurBesuch.geschafft === 0 && $('#trace .spiel-ende').hidden, 'Nochmal setzt nicht zurück');
+  $('#btn-home').click(); await pause(300);
+  $('#btn-buchstaben-home').click(); await pause(300);
+  // Elternbereich: beschreiben statt Sterne zählen
+  pruefe(uebtGerade({ reihenfolge: 'montessori', sterne: {} }) === 'übt gerade m a s l' && uebtGerade({ reihenfolge: 'alphabet' }).startsWith('alle'), 'uebtGerade');
+
   // Ansicht: Buchstaben-Bildschirm
   document.querySelector('.spiel-btn[data-spiel="spuren"]').click();
   const d = document.createElement('div');

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 57;
+const APP_VERSION = 58;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -1527,7 +1527,7 @@ function geschafft() {
   const n = Math.min(MAX_STERNE, (zustand.sterne[eintrag.b] || 0) + 1);
   zustand.sterne[eintrag.b] = n;
   einstellungenSpeichern();
-  $('#fortschritt').textContent = sterneText(n);
+  spurBesuch.geschafft++;
 
   // Sticker fürs Album: das Wort, das gerade dran war
   const wahl = zustand.wahl && zustand.wahl.b === eintrag.b ? zustand.wahl : hauptWahl(eintrag);
@@ -1550,13 +1550,24 @@ function geschafft() {
   ];
   setTimeout(() => lautAbspielen(eintrag, true, danach), 500);
 
-  // Danach neu starten, damit das Kind gleich nochmal üben kann
+  // Danach neu starten, damit das Kind gleich nochmal üben kann – nach SPUR_ENDE_NACH Buchstaben ist Schluss
+  // (🏠 groß / 🔁 klein wie in den anderen Spielen; sonst wäre das Hauptspiel eine „nur noch eins“-Schleife)
   clearTimeout(tafelZustand.jubelTimer);
+  const warte = 2600 + (neuerSticker ? 800 : 0) + (neueBuchstaben ? 1200 : 0);
   tafelZustand.jubelTimer = setTimeout(() => {
-    jubel.classList.remove('zeigen', 'mit-sticker', 'mit-schloss');
+    jubel.classList.remove('mit-sticker', 'mit-schloss');
+    if (spurBesuch.geschafft >= SPUR_ENDE_NACH) {
+      $('#jubel-bild').textContent = '🏆';
+      spielEnde('trace', () => { spurBesuch.geschafft = 0; tafelLeeren(); });
+      return;
+    }
+    jubel.classList.remove('zeigen');
     tafelLeeren();
-  }, 2600 + (neuerSticker ? 800 : 0) + (neueBuchstaben ? 1200 : 0));
+  }, warte);
 }
+
+const SPUR_ENDE_NACH = 5;            // geschaffte Buchstaben je Besuch, dann ein Ende
+const spurBesuch = { geschafft: 0 };   // zählt ab dem Öffnen der Buchstaben-Seite
 
 function sterneFliegen() {
   const box = $('#sterne');
@@ -1661,7 +1672,8 @@ function buchstabeOeffnen(i, verlauf = true, vonKachel = false) {
   const eintrag = BUCHSTABEN[i];
   zustand.wahl = vonKachel ? hauptWahl(eintrag) : wortWaehlen(eintrag, gleicherBuchstabe ? zustand.wahl : null);
   $('#bild').innerHTML = zustand.wahl.bild();
-  $('#fortschritt').textContent = sterneText(zustand.sterne[eintrag.b] || 0);
+  $('#fortschritt').textContent = '';   // keine (leeren) Sterne vor dem Kind – Fortschritt sehen die Eltern
+  if (!zustand.lektionSpur && !zustand.nameModus) spielEndeWeg('trace');
   if (!$('#trace').classList.contains('active')) zeigen('trace', verlauf);
   // Layout erst nach dem Anzeigen messen
   requestAnimationFrame(tafelAufbauen);
@@ -1763,8 +1775,10 @@ async function elternOeffnen() {
   });
   const gesamt = BUCHSTABEN.reduce((sum, e) => sum + (zustand.sterne[e.b] || 0), 0);
   const fertig = BUCHSTABEN.filter((e) => (zustand.sterne[e.b] || 0) >= MAX_STERNE).length;
+  const sticker = new Set(zustand.album || []);
   $('#fortschritt-text').textContent =
-    `${gesamt} Sterne gesammelt, ${fertig} von ${BUCHSTABEN.length} Buchstaben mit allen ${MAX_STERNE} Sternen.`;
+    `${gesamt} Sterne gesammelt, ${fertig} von ${BUCHSTABEN.length} Buchstaben mit allen ${MAX_STERNE} Sternen, `
+    + `${alleSticker().filter((x) => sticker.has(x.key)).length} von ${alleSticker().length} Stickern im Album.`;
   // Alle Buchstaben mit Sternen (die Kinder sehen sie nicht mehr auf den Kacheln); 🔒 = noch nicht eingeführt
   const frei = freigeschaltet();
   const reihe = montessori() ? MONTESSORI_GRUPPEN.flat() : BUCHSTABEN.map((e) => e.b);
@@ -1822,16 +1836,24 @@ $('#btn-eltern-zurueck').addEventListener('click', () => { stopAufnahme(); zurSt
 
 // --- Kinder ---
 
+// „übt gerade m a s l“ (Montessori: aktuelle Gruppe) bzw. „alle Buchstaben“ (A–Z)
+function uebtGerade(k) {
+  if ((k.reihenfolge || 'alphabet') !== 'montessori') return 'alle Buchstaben (A–Z)';
+  const sterne = k.sterne || {};
+  const gruppe = MONTESSORI_GRUPPEN.find((g) => !g.every((b) => (sterne[b] || 0) >= FREI_AB_STERNEN));
+  return gruppe ? `übt gerade ${gruppe.join(' ')}` : 'kann alle Gruppen';
+}
+
 function kinderListeZeichnen() {
   const box = $('#kinder-liste');
   box.innerHTML = '';
   kinder.forEach((k) => {
-    const sterne = Object.values(k.sterne || {}).reduce((a, b) => a + b, 0);
+    // Beschreiben statt zählen: keine Sterne-Summen nebeneinander (sonst vergleichen sich Geschwister)
     const zeile = document.createElement('button');
     zeile.className = 'kind-zeile';
     zeile.innerHTML = `<span class="kind-bild">${kindBildHtml(k)}</span>`
       + `<span class="w">${htmlText(k.name)}<br><small>${k.schreibweise === 'gross' ? 'GROSSE' : 'kleine'} Buchstaben`
-      + ` · ${sterne} ⭐</small></span><span class="pfeil">✏️</span>`;
+      + ` · ${uebtGerade(k)}</small></span><span class="pfeil">✏️</span>`;
     zeile.addEventListener('click', () => kindBearbeiten(k.id));
     box.appendChild(zeile);
   });
@@ -1942,7 +1964,8 @@ async function kindFormularZeichnen() {
   const sterne = Object.values(k.sterne || {}).reduce((a, b) => a + b, 0);
   const fertig = BUCHSTABEN.filter((e) => (k.sterne[e.b] || 0) >= MAX_STERNE).length;
   $('#kind-sterne').textContent =
-    `${sterne} Sterne gesammelt, ${fertig} von ${BUCHSTABEN.length} Buchstaben mit allen ${MAX_STERNE} Sternen.`;
+    `${uebtGerade(k)[0].toUpperCase()}${uebtGerade(k).slice(1)}. ${sterne} Sterne gesammelt, ${fertig} von ${BUCHSTABEN.length} Buchstaben `
+    + `mit allen ${MAX_STERNE} Sternen, ${alleSticker().filter((x) => (k.album || []).includes(x.key)).length} von ${alleSticker().length} Stickern.`;
 }
 
 $('#kind-name').addEventListener('change', (e) => {
@@ -2771,7 +2794,7 @@ $('#btn-memory-neu').addEventListener('click', () => { clearTimeout(memory.timer
 
 // Buchstaben, für die man zu Hause gut etwas findet
 const JAGD_BUCHSTABEN = BUCHSTABEN.map((e) => e.b).filter((b) => !'cqvxyäöüß'.includes(b));
-const jagd = { b: null, foto: null, stimme: null, timer: null };
+const jagd = { b: null, foto: null, stimme: null, timer: null, gefunden: 0 };
 let fundUrls = [];
 
 const fundBesitzer = () => (aktivesKind() ? aktivesKind().id : 'ohne');
@@ -2849,10 +2872,23 @@ async function jagdSpeichern() {
   jubel.classList.add('zeigen');
   glockenspiel();
   folgeAbspielen([...lobMitName(), { url: `audio/${dateiName(jagd.b)}-laut.wav` }, ...(jagd.stimme ? [blobQuelle(jagd.stimme)] : [])], 'Super!');
-  jagd.timer = setTimeout(() => { jubel.classList.remove('zeigen'); jagdNeuerBuchstabe(); }, 3600);
+  jagd.gefunden++;
+  jagd.timer = setTimeout(() => {
+    if (jagd.gefunden >= JAGD_ENDE_NACH) {
+      $('#jagd-jubel-bild').textContent = '🏆';
+      spielEnde('jagd', () => { jagd.gefunden = 0; spielEndeWeg('jagd'); jagdNeuerBuchstabe(); });
+      return;
+    }
+    jubel.classList.remove('zeigen');
+    jagdNeuerBuchstabe();
+  }, 3600);
 }
 
+const JAGD_ENDE_NACH = 3;   // Funde je Besuch – das Herumlaufen ist wertvoll, braucht aber auch einen Schluss
+
 function jagdStarten() {
+  jagd.gefunden = 0;
+  spielEndeWeg('jagd');
   zeigen('jagd');
   jagdNeuerBuchstabe();
 }
@@ -3005,9 +3041,10 @@ function alleSticker() {
 }
 
 function albumZeichnen(fundMedien = {}) {
-  const alle = alleSticker();
+  // Erinnerungsbuch statt Sammelpflicht: nur, was das Kind gespurt, gefunden und erzählt hat – kein Zähler, keine „?“
   const gesammelt = new Set(zustand.album || []);
-  $('#album-zahl').textContent = `${alle.filter((s) => gesammelt.has(s.key)).length} / ${alle.length}`;
+  const alle = alleSticker().filter((s) => gesammelt.has(s.key));
+  $('#album-zahl').textContent = '';
   const raster = $('#album-raster');
   raster.innerHTML = '';
   // Oben: Fotos aus der Buchstaben-Jagd
@@ -3058,6 +3095,15 @@ function albumZeichnen(fundMedien = {}) {
     el.addEventListener('click', () => folgeAbspielen(hat ? w.ansage() : [{ url: `audio/${dateiName(e.b)}-laut.wav` }]));
     raster.appendChild(el);
   });
+  // Noch leer: ein Stift, der zum Nachspuren führt (dort gibt es die ersten Sticker)
+  if (!raster.children.length) {
+    const leer = document.createElement('button');
+    leer.className = 'album-leer';
+    leer.textContent = '✏️';
+    leer.setAttribute('aria-label', 'Zum Nachspuren');
+    leer.addEventListener('click', () => { audio(); buchstabenZeigen(); });
+    raster.appendChild(leer);
+  }
 }
 
 async function albumOeffnen() {
@@ -4435,6 +4481,7 @@ silbenPruefen();
 
 // Spiele-Leiste
 function buchstabenZeigen() {
+  spurBesuch.geschafft = 0;
   rasterZeichnen();
   zeigen('buchstaben');
 }

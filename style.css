@@ -725,3 +725,7 @@ body.laedt #home .spiele-raster { visibility: hidden; }
 .kiste-mikro[hidden] { display: none; }
 .kiste-mikro.wackelt { animation: wackeln 0.6s ease; }
 #btn-jagd-stimme.wackelt { animation: wackeln 0.6s ease; }
+
+/* Album noch leer: ein Stift zum Nachspuren */
+.album-leer { grid-column: 1 / -1; justify-self: center; width: 140px; height: 140px; border-radius: 50%; border: none;
+  background: var(--papier); box-shadow: var(--schatten); font-size: 4rem; margin-top: 40px; animation: trommelwarten 1.8s ease-in-out infinite; }

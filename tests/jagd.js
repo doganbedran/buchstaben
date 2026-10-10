@@ -57,6 +57,17 @@
   await sicherungEinspielen(JSON.parse(JSON.stringify(s)));
   pruefe((await datenbank.medienVon(`fund-${lina.id}`)).length === 3, 'Funde nach Einspielen nicht zurück');
 
+  // 7. Natürliches Ende nach JAGD_ENDE_NACH Funden: Pokal + 🏠/🔁 statt endlos weiter
+  jagdStarten();
+  jagd.gefunden = JAGD_ENDE_NACH - 1;
+  jagdFotoGesetzt(await foto('#4caf50'));
+  await jagdSpeichern();
+  await warte(4000);
+  pruefe($('#jagd .spiel-ende') && !$('#jagd .spiel-ende').hidden, 'Jagd ohne Ende');
+  $('#jagd .ende-nochmal').click();
+  pruefe(jagd.gefunden === 0 && $('#jagd .spiel-ende').hidden, 'Nochmal startet die Jagd nicht neu');
+  history.back(); await warte(300);
+
   // Ansicht: Album mit Funden
   await kindWaehlen(lina.id);
   await albumOeffnen();
