@@ -46,6 +46,7 @@ LAEUFE=(
   "mitmachen|tests/mitmachen.html|412,860|90"
   "info|tests/info.html|412,860|60"
   "pause|tests/pause.html|412,860|60"
+  "datenvertrag|tests/datenvertrag.html|412,860|60"
   "offline|tests/offline.html|412,860|60"
   "reime|tests/reime.html|412,860|90"
   "reime-klein|tests/reime.html|360,640|90"

@@ -52,6 +52,7 @@ seite eigene-kisten 12000
 seite menschen 12000
 seite mitmachen 12000
 seite info 5000
+seite datenvertrag 4000
 seite pause 6000 '  // Alte Wortnest-Pause (vor der gemeinsamen Pause mit Zahlennest)
   localStorage.setItem("pauseNach", "15");
   localStorage.setItem("spielzeit", JSON.stringify({ ms: 60000, letzte: Date.now() }));'

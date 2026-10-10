@@ -11,11 +11,11 @@
   $('#btn-info').click();
   pruefe(aktiv('info'), 'Infoseite nicht offen');
   const text = $('#info').textContent;
-  ['Datenschutz', 'Alles bleibt auf diesem Gerät', 'GitHub Pages', 'AGPL', 'CC BY-NC-ND', 'Mikrofon', 'Open Font License'].forEach((w) => pruefe(text.includes(w), `Text fehlt: ${w}`));
+  ['Datenschutz', 'Alles bleibt auf diesem Gerät', 'GitHub Pages', 'AGPL', 'CC BY-NC-ND', 'Mikrofon', 'Open Font License', 'Lauschling'].forEach((w) => pruefe(text.includes(w), `Text fehlt: ${w}`));
   pruefe($('#info-version').textContent === `Version ${APP_VERSION}`, 'Version fehlt');
   // Alle Links öffnen ein neues Fenster und gehen nur zu bekannten Seiten
   [...$('#info').querySelectorAll('a')].forEach((a) => pruefe(a.target === '_blank' && a.rel.includes('noopener')
-    && /^https:\/\/(github\.com|pages\.github\.com|docs\.github\.com|www\.gnu\.org|creativecommons\.org)\//.test(a.href), `Link: ${a.href}`));
+    && /^https:\/\/(github\.com|pages\.github\.com|docs\.github\.com|www\.gnu\.org|creativecommons\.org|doganbedran\.github\.io)\//.test(a.href), `Link: ${a.href}`));
   history.back(); await warte(400);
   pruefe(aktiv('eltern'), 'Zurück nicht im Elternbereich');
 

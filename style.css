@@ -13,7 +13,7 @@
   --bg: #fdf6ec;
   --papier: #ffffff;
   --text: #4a3f35;
-  --leise: #8a7d70;
+  --leise: #5e5348;   /* Hinweise: 7,5:1 auf Weiß (vorher #8a7d70 mit nur 4,0:1) */
   --rand: #eadfcf;
   --akzent: #f28c38;
   --gruen: #5cb85c;
@@ -460,7 +460,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .anpassen-zeile .vorschau { font-size: 2.2rem; text-align: center; line-height: 1; }
 .anpassen-zeile .w { font-size: 0.95rem; line-height: 1.35; }
 .anpassen-zeile .w small { color: var(--leise); }
-.anpassen-zeile .w b { color: var(--gruen); font-weight: 600; }
+.anpassen-zeile .w b { color: #2e7d32; font-weight: 600; }
 .anpassen-zeile .aktionen {
   grid-column: 1 / -1;
   display: flex;
@@ -481,7 +481,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .eigenes-wort .vorschau { font-size: 1.8rem; text-align: center; line-height: 1; }
 .eigenes-wort .w { font-size: 0.92rem; line-height: 1.3; }
 .eigenes-wort .w small { color: var(--leise); }
-.eigenes-wort .w b { color: var(--gruen); font-weight: 600; }
+.eigenes-wort .w b { color: #2e7d32; font-weight: 600; }
 .eigenes-wort .mini-btn { width: 36px; height: 36px; font-size: 1rem; }
 .text-btn.klein { padding: 6px 10px; font-size: 0.88rem; align-self: flex-start; }
 
@@ -496,7 +496,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lob-zeile:last-child { border-bottom: none; }
 .lob-zeile .w { font-size: 0.95rem; line-height: 1.35; }
 .lob-zeile .w small { color: var(--leise); }
-.lob-zeile .w b, .hinweis b { color: var(--gruen); font-weight: 600; }
+.lob-zeile .w b, .hinweis b { color: #2e7d32; font-weight: 600; }   /* Text-Grün: 5,1:1 auf Weiß (--gruen nur 2,5:1, bleibt für Flächen) */
 .lob-zeile .mini-btn { width: 40px; height: 40px; }
 .mini-btn {
   width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--rand);
@@ -798,3 +798,4 @@ body.laedt #home .spiele-raster { visibility: hidden; }
 .mitmachen-hoert.laeuft span { animation: hoert-balken 5s linear forwards; }
 @keyframes hoert-balken { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .mitmachen-hoert[hidden] { display: none; }
+.willkommen .absender { margin: -8px 0 0; font-size: 0.95rem; color: var(--leise); }
