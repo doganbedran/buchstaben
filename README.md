@@ -118,6 +118,7 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
   spricht danach die Silben zu den Bögen. 5 Runden (2, 1, 2, 3, 3 Silben). Daneben: App trommelt vor, Kind nochmal;
   beim zweiten Mal gemeinsam. Wörter und Trennung in `SILBEN` (`letters.js`), Aufnahmen `audio/silbe-<wort>-<nr>.wav`
   (fehlt eine, trommelt die App ohne Stimme).
+  👫 Zu zweit: zwei Trommeln nebeneinander, Geschwister hauen abwechselnd; Bögen der zweiten Trommel gestrichelt.
 
 ## Aufnahme-Studio (Sprecher-Stimme)
 Testserver starten, dann http://localhost:8765/werkzeuge/aufnahme-studio.html öffnen (Mikrofon erlauben).

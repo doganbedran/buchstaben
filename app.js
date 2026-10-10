@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 51;
+const APP_VERSION = 52;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -4058,26 +4058,41 @@ function silbenTimerStoppen() {
   silben.phase = 'aus';
 }
 
+// Zu zweit trommeln (👫): zwei Trommeln, Geschwister hauen abwechselnd je eine Silbe – zusammen statt gegeneinander.
+// Gezählt werden die Schläge beider Trommeln; wer wann haut, wird nicht geprüft.
+const trommeln = () => [...document.querySelectorAll('#silben .silben-trommel')].filter((t) => !t.hidden);
+
 // wach = Kind ist dran (volle Farbe, pulsiert bis zum ersten Schlag)
 function trommelZustand(wach) {
-  const t = $('#silben-trommel');
-  t.classList.toggle('wach', wach);
-  t.classList.toggle('wartet', wach);
+  trommeln().forEach((t) => {
+    t.classList.toggle('wach', wach);
+    t.classList.toggle('wartet', wach);
+  });
 }
 
-// Einmal-Animationen: vorher alle entfernen, sonst überdecken sie sich gegenseitig
-function trommelAnimation(klasse) {
-  const t = $('#silben-trommel');
-  t.classList.remove('schlag', 'wackeln', 'aufwachen');
-  void t.offsetWidth;
-  t.classList.add(klasse);
+// Einmal-Animationen: vorher alle entfernen, sonst überdecken sie sich gegenseitig.
+// welche = Nummer der Trommel; ohne Angabe alle
+function trommelAnimation(klasse, welche = null) {
+  trommeln().filter((_, i) => welche === null || i === welche % trommeln().length).forEach((t) => {
+    t.classList.remove('schlag', 'wackeln', 'aufwachen');
+    void t.offsetWidth;
+    t.classList.add(klasse);
+  });
+}
+
+function zuZweitSetzen(an) {
+  silben.zuZweit = an;
+  $('#silben-trommel-2').hidden = !an;
+  $('.silben-trommeln').classList.toggle('zwei', an);
+  $('#btn-silben-zwei').classList.toggle('aktiv', an);
+  $('#btn-silben-zwei').setAttribute('aria-pressed', an);
 }
 
 const BOGEN_SVG = '<svg viewBox="0 0 72 40"><path d="M6 8 Q36 52 66 8"/></svg>';
 
-function bogenHinzu(reihe, app = false) {
+function bogenHinzu(reihe, app = false, zweite = false) {
   const b = document.createElement('div');
-  b.className = `silben-bogen neu${app ? ' app' : ''}`;
+  b.className = `silben-bogen neu${app ? ' app' : ''}${zweite ? ' zweite' : ''}`;
   b.innerHTML = BOGEN_SVG;
   b.addEventListener('animationend', () => b.classList.remove('neu', 'leuchtet'));
   $(reihe).appendChild(b);
@@ -4121,7 +4136,7 @@ async function vortrommeln(nr, { boegen = null, takt = SILBEN_TAKT_VOR } = {}) {
     if (!silbenAktuell(nr)) return false;
     const b = boegen ? boegen[i] : bogenHinzu('#silben-boegen-app', true);
     if (b) bogenLeuchten(b);
-    trommelAnimation('schlag');
+    trommelAnimation('schlag', i);   // zu zweit: abwechselnd links und rechts
     bumm();
     vibrieren(25);
     const a = silbeSprechen(i + 1);
@@ -4203,22 +4218,22 @@ function silbenErinnern(nr) {
   }, silben.erinnert === 0 ? 6000 : 8000);
 }
 
-function trommelGeschlagen() {
+function trommelGeschlagen(welche = 0) {
   audio();
-  if (silben.phase === 'zusammen') { trommelAnimation('schlag'); bumm(0.35); vibrieren(25); return; }
+  if (silben.phase === 'zusammen') { trommelAnimation('schlag', welche); bumm(0.35); vibrieren(25); return; }
   // Noch nicht dran: leise federn, damit die Trommel nicht "kaputt" wirkt, aber nichts zählt
-  if (silben.phase !== 'trommeln') { trommelAnimation('schlag'); bumm(0.12); return; }
+  if (silben.phase !== 'trommeln') { trommelAnimation('schlag', welche); bumm(0.12); return; }
   const jetzt = performance.now();
   if (silben.letzter && jetzt - silben.letzter < SILBEN_ZITTERN) return;
   silben.letzter = jetzt;
   clearTimeout(silben.erinnerTimer);
-  $('#silben-trommel').classList.remove('wartet');
-  trommelAnimation('schlag');
+  trommeln().forEach((t) => t.classList.remove('wartet'));
+  trommelAnimation('schlag', welche);
   bumm();
   vibrieren(25);
   if (!silben.start) silben.start = jetzt;
-  // Wildes Trommeln darf klingen, aber höchstens Silbenzahl + 2 Bögen
-  if (silben.schlaege < Math.min(silben.teile.length + 2, 6)) { silben.schlaege++; bogenHinzu('#silben-boegen'); }
+  // Wildes Trommeln darf klingen, aber höchstens Silbenzahl + 2 Bögen (zu zweit: Bogen in der Farbe der Trommel)
+  if (silben.schlaege < Math.min(silben.teile.length + 2, 6)) { silben.schlaege++; bogenHinzu('#silben-boegen', false, welche === 1); }
   clearTimeout(silben.timer);
   if (jetzt - silben.start > SILBEN_DAUER_MAX) { silbenAuswerten(); return; }
   silben.timer = setTimeout(silbenAuswerten, SILBEN_FERTIG_NACH);
@@ -4252,7 +4267,7 @@ async function silbenAuswerten() {
   $('#silben-boegen').innerHTML = '';
   silben.phase = 'zusammen';
   trommelZustand(true);
-  $('#silben-trommel').classList.remove('wartet');
+  trommeln().forEach((t) => t.classList.remove('wartet'));
   if (!(await vortrommeln(nr, { takt: SILBEN_TAKT_ZUSAMMEN }))) return;
   silben.phase = 'app';
   trommelZustand(false);
@@ -4293,8 +4308,11 @@ function silbenStarten() {
   silbenNeueRunde();
 }
 
-$('#silben-trommel').addEventListener('pointerdown', (e) => { e.preventDefault(); trommelGeschlagen(); });
-$('#silben-trommel').addEventListener('contextmenu', (e) => e.preventDefault());
+['#silben-trommel', '#silben-trommel-2'].forEach((sel, i) => {
+  $(sel).addEventListener('pointerdown', (e) => { e.preventDefault(); trommelGeschlagen(i); });
+  $(sel).addEventListener('contextmenu', (e) => e.preventDefault());
+});
+$('#btn-silben-zwei').addEventListener('click', () => { audio(); zuZweitSetzen(!silben.zuZweit); });
 $('#btn-silben-home').addEventListener('click', () => { silbenTimerStoppen(); wiedergabeStoppen(); zurStartseite(); });
 // Wort nochmal hören: laufender Versuch beginnt von vorn (nicht, während die App selbst spricht oder trommelt)
 const silbenWortNochmal = () => { if (silben.phase === 'trommeln') { audio(); silbenVorsprechen(false); } };

@@ -194,6 +194,23 @@
   await bis(() => aktiv('home'));
   pruefe(aktiv('home') && silben.phase === 'aus', 'Haus am Ende führt nicht nach Hause');
 
+  // 15b. Zu zweit trommeln: zwei Trommeln, Schläge beider zählen, Bögen in der Farbe der Trommel, Vormachen abwechselnd
+  knopf().click();
+  await wach();
+  $('#btn-silben-zwei').click();
+  pruefe(!$('#silben-trommel-2').hidden && silben.zuZweit, 'Zweite Trommel fehlt');
+  silben.letzter = 0; $('#silben-trommel').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  silben.letzter = 0; $('#silben-trommel-2').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  pruefe(silben.schlaege === 2 && document.querySelectorAll('#silben-boegen .silben-bogen.zweite').length === 1, 'Zu zweit: Schläge/Bögen');
+  clearTimeout(silben.timer);
+  const r1 = $('#silben-trommel').getBoundingClientRect(); const r2 = $('#silben-trommel-2').getBoundingClientRect();
+  pruefe(r1.right <= r2.left && r2.right <= innerWidth && r1.left >= 0, 'Trommeln überlappen oder ragen heraus');
+  await vortrommeln(silben.nummer, { takt: 10 });
+  pruefe($('#silben-trommel-2').classList.contains('schlag') || silben.teile.length < 2, 'Vormachen nicht abwechselnd');
+  $('#btn-silben-zwei').click();
+  pruefe($('#silben-trommel-2').hidden && !silben.zuZweit, 'Zurück zu einer Trommel');
+  $('#btn-silben-home').click(); await bis(() => aktiv('home'));
+
   // Ansicht: neues Spiel, Kind hat in Runde 1 zweimal getrommelt
   knopf().click();
   await wach();
