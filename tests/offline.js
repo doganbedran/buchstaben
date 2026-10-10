@@ -21,6 +21,13 @@
     pruefe(await cache.match(datei), `Nicht im Cache: ${datei}`);
   }
   pruefe((await caches.keys()).includes(`buchstaben-v${APP_VERSION}`), 'Cache-Name passt nicht zu APP_VERSION');
+  // Schrift Andika: mitgeliefert, offline im Cache und wirklich geladen (sonst zeigt jedes Gerät seine eigene Schrift)
+  for (const w of ['400', '700']) pruefe(await cache.match(`fonts/andika-latin-${w}.woff2`), `Schrift ${w} nicht im Cache`);
+  await document.fonts.load('700 20px Andika', 'Wortnest');
+  await document.fonts.load('400 20px Andika', 'Wortnest');
+  const geladen = [...document.fonts].filter((f) => f.family.replace(/["']/g, '') === 'Andika' && f.status === 'loaded').map((f) => f.weight);
+  pruefe(geladen.includes('400') && geladen.includes('700'), `Andika nicht geladen: ${geladen}`);
+  pruefe(getComputedStyle(document.body).fontFamily.startsWith('"Andika"') || getComputedStyle(document.body).fontFamily.startsWith('Andika'), 'Body nicht in Andika');
 
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;color:#fff;font:12px monospace;padding:6px;z-index:9;background:'
