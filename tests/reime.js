@@ -59,6 +59,33 @@
   await offen();
   pruefe(!reim.gesperrt, '🔊 rettet nicht');
 
+  // 3c. Leichte Stufe „Reime hören“: keine Auswahl, beide Bilder antippen, „Jetzt du!“, 5 Paare
+  $('#btn-reime-home').click(); await pause(300);
+  await elternOeffnen();
+  $('#reim-hoeren').click();
+  pruefe(zustand.reimHoeren === true && speicher.lesen('reimHoeren') === true, 'Einstellung „Reime hören“ nicht gespeichert');
+  history.back(); await pause(300);
+  reimStarten();
+  await offen();
+  pruefe(karten().length === 1 && $('#reime-ziel .reim-karte') && reim.paar.stufe === 'leicht', 'Hör-Stufe zeigt eine Auswahl');
+  pruefe(gespielt.some((f) => f[0] === 'audio/ansage-reim-hoer-mal.wav' && f.includes('audio/ansage-reim-das-reimt.wav')), 'Paar nicht vorgesprochen');
+  for (let i = 0; i < REIM_RUNDEN.length; i++) {
+    await offen();
+    tippe($('#reime-ziel .reim-karte'));
+    await offen();
+    pruefe(reim.runde === i, 'Schon nach einem Bild weiter');
+    tippe(karten()[0]);
+    await bis(() => reim.runde === i + 1, 4000);
+    pruefe(gespielt.some((f) => f[2] === 'audio/ansage-silben-jetzt-du.wav'), 'Kein „Jetzt du!“');
+  }
+  await bis(() => $('#reime .spiel-ende') && !$('#reime .spiel-ende').hidden);
+  pruefe($('#reime .spiel-ende') && !$('#reime .spiel-ende').hidden, 'Hör-Stufe ohne Ende');
+  // Ohne Tipp geht es nach einer Weile zum Mitsprechen weiter
+  reimStarten();
+  await bis(() => reim.runde === 1, 4000);
+  pruefe(reim.runde === 1, 'Ohne Tipp hängt die Hör-Stufe');
+  zustand.reimHoeren = false;
+
   // 4. Home stoppt
   const nr = reim.nummer;
   $('#btn-reime-home').click();

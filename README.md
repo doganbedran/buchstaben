@@ -110,6 +110,8 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
   Einmal vorgemacht (Maus – Haus), dann 5 Runden (3 leichte, 2 mittlere Paare aus `reime.js`). Der Ablenker hat nie
   denselben betonten Vokal oder Anlaut wie das Ziel. Daneben: beide Wörter hören, das passende Bild pulsiert.
   Eher fürs 4-jährige Kind – steht nicht im Start-Regal. Neue Wörter in `audio/reim-<id>.wav`.
+  Leichte Stufe „Reime nur hören“ (je Kind im Elternbereich): keine Auswahl – Paar hören, beide Bilder antippen,
+  „Jetzt du!“ zum Mitsprechen.
 - 🥁 **Silben-Trommel** – Wort hören, pro Silbe einmal auf die Trommel hauen (Silbenbögen erscheinen); die App
   spricht danach die Silben zu den Bögen. 5 Runden (2, 1, 2, 3, 3 Silben). Daneben: App trommelt vor, Kind nochmal;
   beim zweiten Mal gemeinsam. Wörter und Trennung in `SILBEN` (`letters.js`), Aufnahmen `audio/silbe-<wort>-<nr>.wav`

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 49;
+const APP_VERSION = 50;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -201,6 +201,7 @@ function einstellungenLaden() {
   zustand.album = k ? (k.album || []) : speicher.lesen('album', []);
   zustand.reihenfolge = k ? (k.reihenfolge || 'alphabet') : speicher.lesen('reihenfolge', reihenfolgeStandard());
   zustand.farbe = k ? (k.farbe || 'bunt') : speicher.lesen('farbe', 'bunt');
+  zustand.reimHoeren = k ? !!k.reimHoeren : speicher.lesen('reimHoeren', false);
   zustand.spiele = regalVon(k ? (regalAus(k) || []) : appWeitAus());
   zustand.funde = k ? (k.funde || []) : speicher.lesen('funde', []);
 }
@@ -213,6 +214,7 @@ function einstellungenSpeichern() {
     k.album = zustand.album;
     k.reihenfolge = zustand.reihenfolge;
     k.farbe = zustand.farbe;
+    k.reimHoeren = zustand.reimHoeren;
     k.spieleAus = ausVon(zustand.spiele);
     delete k.spiele;
     k.funde = zustand.funde;
@@ -221,6 +223,7 @@ function einstellungenSpeichern() {
   speicher.schreiben('funde', zustand.funde);
   speicher.schreiben('reihenfolge', zustand.reihenfolge);
   speicher.schreiben('farbe', zustand.farbe);
+  speicher.schreiben('reimHoeren', zustand.reimHoeren);
   speicher.schreiben('spieleAus', ausVon(zustand.spiele));
   try { localStorage.removeItem('spiele'); } catch { /* egal */ }
   speicher.schreiben('schreibweise', zustand.schreibweise);
@@ -1749,6 +1752,7 @@ async function elternOeffnen() {
 }
 
 function spieleWahlZeichnen() {
+  $('#reim-hoeren').checked = !!zustand.reimHoeren;
   regalWahlZeichnen($('#spiele-wahl'), zustand.spiele || ALLE_SPIELE, (neu) => {
     zustand.spiele = neu;
     einstellungenSpeichern();
@@ -1824,6 +1828,7 @@ async function kindNeu() {
     album: erstesKind ? speicher.lesen('album', []) : [],
     reihenfolge: erstesKind ? speicher.lesen('reihenfolge', reihenfolgeStandard()) : 'montessori',
     farbe: erstesKind ? speicher.lesen('farbe', 'bunt') : 'bunt',
+    reimHoeren: erstesKind ? speicher.lesen('reimHoeren', false) : false,
     spieleAus: erstesKind ? appWeitAus() : START_AUS,
     funde: erstesKind ? speicher.lesen('funde', []) : [],
     erstellt: Date.now(),
@@ -1861,6 +1866,7 @@ async function kindAendern(fn) {
     zustand.album = kindInArbeit.album || [];
     zustand.reihenfolge = kindInArbeit.reihenfolge || 'alphabet';
     zustand.farbe = kindInArbeit.farbe || 'bunt';
+    zustand.reimHoeren = !!kindInArbeit.reimHoeren;
     zustand.spiele = regalVon(regalAus(kindInArbeit) || []);
     zustand.funde = kindInArbeit.funde || [];
   }
@@ -1886,6 +1892,7 @@ async function kindFormularZeichnen() {
 
   document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => { r.checked = r.value === k.schreibweise; });
   document.querySelectorAll('input[name="kind-reihenfolge"]').forEach((r) => { r.checked = r.value === (k.reihenfolge || 'alphabet'); });
+  $('#kind-reim-hoeren').checked = !!k.reimHoeren;
   regalWahlZeichnen($('#kind-spiele'), regalVon(regalAus(k) || []), (neu) => kindAendern((kk) => { kk.spieleAus = ausVon(neu); delete kk.spiele; }));
 
   const profile = [STANDARD, ...(await datenbank.profile())];
@@ -1925,6 +1932,8 @@ document.querySelectorAll('input[name="kind-schreibweise"]').forEach((r) => {
 document.querySelectorAll('input[name="kind-reihenfolge"]').forEach((r) => {
   r.addEventListener('change', () => kindAendern((k) => { k.reihenfolge = r.value; }));
 });
+$('#kind-reim-hoeren').addEventListener('change', (e) => kindAendern((k) => { k.reimHoeren = e.target.checked; }));
+$('#reim-hoeren').addEventListener('change', (e) => { zustand.reimHoeren = e.target.checked; einstellungenSpeichern(); });
 
 document.querySelectorAll('input[name="reihenfolge"]').forEach((r) => {
   r.addEventListener('change', () => {
@@ -3866,7 +3875,74 @@ function reimGeschafft() {
   jubel.classList.add('zeigen');
   glockenspiel();
   folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
-  reim.timer = setTimeout(() => reimAktuell(nr) && spielEnde('reime', () => { reim.runde = 0; reimNeueRunde(); }), 2200);
+  reim.timer = setTimeout(() => reimAktuell(nr) && spielEnde('reime', () => { reim.runde = 0; (zustand.reimHoeren ? reimHoerRunde : reimNeueRunde)(); }), 2200);
+}
+
+// Leichte Stufe für Jüngere („Reime hören“, je Kind im Elternbereich): keine Auswahl – das Paar hören,
+// beide Bilder antippen, dann „Jetzt du!“ zum Mitsprechen (wie die Montessori-Darbietung: erst zeigen und hören)
+async function reimHoerRunde() {
+  reimStoppen();
+  const nr = reim.nummer;
+  const auswahl = REIME.filter((p) => p.stufe === 'leicht' && !reim.vorher.includes(p));
+  reim.paar = zufall(auswahl.length ? auswahl : REIME.filter((p) => p.stufe === 'leicht'));
+  reim.vorher = [...reim.vorher.slice(-3), reim.paar];
+  [reim.ziel, reim.partner] = mischen(reim.paar.woerter);
+  reim.karten = [reim.partner];
+  reim.treffer = false;
+  reim.angetippt = new Set();
+  reimRundenAnzeigen();
+  $('#reime-ziel').innerHTML = '';
+  const oben = reimKarte(reim.ziel, ' kommt');
+  oben.addEventListener('click', () => reimHoerGetippt(reim.ziel, oben));
+  $('#reime-ziel').appendChild(oben);
+  const box = $('#reime-karten');
+  box.innerHTML = '';
+  const unten = reimKarte(reim.partner, ' kommt');
+  unten.addEventListener('click', () => reimHoerGetippt(reim.partner, unten));
+  box.appendChild(unten);
+  if (!(await reimSagen(nr, [{ url: 'audio/ansage-reim-hoer-mal.wav' }, reimQuelle(reim.ziel), reimQuelle(reim.partner),
+    { url: 'audio/ansage-reim-das-reimt.wav' }], `Hör mal: ${reim.ziel[1]} … ${reim.partner[1]}. Das reimt sich!`))) return;
+  reim.gesperrt = false;
+  oben.classList.add('pulsiert');
+  unten.classList.add('pulsiert');
+  // Tippt das Kind nicht: Paar nach 12 s noch einmal, dann geht es zum Mitsprechen weiter
+  reim.timer = setTimeout(async () => {
+    if (!reimAktuell(nr) || reim.treffer) return;
+    reim.gesperrt = true;
+    if (await reimSagen(nr, [reimQuelle(reim.ziel), reimQuelle(reim.partner)], `${reim.ziel[1]} – ${reim.partner[1]}`)) reimHoerMitsprechen(nr);
+  }, 12000);
+}
+
+async function reimHoerGetippt(w, btn) {
+  const jetzt = performance.now();
+  if (reim.gesperrt || reim.treffer || jetzt - reim.letzterTipp < 400) return;
+  reim.letzterTipp = jetzt;
+  audio();
+  const nr = reim.nummer;
+  btn.classList.remove('pulsiert');
+  karteAnimieren(btn, 'huepft');
+  reim.angetippt.add(w[0]);
+  reim.gesperrt = true;
+  if (!(await reimSagen(nr, [reimQuelle(w)], w[1]))) return;
+  if (reim.angetippt.size < 2) { reim.gesperrt = false; return; }
+  clearTimeout(reim.timer);
+  reimHoerMitsprechen(nr);
+}
+
+async function reimHoerMitsprechen(nr) {
+  reim.treffer = true;
+  reim.gesperrt = true;
+  if (!(await reimSagen(nr, [reimQuelle(reim.ziel), reimQuelle(reim.partner), { url: 'audio/ansage-silben-jetzt-du.wav' }],
+    `${reim.ziel[1]} – ${reim.partner[1]}. Jetzt du!`))) return;
+  await warten(4000);   // Zeit zum Mitsprechen (wird nicht geprüft)
+  if (!reimAktuell(nr)) return;
+  glockenspiel();
+  reim.runde++;
+  reimRundenAnzeigen();
+  reim.timer = setTimeout(() => {
+    if (!reimAktuell(nr)) return;
+    if (reim.runde >= REIM_RUNDEN.length) reimGeschafft(); else reimHoerRunde();
+  }, 900);
 }
 
 function reimStarten() {
@@ -3874,7 +3950,7 @@ function reimStarten() {
   reim.vorher = [REIME[0]];   // das vorgemachte Paar nicht gleich als erste Aufgabe
   spielEndeWeg('reime');
   zeigen('reime');
-  reimVormachen();
+  if (zustand.reimHoeren) reimHoerRunde(); else reimVormachen();
 }
 
 $('#btn-reime-home').addEventListener('click', () => { reimStoppen(); wiedergabeStoppen(); zurStartseite(); });
@@ -3882,11 +3958,12 @@ $('#btn-reime-home').addEventListener('click', () => { reimStoppen(); wiedergabe
 $('#btn-reime-laut').addEventListener('click', () => {
   if (!reim.ziel || reim.treffer) return;
   audio();
+  if (zustand.reimHoeren) { reimHoerRunde(); return; }
   reimStoppen();
   reimFragen(reim.nummer);
 });
 // Zielbild antippen = Zielwort nochmal
-$('#reime-ziel').addEventListener('click', () => { if (!reim.gesperrt && reim.ziel) { audio(); folgeAbspielen([reimQuelle(reim.ziel)]); } });
+$('#reime-ziel').addEventListener('click', () => { if (!zustand.reimHoeren && !reim.gesperrt && reim.ziel) { audio(); folgeAbspielen([reimQuelle(reim.ziel)]); } });
 
 // ---------- Silben-Trommel: pro Silbe einmal auf die Trommel hauen ----------
 
@@ -4276,6 +4353,7 @@ async function sicherungErstellen() {
       album: speicher.lesen('album', []),
       reihenfolge: speicher.lesen('reihenfolge', 'alphabet'),
       farbe: speicher.lesen('farbe', 'bunt'),
+      reimHoeren: speicher.lesen('reimHoeren', false),
       spieleAus: appWeitAus(),
       funde: speicher.lesen('funde', []),
     },
@@ -4337,6 +4415,7 @@ async function sicherungEinspielen(s) {
     speicher.schreiben('album', s.einstellungen.album || []);
     speicher.schreiben('reihenfolge', s.einstellungen.reihenfolge || 'alphabet');
     speicher.schreiben('farbe', s.einstellungen.farbe || 'bunt');
+    speicher.schreiben('reimHoeren', !!s.einstellungen.reimHoeren);
     speicher.schreiben('spieleAus', regalAus(s.einstellungen) || []);
   }
   await kinderLaden();
