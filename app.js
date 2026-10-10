@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 58;
+const APP_VERSION = 59;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -553,8 +553,49 @@ window.addEventListener('popstate', async () => {
 
 // Spiel-Ende: Pokal bleibt stehen, dann großes Haus und kleineres Nochmal.
 // Kein automatisches Weiterspielen – Kinder sollen ein natürliches Ende erleben.
+// Sanfte Pause (Elternbereich, pro Gerät, Standard aus): nach X Minuten Spielzeit kommt am nächsten Spielende statt
+// 🏠/🔁 ein ruhiges Pausen-Bild – nie mitten im Spiel, kein Countdown, keine Sperre. Gezählt wird nur sichtbare Spielzeit;
+// nach 30 Minuten ohne Benutzung beginnt die Zählung neu.
+const PAUSE_NEUSTART = 30 * 60000;
+const spielzeit = { ms: 0, letzte: 0 };
+(() => {
+  const gespeichert = speicher.lesen('spielzeit', null);
+  if (gespeichert && Date.now() - gespeichert.letzte < PAUSE_NEUSTART) Object.assign(spielzeit, gespeichert);
+})();
+setInterval(() => {
+  const jetzt = Date.now();
+  const elternSicht = document.querySelector('.screen.eltern.active');
+  if (document.hidden || elternSicht) return;   // nur sichtbare Spielzeit zählt
+  if (spielzeit.letzte && jetzt - spielzeit.letzte > PAUSE_NEUSTART) spielzeit.ms = 0;
+  spielzeit.ms += Math.min(10000, spielzeit.letzte ? jetzt - spielzeit.letzte : 10000);
+  spielzeit.letzte = jetzt;
+  speicher.schreiben('spielzeit', spielzeit);
+}, 10000);
+
+const pauseFaellig = () => {
+  const minuten = speicher.lesen('pauseNach', 0);
+  return minuten > 0 && spielzeit.ms >= minuten * 60000;
+};
+
+function pauseZeigen(screen) {
+  let pause = screen.querySelector('.spiel-pause');
+  if (!pause) {
+    pause = document.createElement('div');
+    pause.className = 'spiel-pause';
+    pause.innerHTML = '<div class="pause-bild" aria-hidden="true">😴</div><button class="ende-home" aria-label="Fertig">🏠</button>';
+    pause.querySelector('.ende-home').addEventListener('click', () => { pause.hidden = true; screen.querySelector('.topbar .icon-btn').click(); });
+    screen.appendChild(pause);
+  }
+  pause.hidden = false;
+  screen.querySelector('.jubel').classList.remove('zeigen');
+  folgeAbspielen([{ url: 'audio/ansage-pause.wav' }], 'Jetzt machen wir eine Pause.');
+  spielzeit.ms = 0;   // nach der Pause darf wieder gespielt werden – die Eltern entscheiden
+  speicher.schreiben('spielzeit', spielzeit);
+}
+
 function spielEnde(id, nochmal) {
   const screen = $(`#${id}`);
+  if (pauseFaellig()) { pauseZeigen(screen); return; }
   let ende = screen.querySelector('.spiel-ende');
   if (!ende) {
     ende = document.createElement('div');
@@ -572,6 +613,8 @@ function spielEndeWeg(id) {
   const screen = $(`#${id}`);
   const ende = screen.querySelector('.spiel-ende');
   if (ende) ende.hidden = true;
+  const pause = screen.querySelector('.spiel-pause');
+  if (pause) pause.hidden = true;
   screen.querySelector('.jubel').classList.remove('zeigen');
 }
 
@@ -1790,7 +1833,22 @@ async function elternOeffnen() {
   zeigen('eltern');
 }
 
+function pauseWahlZeichnen() {
+  const box = $('#pause-wahl');
+  const aktuell = speicher.lesen('pauseNach', 0);
+  box.innerHTML = '';
+  [0, 10, 15, 20].forEach((min) => {
+    const btn = document.createElement('button');
+    btn.className = `regal-spiel${min === aktuell ? ' gewaehlt' : ''}`;
+    btn.textContent = min ? `nach ${min} Minuten` : 'aus';
+    btn.setAttribute('aria-pressed', min === aktuell);
+    btn.addEventListener('click', () => { speicher.schreiben('pauseNach', min); pauseWahlZeichnen(); });
+    box.appendChild(btn);
+  });
+}
+
 function spieleWahlZeichnen() {
+  pauseWahlZeichnen();
   $('#reim-hoeren').checked = !!zustand.reimHoeren;
   regalWahlZeichnen($('#spiele-wahl'), zustand.spiele || ALLE_SPIELE, (neu) => {
     zustand.spiele = neu;

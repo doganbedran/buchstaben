@@ -729,3 +729,10 @@ body.laedt #home .spiele-raster { visibility: hidden; }
 /* Album noch leer: ein Stift zum Nachspuren */
 .album-leer { grid-column: 1 / -1; justify-self: center; width: 140px; height: 140px; border-radius: 50%; border: none;
   background: var(--papier); box-shadow: var(--schatten); font-size: 4rem; margin-top: 40px; animation: trommelwarten 1.8s ease-in-out infinite; }
+
+/* Pause: ruhiges Bild, nur 🏠 */
+.spiel-pause { position: fixed; inset: 0; z-index: 7; background: var(--bg, #fdf6ec); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 40px; }
+.spiel-pause[hidden] { display: none; }
+.spiel-pause .pause-bild { font-size: 8rem; animation: lauschen 4s ease-in-out infinite; }
+.spiel-pause .ende-home { width: 110px; height: 110px; font-size: 3.4rem; border: none; border-radius: 50%; background: var(--papier); box-shadow: var(--schatten); }

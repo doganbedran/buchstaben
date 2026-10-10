@@ -86,6 +86,8 @@ Großeltern). Der Elternbereich zeigt, wie viel Speicher belegt ist.
 ## Spiele
 Die Startseite zeigt nur große Spiel-Kacheln (ohne Scrollen); die Buchstaben gibt es erst nach ✏️.
 Jedes Spiel hat ein Ende (Pokal, 🏠 groß, 🔁 klein) – Nachspuren nach 5 Buchstaben, die Jagd nach 3 Funden.
+Pause (Elternbereich, pro Gerät, Standard aus): nach 10/15/20 Minuten sichtbarer Spielzeit kommt beim nächsten
+Spielende ein ruhiges 😴-Bild mit „Jetzt machen wir eine Pause.“ und nur 🏠 – nie mitten im Spiel, keine Sperre.
 Im Elternbereich keine Sterne-Summen nebeneinander, sondern „übt gerade m a s l“ (keine Geschwister-Vergleiche).
 Welche Spiele dort stehen, legen die Eltern je Kind fest (gespeichert wird, was ausgeblendet ist – neue Spiele erscheinen nach Updates von selbst) (Elternbereich → Kind → „Spiele im Regal“). Neue Kinder
 beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Regal stellen, wenn man es zusammen ausprobiert hat.

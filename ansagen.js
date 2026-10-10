@@ -26,4 +26,5 @@ const ANSAGEN = {
   'reim-frage': ['Was reimt sich auf', 'Reime'],
   'reim-das-reimt': ['Das reimt sich!', 'Reime'],
   'reim-hoer-mal': ['Hör mal:', 'Reime'],
+  'pause': ['Jetzt machen wir eine Pause.', 'Alle Spiele'],
 };
