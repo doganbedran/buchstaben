@@ -11,7 +11,7 @@
   const bis = async (fn, ms = 3000) => { const ende = performance.now() + ms; while (!fn() && performance.now() < ende) await pause(10); return fn(); };
   const offen = () => bis(() => !reim.gesperrt);
   const karten = () => [...document.querySelectorAll('#reime-karten .reim-karte')];
-  const tippe = (btn) => { reim.letzterTipp = 0; btn.click(); };
+  const tippe = (btn) => { reim.letzterTipp = -1e9; btn.click(); };   // Doppeltipp-Schutz zählt ab Seitenstart
   const karteVon = (w) => karten().find((k) => k.getAttribute('aria-label') === w[1]);
 
   // 1. Daten: 12 Paare, alle Audio-Dateien vorhanden; Ablenker nie gleicher Vokal oder Anlaut

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 53;
+const APP_VERSION = 54;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -275,12 +275,15 @@ function zeichen(eintrag) {
 // ---------- Ton & Sprache ----------
 
 let audioCtx = null;
+// Ton-Baustein starten; darf nie werfen – sonst bräche jeder Tipp ab (z. B. ohne Soundgerät oder wenn der Browser ablehnt)
 function audio() {
-  if (!audioCtx) {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (Ctx) audioCtx = new Ctx();
-  }
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  try {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  } catch { return null; }
   return audioCtx;
 }
 
@@ -722,6 +725,7 @@ function buchstabenLayout(text, breite, hoehe) {
 }
 
 function buchstabeMalen(c, s, skala, art) {
+  if (!s) return;   // Tafel noch nicht aufgebaut (z. B. sofort weitergetippt)
   c.save();
   c.scale(skala, skala);
   c.font = schriftFuer(s.groesse);
@@ -3317,13 +3321,14 @@ function lektionSpurGeschafft() {
   sterneFliegen();
   vibrieren([30, 40, 30]);
   folgeAbspielen([lautQuelle(zustand.lektionSpur.b)], lautText(zustand.lektionSpur.b));
-  clearTimeout(tafelZustand.jubelTimer);
-  tafelZustand.jubelTimer = setTimeout(lektionSpurZurueck, 1400);
+  // eigener Timer: der Aufbau der Spur-Tafel räumt tafelZustand.jubelTimer weg
+  clearTimeout(zustand.lektionSpur.timer);
+  zustand.lektionSpur.timer = setTimeout(lektionSpurZurueck, 1400);
 }
 
 function lektionSpurZurueck() {
   if (!zustand.lektionSpur) return;
-  clearTimeout(tafelZustand.jubelTimer);
+  clearTimeout(zustand.lektionSpur.timer);
   const { nr } = zustand.lektionSpur;
   zustand.lektionSpur = null;
   wiedergabeStoppen();

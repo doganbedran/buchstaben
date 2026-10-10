@@ -44,7 +44,7 @@ seite legen 4000
 seite silben 15000
 seite startseite 3000
 seite regal 12000
-seite zeigen 12000
+seite zeigen 20000
 seite studio 12000
 seite willkommen 6000
 seite kiste 12000

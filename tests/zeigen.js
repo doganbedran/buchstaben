@@ -11,7 +11,7 @@
   const bis = async (fn, ms = 3000) => { const ende = performance.now() + ms; while (!fn() && performance.now() < ende) await pause(10); return fn(); };
   const offen = () => bis(() => !lektion.gesperrt);
   const karten = () => [...document.querySelectorAll('#zeigen-karten .zeigen-karte')];
-  const tippe = (btn) => { lektion.letzterTipp = 0; btn.click(); };
+  const tippe = (btn) => { lektion.letzterTipp = -1e9; btn.click(); };   // Doppeltipp-Schutz zählt ab Seitenstart
   const karteVon = (b) => karten().find((k) => k.getAttribute('aria-label') === b);
 
   // 1. Auswahl: 3 Buchstaben, nie ähnlich aussehend/klingend; Montessori aus der aktuellen Gruppe
@@ -50,6 +50,7 @@
   await bis(() => $('#trace').classList.contains('active'));
   pruefe($('#trace').classList.contains('active') && zustand.lektionSpur && BUCHSTABEN[zustand.index].b === spurB, 'Spur-Tafel nicht geöffnet');
   pruefe(history.length === verlauf, 'Spur-Tafel legt einen Verlaufseintrag an');
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));   // Tafel fertig aufgebaut
   geschafft();
   await bis(() => lektion.schritt === 1);
   pruefe($('#zeigen').classList.contains('active') && !zustand.lektionSpur, 'Nicht zurück in der Lektion');

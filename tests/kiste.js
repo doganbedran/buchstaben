@@ -11,7 +11,7 @@
   const bis = async (fn, ms = 3000) => { const ende = performance.now() + ms; while (!fn() && performance.now() < ende) await pause(10); return fn(); };
   const offen = () => bis(() => !kiste.gesperrt);
   const karten = () => [...document.querySelectorAll('#kiste-karten .zeigen-karte')];
-  const tippe = (btn) => { kiste.letzterTipp = 0; btn.click(); };
+  const tippe = (btn) => { kiste.letzterTipp = -1e9; btn.click(); };   // Doppeltipp-Schutz zählt ab Seitenstart
   const karteVon = (id) => karten().find((k) => k.getAttribute('aria-label') === kisteText(id));
 
   // 1. Daten: 5 Kisten × 6 Wörter, alle mit Artikel, Tierlaute für alle Bauernhof-Wörter
