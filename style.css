@@ -743,3 +743,7 @@ body.laedt #home .spiele-raster { visibility: hidden; }
 .regal-spiel small { flex-basis: 100%; font-size: 0.78rem; color: #8a7d6e; line-height: 1.3; padding-left: 2px; }
 .regal-spiel small em { font-style: normal; color: #b8470b; }
 .regal-wahl { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+
+/* Elternbereich: lange Buchstabenliste eingeklappt */
+.buchstaben-anpassen summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: #1d5fbf; }
+.karte[hidden] { display: none; }

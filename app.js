@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 60;
+const APP_VERSION = 61;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -1877,6 +1877,8 @@ function spieleWahlZeichnen() {
 
 async function elternZeichnen() {
   spieleWahlZeichnen();
+  // Lob-Plätze nur mit eigenem Profil (sonst wiederholt die Karte nur „eigenes Profil anlegen“)
+  $('#lob').closest('.karte').hidden = zustand.profil === STANDARD.id;
   kinderListeZeichnen();
   sicherungZusammenfassung();
   // Teilen-Knopf nur, wo das Gerät Dateien teilen kann (z. B. Android)
@@ -2226,8 +2228,11 @@ function anpassenZeichnen() {
   box.innerHTML = '<p class="hinweis">Am einfachsten: Laute, Wörter, Lob und mehr einmal selbst einsprechen – die App '
     + 'nutzt Ihre Stimme dann in allen Spielen. Was Sie nicht aufnehmen, kommt aus „Standard“. Alles bleibt nur auf diesem Gerät.</p>'
     + '<button class="text-btn studio-start" data-a="studio">🎙️ Stimme einsprechen</button>'
-    + '<p class="hinweis">Fotos und Aufnahmen je Buchstabe (die ganze Ansage, z. B. „mmm … mmm … Maus“):</p>';
+    + '<p class="hinweis">Tipp: Fangen Sie mit den <b>Lauten</b> an (30 Stück, etwa 10 Minuten) – alles andere ist freiwillig.</p>'
+    + '<details class="buchstaben-anpassen"><summary>Einzelne Buchstaben anpassen (Foto, ganze Ansage)</summary>'
+    + '<p class="hinweis">Fotos und Aufnahmen je Buchstabe (die ganze Ansage, z. B. „mmm … mmm … Maus“):</p></details>';
   box.querySelector('[data-a=studio]').addEventListener('click', studioOeffnen);
+  const liste = box.querySelector('.buchstaben-anpassen');
   BUCHSTABEN.forEach((eintrag) => {
     const m = medien[eintrag.b] || {};
     const zeile = document.createElement('div');
@@ -2252,7 +2257,7 @@ function anpassenZeichnen() {
     knopf('play').addEventListener('click', () => folgeAbspielen(hauptWahl(eintrag).ansage()));
     knopf('stimme-weg').addEventListener('click', () => medienEntfernen(eintrag.b, 'stimme'));
     zeile.appendChild(eigeneWoerterBox(eintrag));
-    box.appendChild(zeile);
+    liste.appendChild(zeile);
   });
 }
 

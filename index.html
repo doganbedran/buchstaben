@@ -309,26 +309,41 @@
         <button id="btn-kind-neu" class="text-btn">➕ Kind hinzufügen</button>
       </div>
 
-      <div class="karte">
-        <h3>Sichern &amp; Übertragen</h3>
-        <p class="hinweis">Eigene Profile (Fotos, Aufnahmen, Lob) und Kinder (Bild, Name, Sterne) als eine Datei
-          sichern – z. B. um sie auf ein Tablet zu übertragen oder für den Notfall aufzuheben.
-          Beim Einspielen geht nichts verloren: Gleiche Profile und Kinder werden aktualisiert, andere bleiben.</p>
-        <p class="hinweis" id="sicherung-info"></p>
-        <p class="hinweis" id="sicherung-erinnerung"></p>
-        <p class="hinweis">„Nur Stimme &amp; Fotos“: die eigenen Profile ohne Kinder (keine Namen, Kinderfotos, Sterne oder
-          Funde) – z. B. um Ihre Stimme an die Großeltern weiterzugeben.</p>
-        <div class="knopf-reihe">
-          <button id="btn-sichern" class="text-btn">💾 Sicherung speichern</button>
-          <button id="btn-teilen" class="text-btn" hidden>📤 Sicherung teilen</button>
-          <button id="btn-einspielen" class="text-btn">📥 Sicherung einspielen</button>
-          <button id="btn-sichern-stimme" class="text-btn">🎙️ Nur Stimme &amp; Fotos speichern</button>
-        </div>
-        <input type="file" id="sicherung-input" accept=".json,application/json" hidden>
+      <div class="karte" id="karte-schrift">
+        <h3>Schrift</h3>
+        <label class="umschalter">
+          <input type="radio" name="schreibweise" value="klein"> kleine Buchstaben (Montessori)
+        </label>
+        <label class="umschalter">
+          <input type="radio" name="schreibweise" value="gross"> GROSSE Buchstaben
+        </label>
+        <h3 class="unter">Reihenfolge der Buchstaben</h3>
+        <label class="umschalter"><input type="radio" name="reihenfolge" value="alphabet"> A bis Z – alle Buchstaben offen</label>
+        <label class="umschalter"><input type="radio" name="reihenfolge" value="montessori"> Montessori – Schritt für Schritt</label>
+        <p class="hinweis">m a s l → o i e n → r t u f → h d b k → p g w z → j v c q x y → ä ö ü ß.
+          Die nächste Gruppe öffnet sich, wenn jeder Buchstabe 2 Sterne hat.</p>
+        <h3 class="unter">Reim-Paare 🎶</h3>
+        <label class="umschalter"><input type="checkbox" id="reim-hoeren"> Reime nur hören (leichter, für Jüngere)</label>
+        <p class="hinweis">Reime zu erkennen gelingt meist erst mit etwa 4 Jahren. In der leichten Stufe hört das Kind
+          die Paare und spricht mit, ohne auszuwählen.</p>
+        <h3 class="unter">Spiele im Regal</h3>
+        <p class="hinweis">Welche Spiele auf der Startseite stehen. Lieber wenige: Ein neues Spiel erst ins Regal
+          stellen, wenn Sie es einmal zusammen ausprobiert haben. ✍️ erscheint nur mit Kind.</p>
+        <div id="spiele-wahl" class="regal-wahl"></div>
       </div>
 
       <div class="karte">
-        <h3>Profil</h3>
+        <h3>Zusammen spielen 👫</h3>
+        <label class="umschalter"><input type="checkbox" id="zu-zweit"> Silben-Trommel zu zweit (zwei Trommeln für Geschwister)</label>
+        <h3 class="unter">Pause 😴</h3>
+        <p class="hinweis">Nach der gewählten Spielzeit kommt beim nächsten Spielende ein ruhiges Pausen-Bild – nie mitten im Spiel.
+          Gilt für dieses Gerät. Zur Einordnung: Für 3–4-Jährige empfehlen die WHO und Fachgesellschaften höchstens etwa
+          eine Stunde Bildschirm am Tag – weniger ist besser.</p>
+        <div id="pause-wahl" class="regal-wahl"></div>
+      </div>
+
+      <div class="karte">
+        <h3>Stimme &amp; Fotos (Profil)</h3>
         <p class="hinweis">Ein Profil enthält eigene Fotos und Ihre Stimme.
           <strong>„Standard“ ist immer da</strong> und kann nicht verändert werden – wenn etwas nicht passt,
           einfach „Standard“ antippen.</p>
@@ -356,27 +371,29 @@
         <input type="file" id="foto-input" accept="image/*" hidden>
       </div>
 
-      <div class="karte" id="karte-schrift">
-        <h3>Schrift</h3>
-        <label class="umschalter">
-          <input type="radio" name="schreibweise" value="klein"> kleine Buchstaben (Montessori)
-        </label>
-        <label class="umschalter">
-          <input type="radio" name="schreibweise" value="gross"> GROSSE Buchstaben
-        </label>
-        <h3 class="unter">Reihenfolge der Buchstaben</h3>
-        <label class="umschalter"><input type="radio" name="reihenfolge" value="alphabet"> A bis Z – alle Buchstaben offen</label>
-        <label class="umschalter"><input type="radio" name="reihenfolge" value="montessori"> Montessori – Schritt für Schritt</label>
-        <p class="hinweis">m a s l → o i e n → r t u f → h d b k → p g w z → j v c q x y → ä ö ü ß.
-          Die nächste Gruppe öffnet sich, wenn jeder Buchstabe 2 Sterne hat.</p>
-        <h3 class="unter">Reim-Paare 🎶</h3>
-        <label class="umschalter"><input type="checkbox" id="reim-hoeren"> Reime nur hören (leichter, für Jüngere)</label>
-        <p class="hinweis">Reime zu erkennen gelingt meist erst mit etwa 4 Jahren. In der leichten Stufe hört das Kind
-          die Paare und spricht mit, ohne auszuwählen.</p>
-        <h3 class="unter">Spiele im Regal</h3>
-        <p class="hinweis">Welche Spiele auf der Startseite stehen. Lieber wenige: Ein neues Spiel erst ins Regal
-          stellen, wenn Sie es einmal zusammen ausprobiert haben. 🥁 erscheint nur mit Silben-Aufnahmen, ✍️ nur mit Kind.</p>
-        <div id="spiele-wahl" class="regal-wahl"></div>
+      <div class="karte">
+        <h3>Sichern &amp; Übertragen</h3>
+        <p class="hinweis">Eigene Profile (Fotos, Aufnahmen, Lob) und Kinder (Bild, Name, Sterne) als eine Datei
+          sichern – z. B. um sie auf ein Tablet zu übertragen oder für den Notfall aufzuheben.
+          Beim Einspielen geht nichts verloren: Gleiche Profile und Kinder werden aktualisiert, andere bleiben.</p>
+        <p class="hinweis" id="sicherung-info"></p>
+        <p class="hinweis" id="sicherung-erinnerung"></p>
+        <p class="hinweis">„Nur Stimme &amp; Fotos“: die eigenen Profile ohne Kinder (keine Namen, Kinderfotos, Sterne oder
+          Funde) – z. B. um Ihre Stimme an die Großeltern weiterzugeben.</p>
+        <div class="knopf-reihe">
+          <button id="btn-sichern" class="text-btn">💾 Sicherung speichern</button>
+          <button id="btn-teilen" class="text-btn" hidden>📤 Sicherung teilen</button>
+          <button id="btn-einspielen" class="text-btn">📥 Sicherung einspielen</button>
+          <button id="btn-sichern-stimme" class="text-btn">🎙️ Nur Stimme &amp; Fotos speichern</button>
+        </div>
+        <input type="file" id="sicherung-input" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="karte" id="karte-fortschritt">
+        <h3>Fortschritt</h3>
+        <p class="hinweis" id="fortschritt-text"></p>
+        <div id="fortschritt-buchstaben" class="fortschritt-buchstaben"></div>
+        <button id="btn-reset" class="text-btn warnung">Sterne zurücksetzen</button>
       </div>
 
       <div class="karte">
@@ -390,27 +407,11 @@
       </div>
 
       <div class="karte">
-        <h3>Zusammen spielen 👫</h3>
-        <label class="umschalter"><input type="checkbox" id="zu-zweit"> Silben-Trommel zu zweit (zwei Trommeln für Geschwister)</label>
-        <h3 class="unter">Pause 😴</h3>
-        <p class="hinweis">Nach der gewählten Spielzeit kommt beim nächsten Spielende ein ruhiges Pausen-Bild – nie mitten im Spiel.
-          Gilt für dieses Gerät. Zur Einordnung: Für 3–4-Jährige empfehlen die WHO und Fachgesellschaften höchstens etwa
-          eine Stunde Bildschirm am Tag – weniger ist besser.</p>
-        <div id="pause-wahl" class="regal-wahl"></div>
-      </div>
-
-      <div class="karte">
         <h3>Über die App &amp; Datenschutz</h3>
         <p class="hinweis">Wie die App funktioniert, was gespeichert wird (nur auf diesem Gerät) und unter welcher Lizenz sie steht.</p>
         <button id="btn-info" class="text-btn">ℹ️ Über die App &amp; Datenschutz</button>
       </div>
 
-      <div class="karte" id="karte-fortschritt">
-        <h3>Fortschritt</h3>
-        <p class="hinweis" id="fortschritt-text"></p>
-        <div id="fortschritt-buchstaben" class="fortschritt-buchstaben"></div>
-        <button id="btn-reset" class="text-btn warnung">Sterne zurücksetzen</button>
-      </div>
     </div>
   </section>
 
@@ -506,7 +507,7 @@
           die Paare und spricht mit, ohne auszuwählen.</p>
         <h3 class="unter">Spiele im Regal</h3>
         <p class="hinweis">Welche Spiele auf der Startseite stehen. Lieber wenige: Ein neues Spiel erst ins Regal
-          stellen, wenn Sie es einmal zusammen ausprobiert haben. 🥁 erscheint nur mit Silben-Aufnahmen, ✍️ nur mit Kind.</p>
+          stellen, wenn Sie es einmal zusammen ausprobiert haben. ✍️ erscheint nur mit Kind.</p>
         <div id="kind-spiele" class="regal-wahl"></div>
       </div>
       <div class="karte">
