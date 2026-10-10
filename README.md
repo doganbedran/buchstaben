@@ -90,7 +90,9 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
 - 🧺 **Wörterkiste** – Wortschatz nach Themen (`kisten.js`: Körper, Frühstück, Bad, Bauernhof, Straße; je 6 Wörter mit
   Artikel). Je Runde 3 Wörter: 👀 „Das ist …“ → 👂 „Wo ist …?“ → 🗣️ „Was ist das? Sag es!“ → 👉 „Wo ist bei dir …?“
   (zeigen/holen, 👍 oder Bild) bzw. 🎵 „Wie macht …?“ (Tierlaut). Danach ein Erzähl-Bild mit je einer Gesprächsfrage
-  pro Wort für die Eltern; 🏠/🔁 erst nach 15 s. Aufnahmen `audio/kiste-<id>.wav`, `audio/tier-<id>.wav`.
+  pro Wort für die Eltern; 🏠/🔁 erst nach 15 s. Auf dem Erzähl-Bild kann das Kind
+  🎙️ seine Erzählung aufnehmen (bis 15 s, bleibt auf dem Gerät, gehört dem Kind wie die Jagd-Funde) – sie erscheint im
+  Sticker-Album unter 💬. Aufnahmen `audio/kiste-<id>.wav`, `audio/tier-<id>.wav`.
 - 👆 **Zeig mir** – Montessori-Drei-Stufen-Lektion mit 3 Buchstaben (aktuelle Gruppe; nie ähnlich aussehend oder
   klingend, siehe `AEHNLICHE_FORMEN`/`AEHNLICHE_LAUTE`): 👀 „Das ist …“ → 👂 „Zeig mir …“ (6 Aufträge, Plätze einmal
   getauscht) → 🗣️ „Was ist das? Sag es!“ (Kind spricht, Tipp = Vergleich). Unsichere Buchstaben werden in Stufe 3

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 48;
+const APP_VERSION = 49;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -2276,7 +2276,7 @@ function medienAufnehmen(b, knopf) {
 }
 
 // Mikrofon-Aufnahme (höchstens 5 s); "fertig" bekommt die Aufnahme als Blob
-async function aufnehmen(knopf, fertig) {
+async function aufnehmen(knopf, fertig, hoechstens = 5000) {
   if (rekorder && rekorder.state === 'recording') { stopAufnahme(); return; }
   if (!navigator.mediaDevices || !window.MediaRecorder) {
     alert('Aufnehmen geht nur über https bzw. in der installierten App.');
@@ -2304,8 +2304,8 @@ async function aufnehmen(knopf, fertig) {
   r.start();
   knopf.classList.add('aktiv');
   knopf.textContent = '⏹️';
-  // Sicherheitsstopp nach 5 Sekunden
-  setTimeout(() => { if (r.state === 'recording') r.stop(); }, 5000);
+  // Sicherheitsstopp (Standard 5 Sekunden)
+  setTimeout(() => { if (r.state === 'recording') r.stop(); }, hoechstens);
 }
 
 // ---------- Stimme einsprechen (Elternbereich): Laute, Wörter, Lob – jedes Stück einmal, alles bleibt auf dem Gerät ----------
@@ -2923,6 +2923,25 @@ function albumZeichnen(fundMedien = {}) {
       reihe.appendChild(el);
     });
     raster.insertAdjacentHTML('beforeend', '<div class="album-abschnitt">📒</div>');
+  }
+  // Erzählungen aus der Wörterkiste: die drei Bilder der Runde, Tipp = die Aufnahme des Kindes
+  const erzaehlungen = (zustand.funde || []).filter((f) => f.art === 'erzaehlung' && fundMedien[f.id] && fundMedien[f.id].stimme);
+  if (erzaehlungen.length) {
+    raster.insertAdjacentHTML('afterbegin', '<div class="album-abschnitt">💬</div>');
+    const reihe = document.createElement('div');
+    reihe.className = 'album-funde';
+    raster.children[0].after(reihe);
+    erzaehlungen.slice().reverse().forEach((f) => {
+      const k = KISTEN.find((x) => x.id === f.kiste);
+      const bilder = k ? f.woerter.map((id) => (k.woerter.find((w) => w[0] === id) || [])[2] || '').join('') : '💬';
+      const el = document.createElement('button');
+      el.className = 'sticker hat erzaehlung';
+      el.innerHTML = `<span>${bilder}</span><small>💬</small>`;
+      el.setAttribute('aria-label', 'Erzählung anhören');
+      el.addEventListener('click', () => folgeAbspielen([blobQuelle(fundMedien[f.id].stimme)]));
+      reihe.appendChild(el);
+    });
+    if (!funde.length) raster.insertAdjacentHTML('beforeend', '<div class="album-abschnitt">📒</div>');
   }
   alle.forEach(({ e, w, key }) => {
     const hat = gesammelt.has(key);
@@ -3674,9 +3693,25 @@ function kisteErzaehlen() {
   });
   $('#kiste-fragen').innerHTML = kiste.woerter.map((id) => `<li>${htmlText(kisteWort(id)[3])}</li>`).join('');
   $('#kiste-beispiel').textContent = kiste.kiste.beispiel;
+  kiste.erzaehlId = null;   // eine Erzählung je Runde (nochmal aufnehmen ersetzt sie)
+  $('#btn-kiste-erzaehlen').classList.remove('fertig');
   folgeAbspielen([{ url: 'audio/ansage-runde-geschafft.wav' }], 'Alles geschafft! Toll gemacht!');
   const nr = kiste.nummer;
   kiste.timer = setTimeout(() => kisteAktuell(nr) && spielEnde('kiste', kistenWahlZeigen), KISTE_ERZAEHLZEIT);
+}
+
+// Das Kind erzählt: Aufnahme bleibt auf dem Gerät, gehört dem Kind (wie die Funde der Jagd) und erscheint im Album
+async function kisteErzaehlungGesetzt(blob) {
+  folgeAbspielen([blobQuelle(blob)]);   // sich selbst hören
+  const besitzer = `fund-${fundBesitzer()}`;
+  const id = kiste.erzaehlId || `e${Date.now().toString(36)}`;
+  if (!(await datenbank.medienSetzen(besitzer, id, 'stimme', blob))) return;
+  if (!kiste.erzaehlId) {
+    zustand.funde = [...(zustand.funde || []), { id, art: 'erzaehlung', kiste: kiste.kiste.id, woerter: kiste.woerter.slice(), zeit: Date.now() }];
+    await einstellungenSpeichern();
+  }
+  kiste.erzaehlId = id;
+  $('#btn-kiste-erzaehlen').classList.add('fertig');
 }
 
 function kisteStarten() {
@@ -3685,6 +3720,7 @@ function kisteStarten() {
 }
 
 $('#btn-kiste-home').addEventListener('click', () => { kisteStoppen(); wiedergabeStoppen(); zurStartseite(); });
+$('#btn-kiste-erzaehlen').addEventListener('click', (e) => { audio(); aufnehmen(e.currentTarget, kisteErzaehlungGesetzt, 15000); });
 $('#btn-kiste-daumen').addEventListener('click', () => { if (!kiste.gesperrt) { audio(); kisteGeschafft(kiste.nummer); } });
 // 🔊: aktuellen Schritt von vorn (rettet auch einen hängen gebliebenen Ton)
 $('#btn-kiste-laut').addEventListener('click', () => {

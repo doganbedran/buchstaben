@@ -64,6 +64,16 @@
   pruefe($('#kiste-beispiel').textContent === kiste.kiste.beispiel, 'Beispiel fehlt');
   pruefe(!$('#kiste .spiel-ende') || $('#kiste .spiel-ende').hidden, '🏠/🔁 kommen zu früh');
   pruefe(kiste.punkte === kistePunkteGesamt(), `Punkte ${kiste.punkte}/${kistePunkteGesamt()}`);
+  // Erzählen: Aufnahme des Kindes wird gespeichert (eine je Runde) und erscheint im Album
+  pruefe(!$('#btn-kiste-erzaehlen').hidden, 'Kein 🎙️ auf dem Erzähl-Bild');
+  const ton = new Blob(['x'], { type: 'audio/webm' });
+  await kisteErzaehlungGesetzt(ton);
+  await kisteErzaehlungGesetzt(ton);   // nochmal aufnehmen ersetzt
+  const erz = (zustand.funde || []).filter((f) => f.art === 'erzaehlung');
+  pruefe(erz.length === 1 && erz[0].kiste === 'fruehstueck' && erz[0].woerter.length === 3, `Erzählungen: ${JSON.stringify(erz)}`);
+  pruefe((await datenbank.medienVon(`fund-${fundBesitzer()}`)).some((m) => m.schluessel === `fund-${fundBesitzer()}|${erz[0].id}|stimme`), 'Erzählung nicht gespeichert');
+  albumZeichnen(await fundMedienLaden());
+  pruefe(document.querySelectorAll('#album-raster .sticker.erzaehlung').length === 1, 'Erzählung nicht im Album');
   await bis(() => $('#kiste .spiel-ende') && !$('#kiste .spiel-ende').hidden);
   pruefe($('#kiste .spiel-ende') && !$('#kiste .spiel-ende').hidden, 'Kein 🏠/🔁');
 
