@@ -690,3 +690,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .kiste-mikro.aktiv { border-color: var(--rot); background: #fde2dc; animation: pulsieren 1s infinite; }
 .kiste-mikro.fertig::after { content: '✓'; position: relative; left: 4px; font-size: 1.2rem; color: #1b7f3a; }
 .sticker.erzaehlung span { font-size: 1.25rem; letter-spacing: -2px; white-space: nowrap; }
+
+/* Eigene Fotos in der Wörterkiste (statt Emoji) */
+.kiste-foto { width: 82%; height: 82%; object-fit: cover; border-radius: 18px; display: block; }
+.zeigen-feld .kiste-foto { width: 56px; height: 56px; border-radius: 10px; }
+.kiste-erzaehl-bilder .kiste-foto { width: 1.1em; height: 1.1em; border-radius: 12px; }
+.studio-bild .kiste-foto { width: 3.4rem; height: 3.4rem; margin: 0 auto; }
+.sticker.erzaehlung .kiste-foto { display: inline-block; width: 1.2em; height: 1.2em; border-radius: 4px; vertical-align: middle; }
+#studio-foto[hidden] { display: none; }

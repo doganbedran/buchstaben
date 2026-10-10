@@ -92,7 +92,9 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
   (zeigen/holen, 👍 oder Bild) bzw. 🎵 „Wie macht …?“ (Tierlaut). Danach ein Erzähl-Bild mit je einer Gesprächsfrage
   pro Wort für die Eltern; 🏠/🔁 erst nach 15 s. Auf dem Erzähl-Bild kann das Kind
   🎙️ seine Erzählung aufnehmen (bis 15 s, bleibt auf dem Gerät, gehört dem Kind wie die Jagd-Funde) – sie erscheint im
-  Sticker-Album unter 💬. Aufnahmen `audio/kiste-<id>.wav`, `audio/tier-<id>.wav`.
+  Sticker-Album unter 💬.
+  Eigene Fotos: Eltern-Studio → Kisten → 📷 – das Foto (z. B. eure echte Tasse) ersetzt das Emoji
+  (Profil-Medium `datei:kiste-<id>.wav|bild`, gleicher Schlüssel wie die Aufnahme). Aufnahmen `audio/kiste-<id>.wav`, `audio/tier-<id>.wav`.
 - 👆 **Zeig mir** – Montessori-Drei-Stufen-Lektion mit 3 Buchstaben (aktuelle Gruppe; nie ähnlich aussehend oder
   klingend, siehe `AEHNLICHE_FORMEN`/`AEHNLICHE_LAUTE`): 👀 „Das ist …“ → 👂 „Zeig mir …“ (6 Aufträge, Plätze einmal
   getauscht) → 🗣️ „Was ist das? Sag es!“ (Kind spricht, Tipp = Vergleich). Unsichere Buchstaben werden in Stufe 3

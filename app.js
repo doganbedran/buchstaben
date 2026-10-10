@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 50;
+const APP_VERSION = 51;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -2353,7 +2353,7 @@ function studioStuecke(bereich) {
   }
   if (bereich === 'kisten') {
     return [
-      ...KISTEN.flatMap((k) => k.woerter.map(([id, wort, bild]) => studioDatei(`kiste-${id}.wav`, { text: wort, bild,
+      ...KISTEN.flatMap((k) => k.woerter.map(([id, wort, bild]) => studioDatei(`kiste-${id}.wav`, { text: wort, bild, foto: true,
         tipp: `Wörterkiste „${k.name}“ – das Wort MIT Artikel sprechen.` }))),
       ...Object.entries(TIERLAUTE).map(([id, laut]) => studioDatei(`tier-${id}.wav`, { text: laut,
         bild: KISTEN.flatMap((k) => k.woerter).find((w) => w[0] === id)[2], tipp: 'Tierlaut für „Wie macht …?“ – so, wie Sie ihn zu Hause machen.' })),
@@ -2384,7 +2384,10 @@ function studioZeichnen() {
     $('#studio-reiter').appendChild(btn);
   });
   $('#studio-balken').style.width = `${(stuecke.filter(studioEigen).length / stuecke.length) * 100}%`;
-  $('#studio-bild').innerHTML = st.bild;
+  const foto = st.foto && medien[st.schluessel] && medien[st.schluessel].bildUrl;
+  $('#studio-bild').innerHTML = foto ? `<img class="kiste-foto" src="${foto}" alt="">` : st.bild;
+  $('#studio-foto').hidden = !st.foto;
+  $('#btn-studio-foto-weg').hidden = !foto;
   $('#studio-text').textContent = st.text;
   $('#studio-text').classList.toggle('eigen', studioEigen(st));
   $('#studio-tipp').textContent = st.tipp;
@@ -2571,6 +2574,23 @@ mikro.addEventListener('pointerdown', (e) => { e.preventDefault(); mikro.setPoin
 ['pointerup', 'pointercancel'].forEach((ev) => mikro.addEventListener(ev, studioAufnahmeStopp));
 mikro.addEventListener('contextmenu', (e) => e.preventDefault());
 $('#btn-studio-gut').addEventListener('click', studioSpeichern);
+// Eigenes Foto für ein Kisten-Wort (gleicher Schlüssel wie die Aufnahme, Art „bild“)
+$('#btn-studio-foto').addEventListener('click', () => {
+  const st = studioStuecke(studio.bereich)[studio.pos];
+  const profil = zustand.profil;
+  fotoWaehlen(async (blob) => {
+    if (!(await datenbank.medienSetzen(profil, st.schluessel, 'bild', blob))) { studioMeldung('Speichern ging nicht – vielleicht ist der Speicher voll.', true); return; }
+    await medienLaden();
+    studioZeichnen();
+  });
+});
+$('#btn-studio-foto-weg').addEventListener('click', async () => {
+  const st = studioStuecke(studio.bereich)[studio.pos];
+  if (!confirm(`Ihr Foto für „${st.text}“ löschen? Dann gilt wieder das Bild aus „Standard“.`)) return;
+  await datenbank.medienEntfernen(zustand.profil, st.schluessel, 'bild');
+  await medienLaden();
+  studioZeichnen();
+});
 $('#btn-studio-standard').addEventListener('click', () => { const st = studioStuecke(studio.bereich)[studio.pos]; folgeAbspielen([{ url: st.standard, standard: true }]); });
 $('#btn-studio-meins').addEventListener('click', () => { const st = studioStuecke(studio.bereich)[studio.pos]; if (studioEigen(st)) folgeAbspielen([blobQuelle(medien[st.schluessel].stimme)]); });
 $('#btn-studio-vor').addEventListener('click', () => studioGehe(studio.pos - 1));
@@ -2942,7 +2962,7 @@ function albumZeichnen(fundMedien = {}) {
     raster.children[0].after(reihe);
     erzaehlungen.slice().reverse().forEach((f) => {
       const k = KISTEN.find((x) => x.id === f.kiste);
-      const bilder = k ? f.woerter.map((id) => (k.woerter.find((w) => w[0] === id) || [])[2] || '').join('') : '💬';
+      const bilder = k ? f.woerter.map((id) => kisteBildHtml(id, (k.woerter.find((w) => w[0] === id) || [])[2] || '')).join('') : '💬';
       const el = document.createElement('button');
       el.className = 'sticker hat erzaehlung';
       el.innerHTML = `<span>${bilder}</span><small>💬</small>`;
@@ -3384,6 +3404,9 @@ const kiste = { kiste: null, woerter: [], stufe: 0, schritt: 0, punkte: 0, auftr
   gesperrt: true, wechsel: false, fertig: false, fehlversuche: 0, beiDir: null, timer: null, nummer: 0, letzterTipp: 0, zuletzt: {} };
 
 const kisteAktuell = (nr) => nr === kiste.nummer && $('#kiste').classList.contains('active');
+// Eigenes Foto der Eltern (Studio → Kisten → 📷) statt Emoji: der echte Löffel aus der eigenen Küche
+const kisteFoto = (id) => (medien[`datei:kiste-${id}.wav`] || {}).bildUrl;
+const kisteBildHtml = (id, emoji) => (kisteFoto(id) ? `<img class="kiste-foto" src="${kisteFoto(id)}" alt="">` : emoji);
 const kisteWort = (id) => kiste.kiste.woerter.find((w) => w[0] === id);
 const kisteQuelle = (id) => ({ url: kisteDatei(id) });
 const kisteText = (id) => kisteWort(id)[1];
@@ -3424,7 +3447,7 @@ function kistePunkteZeichnen() {
 function kisteKarte(id, extra = '') {
   const btn = document.createElement('button');
   btn.className = `zeigen-karte kiste-karte${extra}`;
-  btn.textContent = kisteWort(id)[2];
+  btn.innerHTML = kisteBildHtml(id, kisteWort(id)[2]);
   btn.setAttribute('aria-label', kisteText(id));
   btn.addEventListener('click', () => kisteGetippt(id, btn));
   return btn;
@@ -3647,7 +3670,7 @@ function kisteWeiter(nr) {
   kiste.punkte++;
   if (kiste.stufe === 0 && kiste.schritt < kiste.woerter.length) {
     const feld = $('#kiste-ablage').children[kiste.schritt];
-    feld.textContent = kisteWort(kiste.woerter[kiste.schritt])[2];
+    feld.innerHTML = kisteBildHtml(kiste.woerter[kiste.schritt], kisteWort(kiste.woerter[kiste.schritt])[2]);
     feld.classList.add('voll');
   }
   kiste.schritt++;
@@ -3695,7 +3718,7 @@ function kisteErzaehlen() {
   bilder.innerHTML = '';
   kiste.woerter.forEach((id) => {
     const btn = document.createElement('button');
-    btn.textContent = kisteWort(id)[2];
+    btn.innerHTML = kisteBildHtml(id, kisteWort(id)[2]);
     btn.setAttribute('aria-label', kisteText(id));
     btn.addEventListener('click', () => { audio(); folgeAbspielen([kisteQuelle(id)]); });
     bilder.appendChild(btn);

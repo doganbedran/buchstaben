@@ -73,6 +73,23 @@
   [...$('#studio-reiter').children][6].click();
   await sprechen(0.3); await studioSpeichern();
   pruefe(eigeneDatei(studioStuecke('silben')[0].standard), 'Silbe nicht übernommen');
+  // Eigenes Foto für ein Kisten-Wort: ersetzt das Emoji in der Wörterkiste, im Studio sichtbar, wieder löschbar
+  [...$('#studio-reiter').children][4].click();
+  studioGehe(0);
+  pruefe(!$('#studio-foto').hidden && $('#btn-studio-foto-weg').hidden, 'Foto-Knöpfe bei Kisten-Wort');
+  const c = document.createElement('canvas'); c.width = c.height = 8;
+  const png = await new Promise((r) => c.toBlob(r, 'image/png'));
+  await datenbank.medienSetzen(zustand.profil, 'datei:kiste-nase.wav', 'bild', png);
+  await medienLaden();
+  studioZeichnen();
+  pruefe(kisteFoto('nase') && $('#studio-bild img') && !$('#btn-studio-foto-weg').hidden, 'Foto nicht im Studio');
+  kiste.kiste = KISTEN[0];
+  pruefe(kisteKarte('nase').querySelector('img.kiste-foto') && !kisteKarte('ohr').querySelector('img'), 'Foto nicht in der Wörterkiste');
+  $('#btn-studio-foto-weg').click(); await warte(300);
+  pruefe(!kisteFoto('nase') && eigeneDatei('audio/kiste-nase.wav'), 'Foto-Löschen nimmt die Aufnahme mit');
+  studioGehe(studioStuecke('kisten').length - 1);
+  pruefe($('#studio-foto').hidden, 'Foto-Knopf bei Tierlaut');
+
   // Weitere Wörter (mehr): Ansage aus eigenem Laut/Wort-Teil
   [...$('#studio-reiter').children][1].click();
   studioGehe(1);
