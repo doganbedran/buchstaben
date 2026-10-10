@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 61;
+const APP_VERSION = 62;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -168,7 +168,7 @@ async function kinderLaden() {
 function kindBildHtml(k) {
   return kindFotos[k.id]
     ? `<img class="bild-datei foto" src="${kindFotos[k.id]}" alt="${htmlText(k.name)}">`
-    : k.tier;
+    : htmlText(k.tier || '');   // nie roh: k.tier kann aus einer eingespielten Datei stammen
 }
 
 // Neue Geräte und neue Kinder beginnen in Montessori-Reihenfolge; wer die App schon nutzt, behält A–Z
@@ -3001,7 +3001,8 @@ function lautgetreu(wort) {
 
 function legenWoerter() {
   return BUCHSTABEN.flatMap((e) => woerterFuer(e)).filter((w) => {
-    if (w.art === 'eigen') return w.wort.length >= 2 && w.wort.length <= 6 && /^[a-zäöüß]+$/i.test(w.wort) && w.wortAllein().length;
+    // auch persönliche Wörter nur lautgetreu („Mama“, „Lina“ ja; „Theo“, „Sophie“ nein)
+    if (w.art === 'eigen') return w.wort.length >= 2 && w.wort.length <= 6 && lautgetreu(w.wort) && w.wortAllein().length;
     return w.wort.length >= 3 && w.wort.length <= 4 && lautgetreu(w.wort) && !LEGEN_NICHT.includes(w.wort);
   });
 }
@@ -4592,9 +4593,12 @@ const blobZuText = (blob) => new Promise((resolve, reject) => {
 // Nur eingebettete Bilder/Töne annehmen – eine manipulierte Sicherung darf keine fremde Adresse abrufen lassen.
 // Typ z. B. "audio/ogg; codecs=opus" (Firefox, mit Leerzeichen) oder ohne Typ "application/octet-stream".
 // Ungültiges ergibt null und wird beim Einspielen übersprungen (nicht alles abbrechen).
-const DATEN_URL = /^data:((audio|image|video)\/[\w.+-]+|application\/octet-stream)?(;\s*[\w.+-]+=[\w."+-]+)*;base64,[A-Za-z0-9+/=]*$/;
+// Nur Fotos (JPEG/PNG/WebP/GIF) und Töne (Audio, auch WebM/MP4-Aufnahmen); kein SVG/HTML, das Code enthalten könnte
+const DATEN_URL = /^data:(image\/(jpeg|png|webp|gif)|audio\/[\w.+-]+|video\/(webm|mp4)|application\/octet-stream)?(;\s*[\w.+-]+=[\w."+-]+)*;base64,[A-Za-z0-9+/=]*$/;
+const MEDIUM_HOECHSTENS = 15e6;          // Zeichen je eingebettetem Foto/Ton (≈ 11 MB)
+const SICHERUNG_HOECHSTENS = 300e6;      // Bytes der ganzen Datei
 const textZuBlob = async (daten) => {
-  if (typeof daten !== 'string' || !DATEN_URL.test(daten)) return null;
+  if (typeof daten !== 'string' || daten.length > MEDIUM_HOECHSTENS || !DATEN_URL.test(daten)) return null;
   try { return await (await fetch(daten)).blob(); } catch { return null; }
 };
 
@@ -4647,6 +4651,41 @@ async function sicherungErstellen(nurStimme = false) {
 
 // Einspielen: Profile und Kinder aus der Datei kommen dazu bzw. ersetzen die mit gleicher ID.
 // Was es nur auf diesem Gerät gibt, bleibt unangetastet.
+// Eingespielte Daten nie roh übernehmen: nur bekannte Felder mit erlaubten Werten (eine manipulierte Datei
+// könnte sonst z. B. Code in Namen oder Tier-Feldern einschleusen, der dann in der App liefe)
+const textFeld = (x, max) => (typeof x === 'string' ? x.slice(0, max) : '');
+const ausListe = (x, liste, standard) => (liste.includes(x) ? x : standard);
+const zahlen = (o, schluessel) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {})
+  .filter(([k, v]) => schluessel(k) && Number.isFinite(v)).map(([k, v]) => [k, Math.max(0, Math.min(MAX_STERNE, Math.round(v)))]));
+const istBuchstabe = (b) => BUCHSTABEN.some((e) => e.b === b);
+const stringListe = (x, muster, max = 500) => (Array.isArray(x) ? x.filter((v) => typeof v === 'string' && muster.test(v)).slice(0, max) : []);
+function fundeSauber(liste) {
+  return (Array.isArray(liste) ? liste : []).filter((f) => f && typeof f.id === 'string' && /^[a-z0-9]+$/.test(f.id)).slice(0, 2000)
+    .map((f) => (f.art === 'erzaehlung'
+      ? { id: f.id, art: 'erzaehlung', kiste: ausListe(f.kiste, KISTEN.map((k) => k.id), KISTEN[0].id),
+        woerter: stringListe(f.woerter, /^[a-z]+$/, 6), zeit: Number(f.zeit) || 0 }
+      : { id: f.id, b: istBuchstabe(f.b) ? f.b : BUCHSTABEN[0].b, zeit: Number(f.zeit) || 0 }));
+}
+const ALBUM_MUSTER = /^[a-zäöüß]\|[^<>"&|]{1,40}$/;
+function kindSauber(k) {
+  return {
+    id: k.id, name: textFeld(k.name, 20).trim() || 'Kind', tier: ausListe(k.tier, TIERE, TIERE[0]),
+    schreibweise: ausListe(k.schreibweise, ['klein', 'gross'], 'klein'), reihenfolge: ausListe(k.reihenfolge, ['alphabet', 'montessori'], 'alphabet'),
+    farbe: ausListe(k.farbe, FARB_AUSWAHL, 'bunt'),
+    profil: typeof k.profil === 'string' && (k.profil === STANDARD.id || /^p-[a-z0-9-]+$/.test(k.profil)) ? k.profil : STANDARD.id,
+    sterne: zahlen(k.sterne, istBuchstabe), album: stringListe(k.album, ALBUM_MUSTER, 2000), funde: fundeSauber(k.funde),
+    ...(Array.isArray(k.spieleAus) ? { spieleAus: k.spieleAus.filter((id) => ALLE_SPIELE.includes(id)) } : {}),
+    ...(Array.isArray(k.spiele) ? { spiele: k.spiele.filter((id) => ALLE_SPIELE.includes(id)) } : {}),
+    reimHoeren: !!k.reimHoeren, erstellt: Number(k.erstellt) || Date.now(),
+  };
+}
+function profilSauber(p) {
+  const woerter = (Array.isArray(p.woerter) ? p.woerter : [])
+    .filter((w) => w && typeof w.id === 'string' && /^[a-z0-9]+$/.test(w.id) && istBuchstabe(w.b) && typeof w.wort === 'string')
+    .map((w) => ({ id: w.id, b: w.b, wort: w.wort.slice(0, 30) })).slice(0, 500);
+  return { id: p.id, name: textFeld(p.name, 30).trim() || 'Profil', erstellt: Number(p.erstellt) || Date.now(), woerter };
+}
+
 async function sicherungEinspielen(s) {
   if (!s || s.format !== SICHERUNG_FORMAT || !Array.isArray(s.profile) || !Array.isArray(s.kinder)) {
     throw new Error('Das ist keine Sicherung dieser App.');
@@ -4670,16 +4709,15 @@ async function sicherungEinspielen(s) {
       if (blob) neu.push([m.schluessel, blob]);
     }
     await datenbank.profilLoeschen(profil.id);
-    await datenbank.profilSpeichern(profil);
+    await datenbank.profilSpeichern(profilSauber(profil));
     for (const [schluessel, blob] of neu) await datenbank.medienRoh(schluessel, blob);
   }
   for (const k of s.kinder) {
-    if (!k.id || !k.name) continue;
+    if (!k || typeof k.id !== 'string' || !/^k-[a-z0-9-]+$/.test(k.id) || !k.name) { uebersprungen++; continue; }
     await datenbank.kindSpeichern({
-      ...k,
+      ...kindSauber(k),
       foto: await blobOderNull(k.foto),
       nameStimme: await blobOderNull(k.nameStimme),
-      sterne: k.sterne || {},
     });
   }
   for (const f of s.funde || []) {
@@ -4689,13 +4727,14 @@ async function sicherungEinspielen(s) {
   }
   // App-weite Einstellungen nur auf einem frischen Gerät übernehmen (sonst nichts überschreiben)
   if (warFrisch && s.einstellungen) {
-    speicher.schreiben('funde', s.einstellungen.funde || []);
-    speicher.schreiben('schreibweise', s.einstellungen.schreibweise || 'klein');
-    speicher.schreiben('sterne', s.einstellungen.sterne || {});
-    speicher.schreiben('profil', s.einstellungen.profil || STANDARD.id);
-    speicher.schreiben('album', s.einstellungen.album || []);
-    speicher.schreiben('reihenfolge', s.einstellungen.reihenfolge || 'alphabet');
-    speicher.schreiben('farbe', s.einstellungen.farbe || 'bunt');
+    const e = kindSauber({ ...s.einstellungen, id: 'k-einstellungen', name: 'x' });
+    speicher.schreiben('funde', e.funde);
+    speicher.schreiben('schreibweise', e.schreibweise);
+    speicher.schreiben('sterne', e.sterne);
+    speicher.schreiben('profil', e.profil);
+    speicher.schreiben('album', e.album);
+    speicher.schreiben('reihenfolge', e.reihenfolge);
+    speicher.schreiben('farbe', e.farbe);
     speicher.schreiben('reimHoeren', !!s.einstellungen.reimHoeren);
     speicher.schreiben('spieleAus', regalAus(s.einstellungen) || []);
   }
@@ -4774,6 +4813,8 @@ $('#btn-teilen').addEventListener('click', async (e) => {
   const knopf = e.currentTarget;
   knopf.disabled = true;
   try {
+    if (!confirm('Die Sicherung enthält Namen, Fotos und Stimmen Ihrer Kinder.\n'
+      + 'Nur an sich selbst oder Ihren Partner schicken – im Einzelchat, nicht in Gruppen – und danach im Chat löschen.')) return;
     const datei = await sicherungAlsDatei();
     await navigator.share({ files: [datei], title: 'Buchstaben-Sicherung' });
     speicher.schreiben('letzteSicherung', Date.now());
@@ -4795,6 +4836,7 @@ $('#sicherung-input').addEventListener('change', async (e) => {
   const datei = e.target.files && e.target.files[0];
   if (!datei) return;
   try {
+    if (datei.size > SICHERUNG_HOECHSTENS) throw new Error('Die Datei ist zu groß für eine Sicherung dieser App.');
     const inhalt = JSON.parse(await datei.text());
     const anzahl = { profile: (inhalt.profile || []).length, kinder: (inhalt.kinder || []).length };
     if (!confirm(`Sicherung einspielen: ${anzahl.profile} Profil(e) und ${anzahl.kinder} Kind(er).\n`

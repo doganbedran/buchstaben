@@ -74,6 +74,26 @@
 
   await elternOeffnen();
   document.querySelector('#btn-sichern').scrollIntoView();
+  // Manipulierte Sicherung: eingeschleuster Code in Tier/Name/Feldern wird nicht ausgeführt, fremde Felder fallen weg
+  window.__angriff = 0;
+  const boese = { format: SICHERUNG_FORMAT, version: SICHERUNG_VERSION, profile: [{ id: 'p-boese', name: '<b>x</b>', woerter: [{ id: 'w1', b: 'm', wort: '<img src=x onerror=window.__angriff=1>' }] }],
+    kinder: [{ id: 'k-boese', name: 'Böse<img src=x onerror=window.__angriff=2>', tier: '<img src=x onerror=window.__angriff=3>',
+      farbe: 'url(javascript:alert(1))', album: ['m|Maus', '<script>'], sterne: { m: 2, '<x>': 9 }, extra: 'weg' }], funde: [] };
+  await sicherungEinspielen(boese);
+  const boesesKind = kinder.find((k) => k.id === 'k-boese');
+  pruefe(boesesKind && TIERE.includes(boesesKind.tier) && boesesKind.farbe === 'bunt' && !('extra' in boesesKind), `Kind nicht bereinigt: ${JSON.stringify(boesesKind)}`);
+  pruefe(boesesKind.album.join() === 'm|Maus' && Object.keys(boesesKind.sterne).join() === 'm', 'Album/Sterne nicht bereinigt');
+  kinderListeZeichnen(); werZeichnen(); rasterZeichnen();
+  await new Promise((r) => setTimeout(r, 300));
+  pruefe(window.__angriff === 0 && !document.querySelector('#kinder-liste img[src="x"], #wer-liste img[src="x"]'), `Eingeschleuster Code lief: ${window.__angriff}`);
+  pruefe(await textZuBlob('data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=') === null, 'SVG wird angenommen');
+  pruefe(await textZuBlob('data:text/html;base64,PGI+') === null, 'HTML wird angenommen');
+  kindBearbeiten('k-boese'); await new Promise((r) => setTimeout(r, 200));
+  window.confirm = () => true;
+  $('#btn-kind-loeschen').click(); await new Promise((r) => setTimeout(r, 400));
+  history.back(); await new Promise((r) => setTimeout(r, 300));
+  await datenbank.profilLoeschen('p-boese');
+
   // Sicherungs-Erinnerung: nie / zu lange her → Hinweis; frisch gesichert → kein Hinweis
   const erinnerung = async (wert) => {
     if (wert === null) localStorage.removeItem('letzteSicherung'); else speicher.schreiben('letzteSicherung', wert);
