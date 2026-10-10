@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 55;
+const APP_VERSION = 56;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -16,6 +16,14 @@ const speicher = {
     try { localStorage.setItem(key, JSON.stringify(wert)); } catch { /* privat/voll: ignorieren */ }
   },
 };
+
+// Browser bitten, Fotos, Aufnahmen und Sterne nicht bei Speicherknappheit zu löschen. Erst wenn es etwas zu schützen gibt
+// (erstes Kind, Profil, Fund, Erzählung): Chrome entscheidet ohne Rückfrage, Firefox fragt nach.
+function speicherSchuetzen() {
+  try {
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  } catch { /* egal */ }
+}
 
 const zustand = {
   schreibweise: speicher.lesen('schreibweise', 'klein'),
@@ -1850,6 +1858,7 @@ async function kindNeu() {
     erstellt: Date.now(),
   };
   await datenbank.kindSpeichern(kind);
+  speicherSchuetzen();
   if (erstesKind) {
     speicher.schreiben('sterne', {}); speicher.schreiben('album', []); speicher.schreiben('funde', []);
     await fundeUmziehen('ohne', kind.id);   // Fotos der Buchstaben-Jagd gehören jetzt dem Kind
@@ -2063,7 +2072,7 @@ async function profilNeu() {
   const profil = { id: `p-${Date.now().toString(36)}`, name: name.slice(0, 30), erstellt: Date.now() };
   await datenbank.profilSpeichern(profil);
   // Browser bitten, Fotos und Aufnahmen nicht bei Speicherknappheit zu löschen
-  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  speicherSchuetzen();
   await profilAktivieren(profil.id);
   elternZeichnen();
 }
@@ -2586,7 +2595,7 @@ function studioVorschau(st) {
 async function studioSpeichern() {
   if (!studio.aufnahme) return;
   const st = studioStuecke(studio.bereich)[studio.pos];
-  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  speicherSchuetzen();
   const ok = await datenbank.medienSetzen(zustand.profil, st.schluessel, 'stimme', studio.aufnahme);
   if (!ok) { studioMeldung('Speichern ging nicht – vielleicht ist der Speicher voll. Bitte „Sichern & Übertragen“ nutzen und Altes löschen.', true); return; }
   (medien[st.schluessel] || (medien[st.schluessel] = {})).stimme = studio.aufnahme;
@@ -2809,6 +2818,7 @@ async function jagdSpeichern() {
   const id = Date.now().toString(36);
   const besitzer = `fund-${fundBesitzer()}`;
   await datenbank.medienSetzen(besitzer, id, 'bild', jagd.foto);
+  speicherSchuetzen();
   if (jagd.stimme) await datenbank.medienSetzen(besitzer, id, 'stimme', jagd.stimme);
   zustand.funde = [...(zustand.funde || []), { id, b: jagd.b, zeit: Date.now() }];
   await einstellungenSpeichern();
@@ -3806,6 +3816,7 @@ async function kisteErzaehlungGesetzt(blob) {
   const besitzer = `fund-${fundBesitzer()}`;
   const id = kiste.erzaehlId || `e${Date.now().toString(36)}`;
   if (!(await datenbank.medienSetzen(besitzer, id, 'stimme', blob))) return;
+  speicherSchuetzen();
   if (!kiste.erzaehlId) {
     zustand.funde = [...(zustand.funde || []), { id, art: 'erzaehlung', kiste: kiste.kiste.id, woerter: kiste.woerter.slice(), zeit: Date.now() }];
     await einstellungenSpeichern();
@@ -4550,16 +4561,31 @@ async function sicherungAlsDatei(nurStimme = false) {
   return new File([JSON.stringify(daten)], name, { type: 'application/json' });
 }
 
+const SICHERUNG_ERINNERN_TAGE = 30;
+
 function sicherungZusammenfassung() {
   const box = $('#sicherung-info');
   datenbank.profile().then((profile) => {
     box.textContent = `Auf diesem Gerät: ${profile.length} eigene${profile.length === 1 ? 's Profil' : ' Profile'}, `
       + `${kinder.length} ${kinder.length === 1 ? 'Kind' : 'Kinder'}.`;
+    // Wann zuletzt gesichert wurde – ohne Sicherung ist bei Verlust des Handys alles weg
+    const zuletzt = speicher.lesen('letzteSicherung', null);
+    const tage = zuletzt ? Math.floor((Date.now() - zuletzt) / 864e5) : null;
+    const hinweis = $('#sicherung-erinnerung');
+    hinweis.textContent = zuletzt
+      ? `Letzte Sicherung: ${tage === 0 ? 'heute' : tage === 1 ? 'gestern' : `vor ${tage} Tagen`}.`
+      : 'Noch keine Sicherung gemacht.';
+    const faellig = (kinder.length || profile.length) && (tage === null || tage > SICHERUNG_ERINNERN_TAGE);
+    if (faellig) hinweis.textContent += ' Zeit für eine Sicherung – sonst sind Fotos und Aufnahmen weg, wenn das Handy verloren geht.';
+    hinweis.classList.toggle('warnung', !!faellig);
     // Wie viel Platz Fotos und Aufnahmen belegen (damit „Speicher voll“ nicht überrascht)
     if (navigator.storage && navigator.storage.estimate) {
       navigator.storage.estimate().then(({ usage }) => {
         if (usage) box.textContent += ` Belegt: etwa ${Math.max(1, Math.round(usage / 1e6))} MB.`;
       }).catch(() => {});
+    }
+    if (navigator.storage && navigator.storage.persisted) {
+      navigator.storage.persisted().then((ja) => { box.textContent += ja ? ' Vom Browser geschützt.' : ''; }).catch(() => {});
     }
   });
 }
@@ -4576,6 +4602,7 @@ async function sicherungHerunterladen(knopf, nurStimme) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
+    if (!nurStimme) { speicher.schreiben('letzteSicherung', Date.now()); sicherungZusammenfassung(); }
   } catch {
     alert('Die Sicherung konnte nicht erstellt werden.');
   } finally {
@@ -4591,6 +4618,8 @@ $('#btn-teilen').addEventListener('click', async (e) => {
   try {
     const datei = await sicherungAlsDatei();
     await navigator.share({ files: [datei], title: 'Buchstaben-Sicherung' });
+    speicher.schreiben('letzteSicherung', Date.now());
+    sicherungZusammenfassung();
   } catch (fehler) {
     if (fehler && fehler.name !== 'AbortError') alert('Teilen hat nicht geklappt. Bitte „Sicherung speichern“ verwenden.');
   } finally {
@@ -4667,6 +4696,7 @@ const startFertig = (async () => {
     if (!kinder.length) speicher.schreiben('profil', STANDARD.id);
   }
   await medienLaden();
+  if (kinder.length || profile.length) speicherSchuetzen();
   rasterZeichnen();
   // Mit Kindern beginnt die App mit "Wer spielt?"
   if (kinder.length && $('#home').classList.contains('active')) {

@@ -74,6 +74,21 @@
 
   await elternOeffnen();
   document.querySelector('#btn-sichern').scrollIntoView();
+  // Sicherungs-Erinnerung: nie / zu lange her → Hinweis; frisch gesichert → kein Hinweis
+  const erinnerung = async (wert) => {
+    if (wert === null) localStorage.removeItem('letzteSicherung'); else speicher.schreiben('letzteSicherung', wert);
+    sicherungZusammenfassung();
+    await new Promise((r) => setTimeout(r, 200));
+    return $('#sicherung-erinnerung');
+  };
+  let h = await erinnerung(null);
+  pruefe(h.textContent.startsWith('Noch keine Sicherung') && h.classList.contains('warnung'), `Nie gesichert: ${h.textContent}`);
+  h = await erinnerung(Date.now() - 40 * 864e5);
+  pruefe(h.textContent.includes('vor 40 Tagen') && h.classList.contains('warnung'), `40 Tage: ${h.textContent}`);
+  h = await erinnerung(Date.now());
+  pruefe(h.textContent.includes('heute') && !h.classList.contains('warnung'), `Heute: ${h.textContent}`);
+  pruefe(typeof speicherSchuetzen === 'function', 'speicherSchuetzen fehlt');
+
   // Nur Stimme & Fotos: eigene Profile ja, aber keine Kinder, Funde oder Einstellungen
   const nurStimme = await sicherungErstellen(true);
   pruefe(nurStimme.nurStimme === true && nurStimme.kinder.length === 0 && nurStimme.funde.length === 0 && !nurStimme.einstellungen,

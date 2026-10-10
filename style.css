@@ -715,3 +715,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Pegel-Balken im Eltern-Studio */
 .studio-pegel { width: 160px; height: 8px; border-radius: 4px; background: #eadfcd; overflow: hidden; }
 .studio-pegel span { display: block; height: 100%; width: 0; background: #1d5fbf; transition: width 0.06s linear; }
+
+#sicherung-erinnerung.warnung { color: #b8470b; font-weight: 700; }
