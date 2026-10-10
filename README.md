@@ -31,6 +31,8 @@ Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als I
   - `willkommen` – Begrüßung beim ersten Start
   - `studio` – Stimme einsprechen im Elternbereich (künstlicher Ton statt Mikrofon)
   - `kiste` – Wörterkiste (Auswahl, alle Stufen, Stufe 4, Erzähl-Bild)
+  - `eigene-kisten` – Meine Leute / Meine Kita (Elternbereich, ab 3 fertigen Wörtern, „Wer ist das?“, Sicherung)
+  - `offline` – Offline-Speicher installiert sich, App und Töne liegen im Cache
   - `info` – Über die App & Datenschutz (Texte, Links, Zurück-Weg)
   - `reime` – Reim-Paare (Ablenker-Regel, Vormachen, Runden, 🔊-Rettung)
   - `regal` – Spiele-Regal app-weit und je Kind, Standard für neue/alte Kinder, Sicherung
@@ -101,6 +103,11 @@ beginnen mit ✏️ 👆 👂 🥁 ✍️ 📒 – ein neues Spiel erst ins Rega
   Sticker-Album unter 💬.
   Eigene Fotos: Eltern-Studio → Kisten → 📷 – das Foto (z. B. eure echte Tasse) ersetzt das Emoji
   (Profil-Medium `datei:kiste-<id>.wav|bild`, gleicher Schlüssel wie die Aufnahme). Aufnahmen `audio/kiste-<id>.wav`, `audio/tier-<id>.wav`.
+  **Eigene Kisten** (Elternbereich → Stimme & Fotos): 👨‍👩‍👧 „Meine Leute“ (Oma, Opa, Erzieherin … – Stufe 3 fragt
+  „Wer ist das? Sag es!“, Erzählfrage „Was machst du gern mit …?“) und 🏫 „Meine Kita“ (Orte und Dinge, mit Artikel,
+  keine anderen Kinder auf Fotos). Eltern legen bis zu 6 Wörter je Kiste an (`profil.kistenWoerter`, Foto/Aufnahme unter
+  `w-<id>` wie persönliche Wörter); die Kiste erscheint ab 3 Wörtern mit Foto und Aufnahme, ohne Stufe 4, mit dem
+  ersten eigenen Foto als Kachel.
 - 👆 **Zeig mir** – Montessori-Drei-Stufen-Lektion mit 3 Buchstaben (in Stufe 1 wird jeder Buchstabe nach dem Antippen
   einmal auf der Spur-Tafel nachgespurt – wie der Sandpapier-Buchstabe; ➡️ dort = ohne Spuren zurück, keine Sterne) (aktuelle Gruppe; nie ähnlich aussehend oder
   klingend, siehe `AEHNLICHE_FORMEN`/`AEHNLICHE_LAUTE`): 👀 „Das ist …“ → 👂 „Zeig mir …“ (6 Aufträge, Plätze einmal

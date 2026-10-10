@@ -23,6 +23,7 @@ const ANSAGEN = {
   'kiste-wo-ist-bei-dir': ['Wo ist bei dir', 'Wörterkiste'],
   'kiste-wie-macht': ['Wie macht', 'Wörterkiste'],
   'kiste-aussuchen': ['Such dir eine Kiste aus!', 'Wörterkiste'],
+  'kiste-wer-ist-das': ['Wer ist das? Sag es!', 'Wörterkiste'],
   'reim-frage': ['Was reimt sich auf', 'Reime'],
   'reim-das-reimt': ['Das reimt sich!', 'Reime'],
   'reim-hoer-mal': ['Hör mal:', 'Reime'],

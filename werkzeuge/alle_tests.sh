@@ -40,6 +40,8 @@ LAEUFE=(
   "willkommen|tests/willkommen.html|412,860|60"
   "kiste|tests/kiste.html|412,860|90"
   "kiste-klein|tests/kiste.html|360,640|90"
+  "eigene-kisten|tests/eigene-kisten.html|412,860|90"
+  "eigene-k-klein|tests/eigene-kisten.html|360,640|90"
   "info|tests/info.html|412,860|60"
   "offline|tests/offline.html|412,860|60"
   "reime|tests/reime.html|412,860|90"

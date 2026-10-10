@@ -747,3 +747,10 @@ body.laedt #home .spiele-raster { visibility: hidden; }
 /* Elternbereich: lange Buchstabenliste eingeklappt */
 .buchstaben-anpassen summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: #1d5fbf; }
 .karte[hidden] { display: none; }
+
+/* Eigene Kisten im Elternbereich (Meine Leute, Meine Kita) */
+.eigene-kisten { margin: 12px 0; padding: 10px 12px; border-radius: 14px; background: #fff7e6; }
+.eigene-kisten h3 { margin: 4px 0; }
+.eigene-kiste h4 { margin: 12px 0 2px; }
+.eigene-kiste h4 small { font-weight: normal; color: #555; margin-left: 6px; }
+.eigene-kiste .eigene-woerter { padding-left: 0; }

@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 63;
+const APP_VERSION = 64;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -124,14 +124,18 @@ let medien = {};
 
 // Persönliche Wörter des aktiven Profils: [{ id, b, wort }]; Foto/Aufnahme unter medien['w-<id>']
 let eigeneWoerter = [];
+// Wörter der eigenen Kisten (Meine Leute, Meine Kita): [{ id, kiste, wort }]; Foto/Aufnahme ebenso unter medien['w-<id>']
+let eigeneKistenWoerter = [];
 
 async function medienLaden() {
   Object.values(medien).forEach((m) => m.bildUrl && URL.revokeObjectURL(m.bildUrl));
   medien = {};
   eigeneWoerter = [];
+  eigeneKistenWoerter = [];
   if (zustand.profil === STANDARD.id) return;
   const profil = (await datenbank.profile()).find((p) => p.id === zustand.profil);
   eigeneWoerter = (profil && profil.woerter) || [];
+  eigeneKistenWoerter = (profil && profil.kistenWoerter) || [];
   for (const { schluessel, blob } of await datenbank.medienVon(zustand.profil)) {
     const [, b, art] = schluessel.split('|');
     const m = medien[b] || (medien[b] = {});
@@ -317,7 +321,8 @@ let deutscheStimme = null;
 function stimmeWaehlen() {
   if (!('speechSynthesis' in window)) return;
   const stimmen = speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('de'));
-  deutscheStimme = stimmen.find((v) => v.localService) || stimmen[0] || null;
+  // Nur Stimmen, die auf dem Gerät laufen: Online-Stimmen schicken den Text (z. B. Namen aus „Meine Leute“) an einen Dienst
+  deutscheStimme = stimmen.find((v) => v.localService) || null;
 }
 if ('speechSynthesis' in window) {
   stimmeWaehlen();
@@ -325,7 +330,7 @@ if ('speechSynthesis' in window) {
 }
 
 function sprechen(text) {
-  if (!('speechSynthesis' in window)) return;
+  if (!('speechSynthesis' in window) || !deutscheStimme) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'de-DE';
@@ -2220,7 +2225,8 @@ function anpassenZeichnen() {
   const box = $('#anpassen');
   if (zustand.profil === STANDARD.id) {
     box.innerHTML = '<p class="hinweis">Das Profil „Standard“ bleibt immer unverändert. '
-      + 'Legen Sie ein eigenes Profil an, um Fotos zu machen und die Laute mit Ihrer Stimme aufzunehmen.</p>'
+      + 'Legen Sie ein eigenes Profil an, um Fotos zu machen, die Laute mit Ihrer Stimme aufzunehmen und eigene Kisten '
+      + '(„Meine Leute“, „Meine Kita“) mit Ihren Menschen und Orten anzulegen.</p>'
       + '<button class="text-btn" data-a="neu">➕ Eigenes Profil anlegen</button>';
     box.querySelector('[data-a=neu]').addEventListener('click', profilNeu);
     return;
@@ -2232,6 +2238,7 @@ function anpassenZeichnen() {
     + '<details class="buchstaben-anpassen"><summary>Einzelne Buchstaben anpassen (Foto, ganze Ansage)</summary>'
     + '<p class="hinweis">Fotos und Aufnahmen je Buchstabe (die ganze Ansage, z. B. „mmm … mmm … Maus“):</p></details>';
   box.querySelector('[data-a=studio]').addEventListener('click', studioOeffnen);
+  box.querySelector('.buchstaben-anpassen').before(eigeneKistenBox());
   const liste = box.querySelector('.buchstaben-anpassen');
   BUCHSTABEN.forEach((eintrag) => {
     const m = medien[eintrag.b] || {};
@@ -2266,24 +2273,10 @@ function eigeneWoerterBox(eintrag) {
   const box = document.createElement('div');
   box.className = 'eigene-woerter';
   eigeneWoerter.filter((w) => w.b === eintrag.b).forEach((w) => {
-    const m = medien[`w-${w.id}`] || {};
-    const zeile = document.createElement('div');
-    zeile.className = 'eigenes-wort';
-    zeile.innerHTML = `<span class="vorschau">${m.bildUrl ? `<img class="bild-datei foto" src="${m.bildUrl}" alt="">` : '💛'}</span>`
-      + `<span class="w">${htmlText(w.wort)}<br><small>${m.stimme ? '<b>aufgenommen</b>' : 'noch nicht aufgenommen'}</small></span>`
-      + '<button class="mini-btn" data-a="foto" aria-label="Foto wählen">📷</button>'
-      + '<button class="mini-btn" data-a="rec" aria-label="Wort aufnehmen">🎙️</button>'
-      + `<button class="mini-btn" data-a="play" aria-label="Anhören" ${m.stimme ? '' : 'disabled'}>▶️</button>`
-      + '<button class="mini-btn" data-a="weg" aria-label="Wort löschen">🗑️</button>';
-    const knopf = (a) => zeile.querySelector(`[data-a=${a}]`);
-    knopf('foto').addEventListener('click', () => buchstabenFotoWaehlen(`w-${w.id}`));
-    knopf('rec').addEventListener('click', (e) => medienAufnehmen(`w-${w.id}`, e.currentTarget));
-    knopf('play').addEventListener('click', () => {
+    box.appendChild(eigenesWortZeile(w, () => {
       const wahl = woerterFuer(eintrag).find((x) => x.id === w.id);
       if (wahl) folgeAbspielen(wahl.ansage());
-    });
-    knopf('weg').addEventListener('click', () => eigenesWortLoeschen(w));
-    box.appendChild(zeile);
+    }, () => eigenesWortLoeschen(w)));
   });
   const neu = document.createElement('button');
   neu.className = 'text-btn klein';
@@ -2291,6 +2284,70 @@ function eigeneWoerterBox(eintrag) {
   neu.addEventListener('click', () => eigenesWortNeu(eintrag));
   box.appendChild(neu);
   return box;
+}
+
+// Eine Zeile „Foto · Wort · 📷 🎙️ ▶️ 🗑️“ (persönliche Wörter und eigene Kisten)
+function eigenesWortZeile(w, abspielen, loeschen, fotoNoetig = false) {
+  const m = medien[`w-${w.id}`] || {};
+  const zeile = document.createElement('div');
+  zeile.className = 'eigenes-wort';
+  zeile.innerHTML = `<span class="vorschau">${m.bildUrl ? `<img class="bild-datei foto" src="${m.bildUrl}" alt="">` : '💛'}</span>`
+    + `<span class="w">${htmlText(w.wort)}<br><small>${m.stimme ? '<b>aufgenommen</b>' : 'noch nicht aufgenommen'}${fotoNoetig && !m.bildUrl ? ' · Foto fehlt' : ''}</small></span>`
+    + '<button class="mini-btn" data-a="foto" aria-label="Foto wählen">📷</button>'
+    + '<button class="mini-btn" data-a="rec" aria-label="Wort aufnehmen">🎙️</button>'
+    + `<button class="mini-btn" data-a="play" aria-label="Anhören" ${m.stimme ? '' : 'disabled'}>▶️</button>`
+    + '<button class="mini-btn" data-a="weg" aria-label="Wort löschen">🗑️</button>';
+  const knopf = (a) => zeile.querySelector(`[data-a=${a}]`);
+  knopf('foto').addEventListener('click', () => buchstabenFotoWaehlen(`w-${w.id}`));
+  knopf('rec').addEventListener('click', (e) => medienAufnehmen(`w-${w.id}`, e.currentTarget));
+  knopf('play').addEventListener('click', abspielen);
+  knopf('weg').addEventListener('click', loeschen);
+  return zeile;
+}
+
+// Eigene Kisten im Elternbereich: je Kiste die Wörter mit Foto und Aufnahme
+function eigeneKistenBox() {
+  const box = document.createElement('div');
+  box.className = 'eigene-kisten';
+  box.innerHTML = '<h3>🧺 Eigene Kisten</h3><p class="hinweis">In der Wörterkiste lernt Ihr Kind auch Ihre Menschen und Orte: '
+    + `„Das ist Oma.“ – „Wo ist Oma?“ – „Wer ist das?“. Eine Kiste erscheint, sobald ${KISTE_MIN} Wörter ein Foto und eine Aufnahme haben.</p>`;
+  EIGENE_KISTEN.forEach((def) => {
+    const alle = eigeneKistenWoerter.filter((w) => w.kiste === def.id);
+    const fertig = alle.filter(kistenWortFertig).length;
+    const teil = document.createElement('div');
+    teil.className = 'eigene-kiste';
+    teil.dataset.kiste = def.id;
+    teil.innerHTML = `<h4>${def.bild} ${def.name} <small>${fertig >= KISTE_MIN ? '<b>im Spiel</b>' : `${fertig} von ${KISTE_MIN} fertig`}</small></h4>`
+      + `<p class="hinweis">${htmlText(def.hinweis)}</p>`;
+    const liste = document.createElement('div');
+    liste.className = 'eigene-woerter';
+    alle.forEach((w) => liste.appendChild(eigenesWortZeile(w,
+      () => { const m = medien[`w-${w.id}`]; if (m && m.stimme) folgeAbspielen([blobQuelle(m.stimme)]); },
+      () => eigenesWortLoeschen(w, 'kistenWoerter'), true)));
+    if (alle.length < KISTE_MAX) {
+      const neu = document.createElement('button');
+      neu.className = 'text-btn klein';
+      neu.textContent = `➕ Wort für „${def.name}“`;
+      neu.addEventListener('click', () => kistenWortNeu(def));
+      liste.appendChild(neu);
+    }
+    teil.appendChild(liste);
+    box.appendChild(teil);
+  });
+  return box;
+}
+
+async function kistenWortNeu(def) {
+  let wort = (prompt(`${def.eingabe} für „${def.name}“, z. B. ${def.beispielWort}:`) || '').trim().slice(0, 30);
+  // Namen ohne Artikel („die Oma“ → „Oma“), sonst hieße die Frage „Was machst du gern mit die Oma?“
+  if (def.werIst) wort = wort.replace(/^(der|die|das)\s+/i, '');
+  if (!wort) return;
+  const profil = await aktivesProfil();
+  if (!profil) return;
+  profil.kistenWoerter = [...(profil.kistenWoerter || []), { id: Date.now().toString(36), kiste: def.id, wort }];
+  await datenbank.profilSpeichern(profil);
+  await medienLaden();
+  medienZeichnen();
 }
 
 function faengtAnMit(wort, b) {
@@ -2309,11 +2366,11 @@ async function eigenesWortNeu(eintrag) {
   medienZeichnen();
 }
 
-async function eigenesWortLoeschen(w) {
+async function eigenesWortLoeschen(w, feld = 'woerter') {
   if (!confirm(`„${w.wort}“ mit Foto und Aufnahme löschen?`)) return;
   const profil = await aktivesProfil();
   if (!profil) return;
-  profil.woerter = (profil.woerter || []).filter((x) => x.id !== w.id);
+  profil[feld] = (profil[feld] || []).filter((x) => x.id !== w.id);
   await datenbank.profilSpeichern(profil);
   await datenbank.medienEntfernen(profil.id, `w-${w.id}`, 'bild');
   await datenbank.medienEntfernen(profil.id, `w-${w.id}`, 'stimme');
@@ -3156,8 +3213,9 @@ function albumZeichnen(fundMedien = {}) {
     reihe.className = 'album-funde';
     raster.children[0].after(reihe);
     erzaehlungen.slice().reverse().forEach((f) => {
-      const k = KISTEN.find((x) => x.id === f.kiste);
-      const bilder = k ? f.woerter.map((id) => kisteBildHtml(id, (k.woerter.find((w) => w[0] === id) || [])[2] || '')).join('') : '💬';
+      const k = alleKisten().find((x) => x.id === f.kiste);
+      // Gelöschte Wörter (eigene Kisten) zeigen das Kisten-Symbol
+      const bilder = k ? f.woerter.map((id) => kisteBildHtml(id, (k.woerter.find((w) => w[0] === id) || [, , k.bild])[2])).join('') : '💬';
       const el = document.createElement('button');
       el.className = 'sticker hat erzaehlung';
       el.innerHTML = `<span>${bilder}</span><small>💬</small>`;
@@ -3638,17 +3696,19 @@ const kiste = { kiste: null, woerter: [], stufe: 0, schritt: 0, punkte: 0, auftr
 
 const kisteAktuell = (nr) => nr === kiste.nummer && $('#kiste').classList.contains('active');
 // Eigenes Foto der Eltern (Studio → Kisten → 📷) statt Emoji: der echte Löffel aus der eigenen Küche
-const kisteFoto = (id) => (medien[`datei:kiste-${id}.wav`] || {}).bildUrl;
+const kisteFoto = (id) => (medien[`datei:kiste-${id}.wav`] || medien[`w-${id}`] || {}).bildUrl;
 const kisteBildHtml = (id, emoji) => (kisteFoto(id) ? `<img class="kiste-foto" src="${kisteFoto(id)}" alt="">` : emoji);
 const kisteWort = (id) => kiste.kiste.woerter.find((w) => w[0] === id);
-const kisteQuelle = (id) => ({ url: kisteDatei(id) });
+const kisteQuelle = (id) => (kiste.kiste.eigen && (medien[`w-${id}`] || {}).stimme ? blobQuelle(medien[`w-${id}`].stimme) : { url: kisteDatei(id) });
 const kisteText = (id) => kisteWort(id)[1];
 const kistePunkteGesamt = () => KISTE_STUFEN.reduce((a, b) => a + b, 0) + (kiste.kiste && kiste.kiste.stufe4 ? 1 : 0);
 
 // 3 der 6 Wörter: zuerst die, die beim letzten Mal nicht dran waren; nie zwei zu ähnliche zusammen
 function kisteAuswahl(k) {
-  const vorher = kiste.zuletzt[k.id] || [];
-  const ids = [...mischen(k.woerter.map((w) => w[0]).filter((id) => !vorher.includes(id))), ...mischen(vorher)];
+  const alle = k.woerter.map((w) => w[0]);
+  // Nur noch vorhandene Wörter (in eigenen Kisten können Eltern Wörter löschen)
+  const vorher = (kiste.zuletzt[k.id] || []).filter((id) => alle.includes(id));
+  const ids = [...mischen(alle.filter((id) => !vorher.includes(id))), ...mischen(vorher)];
   const wahl = [];
   ids.forEach((id) => {
     if (wahl.length < 3 && !wahl.some((x) => KISTEN_NICHT_ZUSAMMEN.some((p) => p.includes(x) && p.includes(id)))) wahl.push(id);
@@ -3700,6 +3760,33 @@ function kisteSymbol() {
   karteAnimieren(s, 'huepft');
 }
 
+// Eigene Kisten: Wörter, Fotos und Aufnahmen legen die Eltern im Elternbereich an (profil.kistenWoerter).
+// Spielbar ab KISTE_MIN Wörtern mit Foto UND Aufnahme; ohne „bei dir“-Stufe (Oma oder die Rutsche sind nicht im Zimmer).
+const EIGENE_KISTEN = [
+  { id: 'leute', name: 'Meine Leute', bild: '👨‍👩‍👧', werIst: true, beispiel: '„Ja, ihr wart zusammen im Park – und was habt ihr da gemacht?“',
+    frage: (wort, i) => [`Was machst du gern mit ${wort}?`, `Was sagt ${wort} oft zu dir?`, `Wo wohnt ${wort}?`][i % 3], beispielWort: 'Oma oder Frau Yilmaz',
+    eingabe: 'Name, wie Ihr Kind ihn sagt',
+    hinweis: 'Menschen aus dem Leben Ihres Kindes: Oma, Opa, Geschwister, Freunde (bei Kindern: deren Eltern fragen), die Erzieherin – besonders hilfreich bei neuen '
+      + 'Menschen, z. B. vor und in der Eingewöhnung. Ein Foto je Person, Gesicht groß, möglichst allein im Bild. Nur den Namen '
+      + 'sprechen, langsam und deutlich („Oma“, nicht „Das ist Oma“ – das sagt die App selbst). Nur mit Einverständnis der Person. '
+      + 'Wer nicht mehr da ist oder nicht mehr kommt, lieber gemeinsam im Fotoalbum anschauen als im Spiel.' },
+  { id: 'kita', name: 'Meine Kita', bild: '🏫', beispiel: '„Ja, an der Garderobe hängt deine Jacke.“',
+    frage: (wort, i) => ['Was machst du da am liebsten?', 'Was spielst du da?', 'Zeig mal, wie du das da machst!'][i % 3], beispielWort: 'die Rutsche',
+    eingabe: 'Wort mit Artikel',
+    hinweis: 'Orte und Dinge aus der Kita oder dem Alltag: Garderobe, Rutsche, Sandkasten. Nah fotografieren, nur der eine Ort oder '
+      + 'das eine Ding, keine anderen Kinder auf den Fotos. Fragen Sie in der Kita, ob Sie dort fotografieren dürfen – sonst geht es '
+      + 'auch zu Hause: eigene Jacke, Kita-Tasche, der Weg dorthin. Nur das Wort mit Artikel sprechen („die Rutsche“).' },
+];
+const KISTE_MIN = 3;
+const KISTE_MAX = 6;
+const kistenWortFertig = (w) => !!(medien[`w-${w.id}`] && medien[`w-${w.id}`].bildUrl && medien[`w-${w.id}`].stimme);
+function eigeneKiste(def, nurFertige = true) {
+  const woerter = eigeneKistenWoerter.filter((w) => w.kiste === def.id && (!nurFertige || kistenWortFertig(w)));
+  return { ...def, eigen: true, stufe4: null, woerter: woerter.map((w, i) => [w.id, w.wort, '💛', def.frage(w.wort, i)]) };
+}
+const spielbareKisten = () => [...KISTEN, ...EIGENE_KISTEN.map((d) => eigeneKiste(d)).filter((k) => k.woerter.length >= KISTE_MIN)];
+const alleKisten = () => [...KISTEN, ...EIGENE_KISTEN.map((d) => eigeneKiste(d, false))];
+
 // Kisten-Wahl: große Kacheln mit dem Symbol der Kiste (ohne Text)
 function kistenWahlZeigen() {
   kisteStoppen();
@@ -3712,10 +3799,11 @@ function kistenWahlZeigen() {
   box.hidden = false;
   box.innerHTML = '';
   folgeAbspielen([{ url: 'audio/ansage-kiste-aussuchen.wav' }], 'Such dir eine Kiste aus!');
-  KISTEN.forEach((k) => {
+  spielbareKisten().forEach((k) => {
     const btn = document.createElement('button');
     btn.className = 'spiel-btn kiste-wahl-btn';
-    btn.textContent = k.bild;
+    // Eigene Kisten zeigen ein eigenes Foto (ein bekanntes Gesicht erkennt das Kind sofort)
+    btn.innerHTML = k.eigen ? kisteBildHtml(k.woerter[0][0], k.bild) : k.bild;
     btn.setAttribute('aria-label', k.name);
     btn.addEventListener('click', () => { audio(); kisteNeu(k); });
     box.appendChild(btn);
@@ -3811,7 +3899,8 @@ async function kisteFrage() {
   kisteStoppen();
   const nr = kiste.nummer;
   const karte = kisteEinzeln(id);
-  if (!(await kisteSagen(nr, [{ url: 'audio/ansage-zeigen-was-ist-das.wav' }], 'Was ist das? Sag es!'))) return;
+  const frage = kiste.kiste.werIst ? ['kiste-wer-ist-das', 'Wer ist das? Sag es!'] : ['zeigen-was-ist-das', 'Was ist das? Sag es!'];
+  if (!(await kisteSagen(nr, [{ url: `audio/ansage-${frage[0]}.wav` }], frage[1]))) return;
   kiste.timer = setTimeout(() => {
     if (!kisteAktuell(nr)) return;
     kiste.gesperrt = false;
@@ -3956,7 +4045,7 @@ function kisteErzaehlen() {
     btn.addEventListener('click', () => { audio(); folgeAbspielen([kisteQuelle(id)]); });
     bilder.appendChild(btn);
   });
-  $('#kiste-fragen').innerHTML = kiste.woerter.map((id) => `<li>${htmlText(kisteWort(id)[3])}</li>`).join('');
+  $('#kiste-fragen').innerHTML = [...new Set(kiste.woerter.map((id) => kisteWort(id)[3]))].map((f) => `<li>${htmlText(f)}</li>`).join('');
   $('#kiste-beispiel').textContent = kiste.kiste.beispiel;
   kiste.erzaehlId = null;   // eine Erzählung je Runde (nochmal aufnehmen ersetzt sie)
   $('#btn-kiste-erzaehlen').classList.remove('fertig');
@@ -4662,8 +4751,8 @@ const stringListe = (x, muster, max = 500) => (Array.isArray(x) ? x.filter((v) =
 function fundeSauber(liste) {
   return (Array.isArray(liste) ? liste : []).filter((f) => f && typeof f.id === 'string' && /^[a-z0-9]+$/.test(f.id)).slice(0, 2000)
     .map((f) => (f.art === 'erzaehlung'
-      ? { id: f.id, art: 'erzaehlung', kiste: ausListe(f.kiste, KISTEN.map((k) => k.id), KISTEN[0].id),
-        woerter: stringListe(f.woerter, /^[a-z]+$/, 6), zeit: Number(f.zeit) || 0 }
+      ? { id: f.id, art: 'erzaehlung', kiste: ausListe(f.kiste, [...KISTEN, ...EIGENE_KISTEN].map((k) => k.id), KISTEN[0].id),
+        woerter: stringListe(f.woerter, /^[a-z0-9]+$/, 6), zeit: Number(f.zeit) || 0 }
       : { id: f.id, b: istBuchstabe(f.b) ? f.b : BUCHSTABEN[0].b, zeit: Number(f.zeit) || 0 }));
 }
 const ALBUM_MUSTER = /^[a-zäöüß]\|[^<>"&|]{1,40}$/;
@@ -4683,7 +4772,10 @@ function profilSauber(p) {
   const woerter = (Array.isArray(p.woerter) ? p.woerter : [])
     .filter((w) => w && typeof w.id === 'string' && /^[a-z0-9]+$/.test(w.id) && istBuchstabe(w.b) && typeof w.wort === 'string')
     .map((w) => ({ id: w.id, b: w.b, wort: w.wort.slice(0, 30) })).slice(0, 500);
-  return { id: p.id, name: textFeld(p.name, 30).trim() || 'Profil', erstellt: Number(p.erstellt) || Date.now(), woerter };
+  const kistenWoerter = (Array.isArray(p.kistenWoerter) ? p.kistenWoerter : [])
+    .filter((w) => w && typeof w.id === 'string' && /^[a-z0-9]+$/.test(w.id) && EIGENE_KISTEN.some((k) => k.id === w.kiste) && typeof w.wort === 'string')
+    .map((w) => ({ id: w.id, kiste: w.kiste, wort: w.wort.slice(0, 30) })).slice(0, EIGENE_KISTEN.length * KISTE_MAX);
+  return { id: p.id, name: textFeld(p.name, 30).trim() || 'Profil', erstellt: Number(p.erstellt) || Date.now(), woerter, kistenWoerter };
 }
 
 async function sicherungEinspielen(s) {
@@ -4813,7 +4905,7 @@ $('#btn-teilen').addEventListener('click', async (e) => {
   const knopf = e.currentTarget;
   knopf.disabled = true;
   try {
-    if (!confirm('Die Sicherung enthält Namen, Fotos und Stimmen Ihrer Kinder.\n'
+    if (!confirm('Die Sicherung enthält Namen, Fotos und Stimmen Ihrer Kinder – und die Fotos und Stimmen aus Ihren eigenen Kisten (z. B. Oma, Erzieherin).\n'
       + 'Nur an sich selbst oder Ihren Partner schicken – im Einzelchat, nicht in Gruppen – und danach im Chat löschen.')) return;
     const datei = await sicherungAlsDatei();
     await navigator.share({ files: [datei], title: 'Buchstaben-Sicherung' });
