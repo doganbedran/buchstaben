@@ -27,6 +27,84 @@
     </div>
   </section>
 
+  <!-- Mitmachen: Oma, Erzieherin … nimmt auf dem eigenen Handy auf und schickt ein Stimm-Paket (hier wird nichts gespeichert) -->
+  <section id="mitmachen" class="screen eltern">
+    <header class="topbar">
+      <span></span>
+      <h2>Mitmachen</h2>
+      <span></span>
+    </header>
+    <div class="eltern-inhalt">
+      <div class="karte">
+        <h3 id="mitmachen-gruss">Hallo!</h3>
+        <p class="hinweis">Sie nehmen hier ein paar kurze Sätze für die Kinder auf. Am Ende schicken Sie alles als
+          <b>eine Datei</b> an die Familie – die hört es an, bevor es in ihre App kommt.</p>
+        <p class="hinweis">Ihre Aufnahmen werden hier nicht gespeichert: Bitte diese Seite bis zum Schicken offen lassen
+          und <b>erst das Foto, dann aufnehmen</b>.</p>
+      </div>
+      <div class="karte">
+        <h3>1. Ihr Foto (freiwillig)</h3>
+        <p class="hinweis">Gesicht groß, allein im Bild. Die Kinder sehen es klein, wenn Sie loben.</p>
+        <div class="paket-kopf"><span id="mitmachen-foto" class="mensch-bild gross">🙂</span>
+          <button id="btn-mitmachen-foto" class="text-btn">📷 Foto wählen</button></div>
+      </div>
+      <div class="karte">
+        <h3>2. Ihr Name, wie die Kinder ihn sagen</h3>
+        <input id="mitmachen-name" class="textfeld" type="text" maxlength="30" autocomplete="off">
+        <p class="hinweis">Nur den Namen sprechen, langsam und deutlich, z. B. „Oma“. 🎙️ antippen, sprechen, nochmal antippen.
+          Beim ersten Mal fragt das Handy nach dem Mikrofon – bitte „Zulassen“ tippen.</p>
+        <div class="knopf-reihe">
+          <button id="btn-mitmachen-name-rec" class="mini-btn" aria-label="Namen aufnehmen">🎙️</button>
+          <button id="btn-mitmachen-name-play" class="mini-btn" aria-label="Anhören" disabled>▶️</button>
+          <span id="mitmachen-name-status" class="hinweis">noch nicht aufgenommen</span>
+        </div>
+      </div>
+      <div class="karte">
+        <h3>3. Lob (1 bis 5 Sätze)</h3>
+        <p class="hinweis">Kurz und herzlich, so wie Sie es sagen – z. B. „Super!“ oder „Toll gemacht!“ (höchstens 5 Sekunden je Satz).</p>
+        <div id="mitmachen-lob"></div>
+      </div>
+      <div class="karte">
+        <h3>4. Abschicken</h3>
+        <p class="hinweis" id="mitmachen-stand"></p>
+        <p class="hinweis">Nach dem Tippen auf „📤 Paket schicken“ z. B. WhatsApp wählen und den Chat der Familie antippen.</p>
+        <div class="knopf-reihe"><button id="btn-mitmachen-schicken" class="text-btn gross" disabled>📤 Paket schicken</button></div>
+        <p class="hinweis">Bitte nur an die Familie schicken, im Einzelchat – danach können Sie die Datei im Chat löschen.
+          Für Erzieherinnen: bitte vorher mit der Kita klären, ob das in Ordnung ist.</p>
+      </div>
+      <div class="karte mitmachen-danke" id="mitmachen-danke" hidden>
+        <h3>Danke! 💛</h3>
+        <p class="hinweis">Die Familie hört es sich jetzt an. Sie können diese Seite schließen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Beim Mitmachen: deutlich zeigen, dass gerade aufgenommen wird (5-Sekunden-Balken) -->
+  <div id="mitmachen-hoert" class="mitmachen-hoert" hidden>🔴 Ich höre zu … <small>(nochmal 🎙️ = fertig)</small><span></span></div>
+
+  <!-- Stimm-Paket ansehen und anhören, bevor es übernommen wird -->
+  <section id="paket" class="screen eltern">
+    <header class="topbar">
+      <button id="btn-paket-zurueck" class="icon-btn" aria-label="Zurück">⬅️</button>
+      <h2>Stimm-Paket</h2>
+      <span></span>
+    </header>
+    <div class="eltern-inhalt">
+      <div class="karte">
+        <div class="paket-kopf"><span id="paket-foto" class="mensch-bild gross"></span><h3 id="paket-name"></h3></div>
+        <p class="hinweis">Bitte erst alles anhören und das Foto ansehen: Ist nur diese Person zu sehen, keine anderen Kinder?
+          Übernommen wird es nur mit „Übernehmen“ – als Mensch mit Lob, Foto und in „Meine Leute“ (auch bei ✍️ „Mein Name“,
+          dort abschaltbar). Ihre Kinder werden nur nach Rückfrage geändert.</p>
+        <div id="paket-teile"></div>
+        <div class="knopf-reihe">
+          <button id="btn-paket-ok" class="text-btn">✅ Übernehmen</button>
+          <button id="btn-paket-weg" class="text-btn warnung">Verwerfen</button>
+        </div>
+        <p class="hinweis">Danach die Datei im Chat löschen – Chat-Sicherungen sind oft nicht verschlüsselt.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- Über die App & Datenschutz (für Eltern) -->
   <section id="info" class="screen eltern">
     <header class="topbar">
@@ -60,6 +138,12 @@
           Danach läuft die App auch ohne Internet.</p>
         <p><b>Sicherung:</b> Die Sicherungsdatei („Sichern &amp; Übertragen“) enthält Fotos, Stimmen und Namen – speichern Sie
           sie nur an einem Ort, dem Sie vertrauen, und geben Sie sie nur an Menschen weiter, denen Sie auch ein Familienfoto geben würden.</p>
+        <p><b>Mitmachen (Oma, Erzieherin …):</b> Eingeladene nehmen auf ihrem eigenen Handy auf; ihre Aufnahmen
+          werden dort nicht gespeichert (nur die verschickte Datei, falls sie unter „Downloads“ landet). Das Stimm-Paket schicken sie selbst, z. B. per Messenger – es geht über diesen Dienst, nicht über die App.
+          Sie hören alles an, bevor es übernommen wird. Einmal verschickte Dateien lassen sich nicht zurückholen: Wer seine
+          Aufnahmen nicht mehr in der App möchte, bittet die Familie, den Menschen zu löschen – auch auf anderen Geräten;
+          ältere Sicherungsdateien enthalten ihn weiter. Für Kitas: Aufnahmen von
+          Erzieherinnen nur mit Zustimmung der Kita und der Erzieherin selbst; nie andere Kinder auf Fotos oder in Aufnahmen.</p>
         <p><b>Löschen:</b> Kinder und Profile lassen sich im Elternbereich einzeln löschen. Alles auf einmal löschen Sie, indem Sie die
           App deinstallieren bzw. die Website-Daten dieser Seite im Browser löschen – vorher bei Bedarf eine Sicherung machen.</p>
       </div>
@@ -365,9 +449,17 @@
         <p class="hinweis mensch-stand" id="mensch-stand" hidden></p>
         <div class="knopf-reihe">
           <button id="btn-profil-neu" class="text-btn">➕ Neuer Mensch</button>
+
           <button id="btn-profil-foto" class="text-btn">📷 Foto der Person</button>
           <button id="btn-profil-umbenennen" class="text-btn">✏️ Umbenennen</button>
           <button id="btn-profil-loeschen" class="text-btn warnung">🗑️ Löschen</button>
+        </div>
+        <h3 class="unter">Von außen mitmachen</h3>
+        <p class="hinweis">Oma, Opa oder die Erzieherin nehmen auf ihrem eigenen Handy auf: Link schicken, sie schicken eine Datei
+          zurück. Die Datei in WhatsApp antippen und speichern, dann hier öffnen.</p>
+        <div class="knopf-reihe">
+          <button id="btn-einladen" class="text-btn">📨 Jemanden einladen</button>
+          <button id="btn-paket-oeffnen" class="text-btn">📥 Stimm-Paket öffnen</button>
         </div>
       </div>
 

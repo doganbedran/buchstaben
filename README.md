@@ -33,6 +33,7 @@ Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als I
   - `kiste` – Wörterkiste (Auswahl, alle Stufen, Stufe 4, Erzähl-Bild)
   - `eigene-kisten` – Meine Leute / Meine Kita (Elternbereich, ab 3 fertigen Wörtern, „Wer ist das?“, Sicherung)
   - `menschen` – Menschen mit Foto, Hauptstimme je Kind, Gäste beim Lob („O“ wie Oma), Sicherung, Löschen
+  - `mitmachen` – Einladungslink, Mitmach-Seite (speichert nichts), Stimm-Paket erstellen/prüfen/übernehmen, manipulierte Pakete
   - `offline` – Offline-Speicher installiert sich, App und Töne liegen im Cache
   - `info` – Über die App & Datenschutz (Texte, Links, Zurück-Weg)
   - `reime` – Reim-Paare (Ablenker-Regel, Vormachen, Runden, 🔊-Rettung)
@@ -69,6 +70,12 @@ Fotos, Aufnahmen und Sterne bleiben nur auf dem jeweiligen Gerät (IndexedDB, an
 (Medium `<profil>|ich|bild`). Beim Kind: „Wer spricht?“ = Hauptstimme (`k.profil`, Laute, Wörter, Ansagen) und
 „Lob ab und zu auch von …“ (`k.lobGaeste`): Gäste mit aufgenommenem Lob loben fest beim Anfangsbuchstaben ihres
 Namens (`lobQuelle(b)`, „O“ wie Oma; mehrere mit gleichem Buchstaben wechseln sich ab), dabei kurz ihr Foto (`#sprecher`).
+
+**Mitmachen von außen** (Menschen → „📨 Jemanden einladen“): Link `…/#mitmachen=<Name>` per Messenger. Die eingeladene
+Person nimmt auf ihrem Handy Foto, Namen und bis zu 5 Lob-Sätze auf – dort wird nichts gespeichert und kein Offline-Speicher
+geladen – und schickt eine Datei `format: 'buchstaben-stimmpaket'` zurück. „📥 Stimm-Paket öffnen“ zeigt eine Vorschau zum
+Anhören; „Übernehmen“ legt immer einen neuen Menschen an (Lob, Foto `ich`, Eintrag in „Meine Leute“ mit Name-Freigabe)
+und fragt je Kind, ob er ab und zu loben soll. Pakete werden wie Sicherungen geprüft (`paketPruefen`, nur Bilder/Töne).
 
 ## Stimme / Audio
 Die Laute kommen als fertige Dateien aus `audio/`, erzeugt lokal mit Piper:

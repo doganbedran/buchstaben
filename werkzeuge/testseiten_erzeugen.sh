@@ -50,6 +50,7 @@ seite willkommen 6000
 seite kiste 12000
 seite eigene-kisten 12000
 seite menschen 12000
+seite mitmachen 12000
 seite info 5000
 seite offline 20000
 seite reime 10000

@@ -769,3 +769,21 @@ body.laedt #home .spiele-raster { visibility: hidden; }
 @keyframes sprecher-zeigen { 0% { opacity: 0; transform: scale(0.6); } 12%, 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .sprecher.zeigen { animation-duration: 2.8s; animation-timing-function: steps(1); } }
 .mensch-stand { background: #fff7e6; border-radius: 12px; padding: 8px 12px; line-height: 1.7; }
+/* Mitmachen / Stimm-Paket */
+.paket-kopf { display: flex; align-items: center; gap: 14px; margin: 6px 0 10px; }
+.mensch-bild.gross { width: 72px; height: 72px; font-size: 2.4rem; margin: 0; }
+/* Mitmachen für Großeltern: größere, dunklere Schrift und große Knöpfe mit Abstand */
+#mitmachen .hinweis, #paket .hinweis { font-size: 1.05rem; color: #5e5348; }
+#mitmachen .lob-zeile, #paket .lob-zeile { gap: 14px; }
+#mitmachen .mini-btn, #paket .mini-btn, #mitmachen .lob-zeile .mini-btn, #paket .lob-zeile .mini-btn { width: 60px; height: 60px; font-size: 1.6rem; }
+#mitmachen .knopf-reihe { gap: 14px; align-items: center; }
+.text-btn.gross { font-size: 1.2rem; padding: 14px 22px; }
+.mitmachen-danke { border: 3px solid var(--gruen); }
+.mitmachen-hoert { position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 40;
+  background: #fff; border-radius: 18px; padding: 16px 18px 22px; font-size: 1.4rem; font-weight: 700; color: #b3261e;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); overflow: hidden; }
+.mitmachen-hoert small { font-size: 0.95rem; font-weight: normal; color: #5e5348; }
+.mitmachen-hoert span { position: absolute; left: 0; bottom: 0; height: 8px; width: 100%; background: #b3261e; transform-origin: left; }
+.mitmachen-hoert.laeuft span { animation: hoert-balken 5s linear forwards; }
+@keyframes hoert-balken { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.mitmachen-hoert[hidden] { display: none; }

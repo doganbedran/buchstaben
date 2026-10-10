@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 66;
+const APP_VERSION = 67;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -2719,7 +2719,7 @@ async function aufnehmen(knopf, fertig, hoechstens = 5000, fuerKind = false) {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch {
-    fehler('Kein Zugriff auf das Mikrofon.');
+    fehler('Kein Zugriff auf das Mikrofon. Bitte im Browser erlauben: Schloss-Symbol neben der Adresse antippen → Mikrofon → Zulassen.');
     return;
   }
   wiedergabeStoppen();
@@ -5151,6 +5151,12 @@ $('#sicherung-input').addEventListener('change', async (e) => {
   try {
     if (datei.size > SICHERUNG_HOECHSTENS) throw new Error('Die Datei ist zu groß für eine Sicherung dieser App.');
     const inhalt = JSON.parse(await datei.text());
+    // Stimm-Paket (Mitmachen) statt Sicherung: erst ansehen und anhören
+    if (inhalt && inhalt.format === PAKET_FORMAT) {
+      if (datei.size > PAKET_HOECHSTENS) throw new Error('Das Stimm-Paket ist zu groß.');
+      await paketOeffnen(inhalt);
+      return;
+    }
     const anzahl = { profile: (inhalt.profile || []).length, kinder: (inhalt.kinder || []).length };
     if (!confirm(`Sicherung einspielen: ${anzahl.profile} Profil(e) und ${anzahl.kinder} Kind(er).\n`
       + 'Gleiche Profile/Kinder werden aktualisiert, alles andere bleibt erhalten.')) return;
@@ -5162,6 +5168,254 @@ $('#sicherung-input').addEventListener('change', async (e) => {
     alert(fehler instanceof SyntaxError ? 'Die Datei ist keine gültige Sicherung.' : (fehler.message || 'Einspielen fehlgeschlagen.'));
   }
 });
+
+// ---------- Mitmachen von außen: Oma, Erzieherin … nimmt auf dem eigenen Handy auf und schickt ein Stimm-Paket ----------
+// Ohne Server: Einladung = Link (#mitmachen=<Name>), Rückweg = JSON-Datei per Messenger. Auf dem Handy der eingeladenen
+// Person wird nichts gespeichert (nur im Speicher, bis die Seite zu ist); die Familie hört alles an, bevor es übernommen wird.
+const PAKET_FORMAT = 'buchstaben-stimmpaket';
+const PAKET_VERSION = 1;
+const PAKET_HOECHSTENS = 20e6;
+const einladungsLink = (name) => `${location.origin}${location.pathname}#mitmachen=${encodeURIComponent(name)}`;
+// Name aus Link oder Paket: ohne Steuer- und Richtungszeichen (die z. B. „Von …“ in der Vorschau verdrehen könnten)
+const nameSauber = (x) => textFeld(x, 30).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
+function mitmachName(hash) {
+  const m = /^#mitmachen(?:=(.*))?$/.exec(hash || '');
+  if (!m) return null;
+  try { return nameSauber(decodeURIComponent(m[1] || '')); } catch { return ''; }
+}
+// Link im selben Tab eingefügt (nur der Hash ändert sich): neu laden, damit die richtige Seite erscheint
+let mitmachBeimStart = null;
+window.addEventListener('hashchange', () => {
+  if ((mitmachName(location.hash) !== null) !== (mitmachBeimStart !== null)) location.reload();
+});
+
+$('#btn-einladen').addEventListener('click', async () => {
+  const name = (prompt('Wen möchten Sie einladen? Name, wie die Kinder ihn sagen (z. B. Oma):') || '').trim().slice(0, 30);
+  if (!name) return;
+  const link = einladungsLink(name);
+  const text = `Hallo ${name}! Magst du für die Kinder ein paar Lob-Sätze aufnehmen? Link öffnen, aufnehmen und das Paket `
+    + 'zurückschicken. Bis du es schickst, bleibt alles auf deinem Handy.';
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Buchstaben-Spuren: Mitmachen', text, url: link }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(`${text}\n${link}`); alert(`Der Link ist kopiert – im Chat einfügen:\n\n${link}`); } catch { prompt('Diesen Link schicken:', link); }
+});
+
+const mitmach = { foto: null, fotoUrl: null, nameStimme: null, lob: [], verschickt: false };
+const mitmachHatInhalt = () => !!(mitmach.nameStimme || mitmach.foto || mitmach.lob.some(Boolean));
+// Aufnahmen liegen nur im Speicher: vor Neuladen/Schließen warnen, solange etwas nicht verschickt ist
+window.addEventListener('beforeunload', (e) => {
+  if (!$('#mitmachen').classList.contains('active') || !mitmachHatInhalt() || mitmach.verschickt) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+// Aufnehmen mit deutlicher Rückmeldung: großes „Ich höre zu …“ mit 5-Sekunden-Balken, danach einmal vorspielen
+function mitmachAufnehmen(knopf, setzen) {
+  const hoert = $('#mitmachen-hoert');
+  const weg = () => { hoert.hidden = true; };
+  if (rekorder && rekorder.state === 'recording') { stopAufnahme(); return; }
+  aufnehmen(knopf, (blob) => {
+    weg();
+    setzen(blob);
+    mitmach.verschickt = false;
+    mitmachZeichnen();
+    folgeAbspielen([blobQuelle(blob)]);
+  });
+  // Erst zeigen, wenn wirklich aufgenommen wird (nach der Mikrofon-Frage)
+  const start = performance.now();
+  const pruefen = () => {
+    if (rekorder && rekorder.state === 'recording') {
+      hoert.hidden = false;
+      hoert.classList.remove('laeuft'); void hoert.offsetWidth; hoert.classList.add('laeuft');
+      setTimeout(weg, 5300);
+    } else if (performance.now() - start < 15000) setTimeout(pruefen, 100);
+  };
+  pruefen();
+}
+
+function mitmachenStarten(name) {
+  $('#mitmachen-gruss').textContent = name ? `Hallo ${name}!` : 'Hallo!';
+  $('#mitmachen-name').value = name || '';
+  mitmachZeichnen();
+  zeigen('mitmachen', false);
+}
+
+function mitmachZeichnen() {
+  $('#mitmachen-foto').innerHTML = mitmach.fotoUrl ? `<img src="${mitmach.fotoUrl}" alt="">` : '🙂';
+  $('#btn-mitmachen-name-play').disabled = !mitmach.nameStimme;
+  $('#mitmachen-name-status').innerHTML = mitmach.nameStimme ? '<b>✓ aufgenommen</b>' : 'noch nicht aufgenommen';
+  const box = $('#mitmachen-lob');
+  box.innerHTML = '';
+  LOB_SAETZE.forEach((vorschlag, i) => {
+    const zeile = document.createElement('div');
+    zeile.className = 'lob-zeile';
+    const hat = !!mitmach.lob[i];
+    zeile.innerHTML = `<span class="w">Satz ${i + 1}<br><small>${hat ? '<b>✓ aufgenommen</b>' : `z. B. „${vorschlag}“`}</small></span>`
+      + '<button class="mini-btn" data-a="rec" aria-label="Aufnehmen">🎙️</button>'
+      + `<button class="mini-btn" data-a="play" aria-label="Anhören" ${hat ? '' : 'disabled'}>▶️</button>`;
+    // Kein Löschen-Knopf: nochmal 🎙️ ersetzt die Aufnahme (weniger Gefahr, aus Versehen zu löschen)
+    zeile.querySelector('[data-a=rec]').addEventListener('click', (e) => mitmachAufnehmen(e.currentTarget, (blob) => { mitmach.lob[i] = blob; }));
+    zeile.querySelector('[data-a=play]').addEventListener('click', () => folgeAbspielen([blobQuelle(mitmach.lob[i])]));
+    box.appendChild(zeile);
+  });
+  const lob = mitmach.lob.filter(Boolean).length;
+  $('#mitmachen-stand').textContent = lob
+    ? `Im Paket: ${lob} Lob-Satz/Sätze${mitmach.nameStimme ? ', Ihr Name' : ''}${mitmach.foto ? ', Ihr Foto' : ''}.`
+    : 'Bitte mindestens einen Lob-Satz aufnehmen.';
+  $('#btn-mitmachen-schicken').disabled = !lob;
+  $('#btn-mitmachen-schicken').textContent = mitmach.verschickt ? '📤 Nochmal schicken' : '📤 Paket schicken';
+  $('#mitmachen-danke').hidden = !mitmach.verschickt;
+}
+
+$('#btn-mitmachen-foto').addEventListener('click', () => fotoWaehlen((blob) => {
+  if (mitmach.fotoUrl) URL.revokeObjectURL(mitmach.fotoUrl);
+  mitmach.foto = blob;
+  mitmach.fotoUrl = URL.createObjectURL(blob);
+  mitmachZeichnen();
+}));
+$('#btn-mitmachen-name-rec').addEventListener('click', (e) => mitmachAufnehmen(e.currentTarget, (blob) => { mitmach.nameStimme = blob; }));
+$('#btn-mitmachen-name-play').addEventListener('click', () => mitmach.nameStimme && folgeAbspielen([blobQuelle(mitmach.nameStimme)]));
+
+// Das Paket enthält nur, was die Person selbst aufgenommen hat – keine Daten der Familie
+async function paketErstellen() {
+  return {
+    format: PAKET_FORMAT, version: PAKET_VERSION, erstellt: new Date().toISOString(),
+    name: nameSauber($('#mitmachen-name').value) || 'Gast',
+    foto: mitmach.foto ? await blobZuText(mitmach.foto) : null,
+    nameStimme: mitmach.nameStimme ? await blobZuText(mitmach.nameStimme) : null,
+    lob: await Promise.all(mitmach.lob.filter(Boolean).map(blobZuText)),
+  };
+}
+
+$('#btn-mitmachen-schicken').addEventListener('click', async (e) => {
+  const knopf = e.currentTarget;
+  knopf.disabled = true;
+  try {
+    const inhalt = await paketErstellen();
+    const datei = new File([JSON.stringify(inhalt)], `stimmpaket-${inhalt.name.replace(/[^\wäöüÄÖÜß-]+/g, '-').slice(0, 20) || 'gast'}.json`, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [datei] })) {
+      try {
+        await navigator.share({ files: [datei], title: 'Stimm-Paket' });
+        mitmach.verschickt = true;
+        mitmachZeichnen();
+        return;
+      } catch (f) { if (f && f.name === 'AbortError') return; }
+    }
+    const url = URL.createObjectURL(datei);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = datei.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    mitmach.verschickt = true;
+    mitmachZeichnen();
+    alert('Die Datei ist unter „Downloads“ gespeichert. Bitte schicken Sie sie der Familie: im Chat auf 📎 (Anhang) → '
+      + '„Dokument“ tippen und die Datei „stimmpaket-…“ wählen. Danach die Datei in „Downloads“ löschen.');
+  } finally {
+    knopf.disabled = false;
+  }
+});
+
+// Stimm-Paket öffnen: nie roh übernehmen – nur Bilder als Foto, nur Töne als Aufnahmen, Name als Text
+const istTon = (b) => b && (/^audio\//.test(b.type) || /^video\/(webm|mp4)/.test(b.type) || b.type === 'application/octet-stream' || !b.type);
+let paket = null;
+async function paketPruefen(inhalt) {
+  if (!inhalt || inhalt.format !== PAKET_FORMAT) throw new Error('Das ist kein Stimm-Paket dieser App.');
+  if (inhalt.version > PAKET_VERSION) throw new Error('Das Paket stammt aus einer neueren App-Version. Bitte die App aktualisieren.');
+  const foto = await textZuBlob(inhalt.foto);
+  const nameStimme = await textZuBlob(inhalt.nameStimme);
+  const lob = [];
+  for (const d of (Array.isArray(inhalt.lob) ? inhalt.lob : []).slice(0, LOB_PLAETZE.length)) {
+    const b = await textZuBlob(d);
+    if (istTon(b)) lob.push(b);
+  }
+  const ergebnis = { name: nameSauber(inhalt.name) || 'Gast', foto: foto && /^image\//.test(foto.type) ? foto : null,
+    nameStimme: istTon(nameStimme) ? nameStimme : null, lob };
+  if (!ergebnis.lob.length && !ergebnis.nameStimme) throw new Error('In diesem Paket ist keine Aufnahme.');
+  return ergebnis;
+}
+
+function paketWeg() {
+  if (paket && paket.fotoUrl) URL.revokeObjectURL(paket.fotoUrl);
+  paket = null;
+}
+
+async function paketOeffnen(inhalt) {
+  const neu = await paketPruefen(inhalt);
+  paketWeg();
+  paket = neu;
+  paket.fotoUrl = paket.foto ? URL.createObjectURL(paket.foto) : null;
+  $('#paket-name').textContent = `Von ${paket.name}`;
+  $('#paket-foto').innerHTML = paket.fotoUrl ? `<img src="${paket.fotoUrl}" alt="">` : '🙂';
+  const teile = $('#paket-teile');
+  teile.innerHTML = '';
+  [...(paket.nameStimme ? [['Name', paket.nameStimme]] : []), ...paket.lob.map((b, i) => [`Lob ${i + 1}`, b])].forEach(([titel, blob]) => {
+    const zeile = document.createElement('div');
+    zeile.className = 'lob-zeile';
+    zeile.innerHTML = `<span class="w">${titel}</span><button class="mini-btn" aria-label="Anhören">▶️</button>`;
+    zeile.querySelector('button').addEventListener('click', () => folgeAbspielen([blobQuelle(blob)]));
+    teile.appendChild(zeile);
+  });
+  zeigen('paket');
+}
+
+// Übernehmen: neuer Mensch mit eigener ID – oder, gibt es den Namen schon, auf Wunsch dessen Aufnahmen ersetzen.
+// Kinder nur nach Rückfrage; nie wird etwas anderes überschrieben
+async function paketUebernehmen() {
+  if (!paket) return;
+  const p = paket;
+  paket = null;
+  try {
+    const jetzt = Date.now().toString(36);
+    const gleich = (await datenbank.profile()).find((x) => x.name.trim().toLowerCase() === p.name.toLowerCase());
+    const ersetzen = gleich && confirm(`„${p.name}“ gibt es schon. Die Aufnahmen und das Foto dort durch die neuen ersetzen?\n\n`
+      + 'Abbrechen = als neuer Mensch anlegen.');
+    const profil = ersetzen ? gleich : { id: `p-${jetzt}`, name: p.name, erstellt: Date.now(), woerter: [], kistenWoerter: [] };
+    const id = profil.id;
+    // Erst die Medien schreiben, dann das Profil – scheitert etwas (Speicher voll), bleibt kein halber Mensch übrig
+    if (ersetzen && p.lob.length) for (const platz of LOB_PLAETZE) await datenbank.medienEntfernen(id, platz, 'stimme');
+    for (const [i, blob] of p.lob.entries()) await datenbank.medienSetzen(id, LOB_PLAETZE[i], 'stimme', blob);
+    if (p.foto) await datenbank.medienSetzen(id, 'ich', 'bild', p.foto);
+    if (p.nameStimme) {
+      const leute = (profil.kistenWoerter || []).find((w) => w.kiste === 'leute' && w.wort.trim().toLowerCase() === p.name.toLowerCase());
+      const wortId = leute ? leute.id : `${jetzt}n`;
+      if (!leute) profil.kistenWoerter = [...(profil.kistenWoerter || []), { id: wortId, kiste: 'leute', wort: p.name, name: true }];
+      await datenbank.medienSetzen(id, `w-${wortId}`, 'stimme', p.nameStimme);
+      if (p.foto) await datenbank.medienSetzen(id, `w-${wortId}`, 'bild', p.foto);
+    }
+    await datenbank.profilSpeichern(profil);
+    if (p.fotoUrl) URL.revokeObjectURL(p.fotoUrl);
+    speicherSchuetzen();
+    const b = anfangsBuchstabe(p.name);
+    const hinweise = [`${p.name} ist jetzt dabei${p.nameStimme ? ' – auch in „Meine Leute“ und bei ✍️ „Mein Name“ (dort abschaltbar)' : ''}.`];
+    if (p.lob.length && b && kinder.length) {
+      for (const k of kinder) {
+        if ((k.lobGaeste || []).includes(id) || k.profil === id) continue;
+        if (!confirm(`Soll ${p.name} ${k.name} ab und zu loben (beim „${b.toUpperCase()}“)?`)) continue;
+        k.lobGaeste = [...new Set([...(k.lobGaeste || []), id])].slice(-10);
+        await datenbank.kindSpeichern(k);
+      }
+      await kinderLaden();
+    } else if (p.lob.length && !b) hinweise.push('Der Name beginnt nicht mit einem Buchstaben der App – das Lob kommt erst, wenn Sie den Menschen umbenennen.');
+    else if (p.lob.length) hinweise.push('Das Lob hört Ihr Kind, sobald Sie ein Kind anlegen und dort „Lob ab und zu auch von …“ anhaken.');
+    // Mit Kindern den Menschen zum Bearbeiten markieren (ohne Kinder hieße das: die ganze App hört ihn)
+    if (kinder.length) await profilAktivieren(id);
+    else await medienLaden();
+    if ($('#paket').classList.contains('active')) history.back();
+    alert(hinweise.join('\n\n'));
+  } catch {
+    alert('Das Übernehmen hat nicht geklappt (vielleicht ist der Speicher voll). Bitte später nochmal versuchen.');
+    if ($('#paket').classList.contains('active')) history.back();
+  }
+}
+
+$('#btn-paket-ok').addEventListener('click', paketUebernehmen);
+$('#btn-paket-weg').addEventListener('click', () => { paketWeg(); history.back(); });
+$('#btn-paket-zurueck').addEventListener('click', () => { paketWeg(); history.back(); });
+$('#btn-paket-oeffnen').addEventListener('click', () => { const input = $('#sicherung-input'); input.value = ''; input.click(); });
 
 // ---------- Über die App & Datenschutz (für Eltern; erreichbar aus dem Elternbereich und der Begrüßung) ----------
 
@@ -5209,11 +5463,14 @@ const startFertig = (async () => {
     if (!kinder.length) speicher.schreiben('profil', STANDARD.id);
   }
   await medienLaden();
-  if (kinder.length || profile.length) speicherSchuetzen();
+  if ((kinder.length || profile.length) && mitmachName(location.hash) === null) speicherSchuetzen();
   rasterZeichnen();
   document.body.classList.remove('laedt');
+  // Eingeladen zum Mitmachen (Link mit #mitmachen=…): nur die Mitmach-Seite, keine Begrüßung, kein „Wer spielt?“
+  mitmachBeimStart = mitmachName(location.hash);
+  if (mitmachBeimStart !== null) mitmachenStarten(mitmachBeimStart);
   // Mit Kindern beginnt die App mit "Wer spielt?"
-  if (kinder.length && $('#home').classList.contains('active')) {
+  else if (kinder.length && $('#home').classList.contains('active')) {
     werZeichnen();
     zeigen('wer', false);
   }
@@ -5221,7 +5478,8 @@ const startFertig = (async () => {
   else if ((await willkommenNoetig()) && $('#home').classList.contains('active')) zeigen('willkommen', false);
 })();
 
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+// Nicht beim Mitmachen: Oma soll nur aufnehmen, nicht alle Töne der App (ca. 18 MB) über ihr Handynetz laden
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && mitmachName(location.hash) === null) {
   // Neue Version übernommen: einmal neu laden, damit sie sofort sichtbar ist (nicht beim allerersten Start)
   const hatteVersion = !!navigator.serviceWorker.controller;
   let neuGeladen = false;
