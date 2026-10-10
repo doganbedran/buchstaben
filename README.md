@@ -32,6 +32,7 @@ Elternbereich: ⚙️ oben rechts 2 Sekunden halten. Fragen und Ideen gern als I
   - `studio` – Stimme einsprechen im Elternbereich (künstlicher Ton statt Mikrofon)
   - `kiste` – Wörterkiste (Auswahl, alle Stufen, Stufe 4, Erzähl-Bild)
   - `eigene-kisten` – Meine Leute / Meine Kita (Elternbereich, ab 3 fertigen Wörtern, „Wer ist das?“, Sicherung)
+  - `menschen` – Menschen mit Foto, Hauptstimme je Kind, Gäste beim Lob („O“ wie Oma), Sicherung, Löschen
   - `offline` – Offline-Speicher installiert sich, App und Töne liegen im Cache
   - `info` – Über die App & Datenschutz (Texte, Links, Zurück-Weg)
   - `reime` – Reim-Paare (Ablenker-Regel, Vormachen, Runden, 🔊-Rettung)
@@ -63,6 +64,11 @@ Teilen zusammengesetzt). Je Stück oder Bereich auf Standard zurücksetzbar, all
 **Profile:** „Standard“ (Thorsten + mitgelieferte Bilder) ist immer da und unveränderlich. Eigene Profile
 enthalten pro Buchstabe optional ein Foto und/oder eine Aufnahme; alles andere kommt aus „Standard“.
 Fotos, Aufnahmen und Sterne bleiben nur auf dem jeweiligen Gerät (IndexedDB, an die Adresse gebunden).
+
+**Menschen:** In der Oberfläche heißt ein eigenes Profil „Mensch“ (Mama, Papa, Oma …) und hat ein Foto der Person
+(Medium `<profil>|ich|bild`). Beim Kind: „Wer spricht?“ = Hauptstimme (`k.profil`, Laute, Wörter, Ansagen) und
+„Lob ab und zu auch von …“ (`k.lobGaeste`): Gäste mit aufgenommenem Lob loben fest beim Anfangsbuchstaben ihres
+Namens (`lobQuelle(b)`, „O“ wie Oma; mehrere mit gleichem Buchstaben wechseln sich ab), dabei kurz ihr Foto (`#sprecher`).
 
 ## Stimme / Audio
 Die Laute kommen als fertige Dateien aus `audio/`, erzeugt lokal mit Piper:

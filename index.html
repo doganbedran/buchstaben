@@ -351,8 +351,9 @@
       </div>
 
       <div class="karte">
-        <h3>Stimme &amp; Fotos (Profil)</h3>
-        <p class="hinweis">Ein Profil enthält eigene Fotos und Ihre Stimme.
+        <h3>Menschen: Stimme &amp; Fotos</h3>
+        <p class="hinweis">Jeder Mensch, der in der App spricht – Sie, Papa, Oma –, bekommt hier ein Profil mit Foto und Stimme.
+          Beim Kind legen Sie fest, wer spricht. <b>Der markierte Mensch</b> ist der, den Sie unten bearbeiten.
           <strong>„Standard“ ist immer da</strong> und kann nicht verändert werden – wenn etwas nicht passt,
           einfach „Standard“ antippen.</p>
         <p class="hinweis">Beim Einsprechen den <b>Laut</b> sprechen, nicht den Buchstabennamen: „mmm“ statt „Em“,
@@ -361,8 +362,10 @@
         <p class="hinweis" id="profil-kinder-hinweis" hidden>Hier wählen Sie, welches Profil Sie
           <b>bearbeiten</b>. Welches Profil ein Kind hört und sieht, stellen Sie beim Kind ein.</p>
         <div id="profile" class="profile"></div>
+        <p class="hinweis mensch-stand" id="mensch-stand" hidden></p>
         <div class="knopf-reihe">
-          <button id="btn-profil-neu" class="text-btn">➕ Neues Profil</button>
+          <button id="btn-profil-neu" class="text-btn">➕ Neuer Mensch</button>
+          <button id="btn-profil-foto" class="text-btn">📷 Foto der Person</button>
           <button id="btn-profil-umbenennen" class="text-btn">✏️ Umbenennen</button>
           <button id="btn-profil-loeschen" class="text-btn warnung">🗑️ Löschen</button>
         </div>
@@ -370,6 +373,8 @@
 
       <div class="karte">
         <h3>Lob nach dem Nachspuren</h3>
+        <p class="hinweis">Auch Oma oder Papa können hier ihr Lob aufnehmen (eigener Mensch oben). Beim Kind unter
+          „Lob ab und zu auch von …“ angehakt, loben sie dann beim Anfangsbuchstaben ihres Namens.</p>
         <div id="lob" class="anpassen"></div>
       </div>
 
@@ -521,9 +526,19 @@
         <div id="kind-spiele" class="regal-wahl"></div>
       </div>
       <div class="karte">
-        <h3>Stimme &amp; Bilder</h3>
-        <p class="hinweis">Welches Profil dieses Kind hört und sieht.</p>
+        <h3>Wer spricht?</h3>
+        <p class="hinweis"><b>Hauptstimme</b> für Laute, Wörter und Ansagen – am besten immer dieselbe, damit das Kind
+          auf den Laut achtet und nicht darauf, wer spricht. Die Fotos dieses Menschen sieht das Kind in den Spielen.</p>
         <div id="kind-profile" class="profile"></div>
+      </div>
+      <div class="karte" id="kind-gaeste-karte">
+        <h3>Lob ab und zu auch von …</h3>
+        <p class="hinweis">Diese Menschen loben selten und vorhersehbar: immer beim Anfangsbuchstaben ihres Namens
+          (Oma beim „O“, Papa beim „P“) – mit ihrem eigenen aufgenommenen Lob und kurz ihrem Foto. Die Laute lernt das Kind
+          von einer Stimme, Gäste sind nur ein kleiner Gruß. Bitte nur Menschen, die einverstanden sind. Bei Menschen, die
+          gerade nicht da oder verstorben sind, überlegen Sie gut, ob es Ihr Kind freut oder traurig macht – Sie können
+          jederzeit abhaken. Bei Geschwistern am besten bei allen gleich einstellen.</p>
+        <div id="kind-gaeste" class="profile"></div>
       </div>
       <div class="karte">
         <h3>Fortschritt</h3>
@@ -536,6 +551,8 @@
     </div>
   </section>
 
+  <!-- Kleines Foto des Gastes, der gerade lobt (über allen Spielen) -->
+  <div id="sprecher" class="sprecher" aria-hidden="true"></div>
   <script src="letters.js"></script>
   <script src="kisten.js"></script>
   <script src="ansagen.js"></script>

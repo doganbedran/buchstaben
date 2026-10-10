@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 65;
+const APP_VERSION = 66;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -127,11 +127,46 @@ let eigeneWoerter = [];
 // Wörter der eigenen Kisten (Meine Leute, Meine Kita): [{ id, kiste, wort }]; Foto/Aufnahme ebenso unter medien['w-<id>']
 let eigeneKistenWoerter = [];
 
+// Gäste beim Lob (k.lobGaeste): andere Menschen, die ab und zu loben – fest beim Anfangsbuchstaben ihres Namens
+// („O“ wie Oma). [{ id, name, b, lob: [Blobs], fotoUrl }]
+let gastLob = [];
+const gastZaehler = {};
+const anfangsBuchstabe = (name) => {
+  const b = [...(name || '').normalize('NFC').trim().toLowerCase()][0];
+  return BUCHSTABEN.some((e) => e.b === b) ? b : null;
+};
+
+let gastLadeNummer = 0;
+async function gastLobLaden() {
+  const nr = ++gastLadeNummer;
+  const k = aktivesKind();
+  // Die Hauptstimme des Kindes ist kein Gast (zustand.profil ist im Elternbereich das gerade bearbeitete Profil)
+  const ids = ((k && k.lobGaeste) || []).filter((id) => id !== k.profil);
+  const neu = [];
+  const profile = ids.length ? await datenbank.profile() : [];
+  for (const id of ids) {
+    const p = profile.find((x) => x.id === id);
+    if (!p || !anfangsBuchstabe(p.name)) continue;
+    const g = { id, name: p.name, b: anfangsBuchstabe(p.name), lob: [], fotoUrl: null };
+    for (const { schluessel, blob } of await datenbank.medienVon(id)) {
+      const [, platz, art] = schluessel.split('|');
+      if (LOB_PLAETZE.includes(platz) && art === 'stimme') g.lob.push(blob);
+      if (platz === 'ich' && art === 'bild') g.fotoUrl = URL.createObjectURL(blob);
+    }
+    if (g.lob.length) neu.push(g); else if (g.fotoUrl) URL.revokeObjectURL(g.fotoUrl);
+  }
+  // Überholt (z. B. zwei Häkchen schnell nacheinander): nur der letzte Lauf zählt, sonst stünden Gäste doppelt drin
+  if (nr !== gastLadeNummer) { neu.forEach((g) => g.fotoUrl && URL.revokeObjectURL(g.fotoUrl)); return; }
+  gastLob.forEach((g) => g.fotoUrl && URL.revokeObjectURL(g.fotoUrl));
+  gastLob = neu;
+}
+
 async function medienLaden() {
   Object.values(medien).forEach((m) => m.bildUrl && URL.revokeObjectURL(m.bildUrl));
   medien = {};
   eigeneWoerter = [];
   eigeneKistenWoerter = [];
+  await gastLobLaden();
   if (zustand.profil === STANDARD.id) return;
   const profil = (await datenbank.profile()).find((p) => p.id === zustand.profil);
   eigeneWoerter = (profil && profil.woerter) || [];
@@ -356,17 +391,43 @@ function lobWaehlen(plaetze) {
   return letztesLob;
 }
 
-function lobQuelle() {
+// Lobt ein Gast bei diesem Buchstaben? Mehrere Gäste mit demselben Anfangsbuchstaben wechseln sich ab
+function gastFuer(b) {
+  const passende = b ? gastLob.filter((g) => g.b === b) : [];
+  if (!passende.length) return null;
+  gastZaehler[b] = (gastZaehler[b] || 0) + 1;
+  return passende[gastZaehler[b] % passende.length];
+}
+
+// Kleines Foto der Person, die gerade lobt (nur bei Gästen – die Hauptstimme spricht ohnehin immer)
+function sprecherZeigen(gast) {
+  const el = $('#sprecher');
+  if (!el || !gast.fotoUrl) return;
+  el.innerHTML = `<img src="${gast.fotoUrl}" alt="">`;
+  el.classList.remove('zeigen');
+  void el.offsetWidth;
+  el.classList.add('zeigen');
+}
+
+function lobQuelle(b = null) {
+  const gast = gastFuer(b);
+  if (gast) {
+    // Nie zweimal hintereinander derselbe Satz; das Foto erscheint erst, wenn die Aufnahme wirklich startet (folgeAbspielen)
+    const i = gast.lob.length > 1 ? zufall(gast.lob.map((_, n) => n).filter((n) => n !== gast.letzter)) : 0;
+    gast.letzter = i;
+    return { url: URL.createObjectURL(gast.lob[i]), eigen: true, gast: gast.id, sprecher: gast };
+  }
   const eigene = LOB_PLAETZE.filter((k) => medien[k] && medien[k].stimme);
   if (eigene.length) return { url: URL.createObjectURL(medien[lobWaehlen(eigene)].stimme), eigen: true };
   return { url: `audio/${lobWaehlen(LOB_PLAETZE)}.wav`, eigen: false };
 }
 
 // Lob wie beim Nachspuren: ab und zu mit dem aufgenommenen Namen des Kindes (nie zweimal hintereinander)
-function lobMitName() {
+function lobMitName(b = null) {
   const k = aktivesKind();
-  const folge = [lobQuelle()];
-  if (k && k.nameStimme && nameImLob()) folge.push({ url: URL.createObjectURL(k.nameStimme), eigen: true, name: true });
+  const folge = [lobQuelle(b)];
+  // Nach Omas Lob nicht Mamas Aufnahme des Namens (zwei Stimmen in einem Satz)
+  if (k && k.nameStimme && !folge[0].gast && nameImLob()) folge.push({ url: URL.createObjectURL(k.nameStimme), eigen: true, name: true });
   return folge;
 }
 
@@ -448,8 +509,9 @@ function wiedergabeFolge(eintrag, lob, kind, nameSagen = true, wahl = null) {
   const w = wahl || hauptWahl(eintrag);
   const folge = [];
   if (lob) {
-    folge.push(lobQuelle());
-    if (nameSagen && kind && kind.nameStimme) folge.push({ url: URL.createObjectURL(kind.nameStimme), eigen: true, name: true });
+    // Gäste nur beim spielenden Kind (nicht beim Probehören eines anderen Kindes im Elternbereich)
+    folge.push(lobQuelle(kind === aktivesKind() ? eintrag.b : null));
+    if (nameSagen && kind && kind.nameStimme && !folge[0].gast) folge.push({ url: URL.createObjectURL(kind.nameStimme), eigen: true, name: true });
     folge.push(...w.wortAllein());
   } else {
     folge.push(...w.ansage());
@@ -470,6 +532,7 @@ async function folgeAbspielen(folge, ersatzText) {
   try {
     for (const q of folge) {
       if (nummer !== wiedergabe.nummer) return;
+      if (q.sprecher) sprecherZeigen(q.sprecher);
       const eigen = !q.eigen && !q.standard && eigeneDatei(q.url);   // standard: zum Vergleichen im Studio
       if (!eigen) { await abspielen(q.url); continue; }
       const url = URL.createObjectURL(eigen);
@@ -647,6 +710,17 @@ const montessori = () => zustand.reihenfolge === 'montessori';
 function buchstabenReihenfolge() {
   if (!montessori()) return BUCHSTABEN.map((_, i) => i);
   return MONTESSORI_GRUPPEN.flat().map((b) => BUCHSTABEN.findIndex((e) => e.b === b));
+}
+
+// Freigeschaltete Buchstaben eines bestimmten Kindes (wie freigeschaltet(), aber nicht nur für das aktive)
+function freiFuer(k) {
+  if ((k.reihenfolge || 'alphabet') !== 'montessori') return new Set(BUCHSTABEN.map((e) => e.b));
+  const frei = new Set();
+  for (const gruppe of MONTESSORI_GRUPPEN) {
+    gruppe.forEach((b) => frei.add(b));
+    if (!gruppe.every((b) => ((k.sterne || {})[b] || 0) >= FREI_AB_STERNEN)) break;
+  }
+  return frei;
 }
 
 function freigeschaltet() {
@@ -2069,16 +2143,54 @@ async function kindFormularZeichnen() {
   regalWahlZeichnen($('#kind-spiele'), regalVon(regalAus(k) || []), (neu) => kindAendern((kk) => { kk.spieleAus = ausVon(neu); delete kk.spiele; }));
 
   const profile = [STANDARD, ...(await datenbank.profile())];
+  const fotos = await menschenFotos(profile);
   const box = $('#kind-profile');
   box.innerHTML = '';
   profile.forEach((p) => {
     const zeile = document.createElement('label');
     zeile.className = 'umschalter profil-zeile';
     zeile.innerHTML = `<input type="radio" name="kind-profil" ${p.id === k.profil ? 'checked' : ''}>`
-      + `<span>${p.id === STANDARD.id ? '⭐ ' : ''}${htmlText(p.name)}</span>`;
-    zeile.querySelector('input').addEventListener('change', () => kindAendern((kk) => { kk.profil = p.id; }));
+      + `${menschBild(p, fotos)}<span>${htmlText(p.name)}</span>`;
+    zeile.querySelector('input').addEventListener('change', async () => {
+      await kindAendern((kk) => { kk.profil = p.id; kk.lobGaeste = (kk.lobGaeste || []).filter((id) => id !== p.id); });
+    });
     box.appendChild(zeile);
   });
+  // Gäste beim Lob: nur Menschen mit aufgenommenem Lob und einem Namen, der mit einem Buchstaben beginnt
+  const zeilen = [];
+  const andere = profile.filter((p) => p.id !== STANDARD.id && p.id !== k.profil);
+  for (const p of andere) {
+    const lob = (await datenbank.medienVon(p.id)).filter((m) => /\|lob-[1-9]\|stimme$/.test(m.schluessel)).length;
+    const b = anfangsBuchstabe(p.name);
+    const zeile = document.createElement('label');
+    zeile.className = 'umschalter profil-zeile';
+    const an = (k.lobGaeste || []).includes(p.id);
+    const gross = b && b.toUpperCase();
+    // Hinweise: Anlaut klingt anders (Christa, Stefan …), Buchstabe in der Montessori-Reihenfolge noch nicht dran
+    const unsauber = /^(sch|ch|st|sp|ph|ei|eu|au|c)/i.test(p.name.trim()) ? ` (klingt nicht wie „${gross}“ – lobt trotzdem dort)` : '';
+    const nochNicht = b && !freiFuer(k).has(b) ? ` – „${gross}“ ist für ${htmlText(k.name)} noch nicht dran` : '';
+    zeile.innerHTML = `<input type="checkbox" ${an ? 'checked' : ''} ${lob && b ? '' : 'disabled'}>${menschBild(p, fotos)}`
+      + `<span>${htmlText(p.name)}<br><small>${!lob ? `noch kein Lob – unter „Menschen“ ${htmlText(p.name)} wählen und bei „Lob“ aufnehmen`
+        : !b ? 'Name beginnt nicht mit einem Buchstaben' : `lobt beim „${gross}“${unsauber}${nochNicht}`}</small></span>`;
+    zeile.querySelector('input').addEventListener('change', async (e) => {
+      const an2 = e.target.checked;
+      const setzen = (kk) => { kk.lobGaeste = [...new Set([...(kk.lobGaeste || []).filter((id) => id !== p.id), ...(an2 ? [p.id] : [])])]; };
+      await kindAendern(setzen);
+      // Geschwister gleich behandeln (sonst lobt Oma das eine Kind und das andere nie)
+      const geschwister = kinder.filter((x) => x.id !== k.id && x.profil !== p.id && (x.lobGaeste || []).includes(p.id) !== an2);
+      if (geschwister.length && confirm(`Auch bei ${geschwister.map((x) => x.name).join(' und ')}?`)) {
+        for (const x of geschwister) { setzen(x); await datenbank.kindSpeichern(x); }
+        await kinderLaden();
+        kindInArbeit = kinder.find((x) => x.id === k.id);
+      }
+      if (kinder.some((x) => x.id === zustand.kind)) await gastLobLaden();
+    });
+    zeilen.push(zeile);
+  }
+  // Erst ganz aufbauen, dann einsetzen (zwei schnelle Änderungen hintereinander dürfen keine Zeilen verdoppeln)
+  $('#kind-gaeste').replaceChildren(...zeilen);
+  $('#kind-gaeste-karte').hidden = !andere.length;
+  Object.values(fotos).forEach((url) => setTimeout(() => URL.revokeObjectURL(url), 60000));
 
   $('#kind-name-status').innerHTML = k.nameStimme
     ? `<b>Aufgenommen.</b> Das Lob klingt dann z. B. „Toll gemacht! … ${htmlText(k.name)}!“`
@@ -2189,8 +2301,21 @@ function htmlText(text) {
   return d.innerHTML;
 }
 
+// Fotos der Menschen (Profil-Medium „ich“), als Objekt-URLs je Profil-ID
+async function menschenFotos(profile) {
+  const fotos = {};
+  for (const p of profile.filter((x) => x.id !== STANDARD.id)) {
+    const m = (await datenbank.medienVon(p.id)).find((x) => x.schluessel === `${p.id}|ich|bild`);
+    if (m) fotos[p.id] = URL.createObjectURL(m.blob);
+  }
+  return fotos;
+}
+const menschBild = (p, fotos) => `<span class="mensch-bild">${p.id === STANDARD.id ? '⭐'
+  : fotos[p.id] ? `<img src="${fotos[p.id]}" alt="">` : '🙂'}</span>`;
+
 async function profileZeichnen() {
   const liste = [STANDARD, ...(await datenbank.profile())];
+  const fotos = await menschenFotos(liste);
   const box = $('#profile');
   box.innerHTML = '';
   liste.forEach((p) => {
@@ -2198,7 +2323,7 @@ async function profileZeichnen() {
     zeile.className = 'umschalter profil-zeile';
     const beschreibung = p.id === STANDARD.id ? '<small>Stimme des App-Sprechers &amp; mitgelieferte Bilder</small>' : '';
     zeile.innerHTML = `<input type="radio" name="profil" value="${p.id}" ${p.id === zustand.profil ? 'checked' : ''}>`
-      + `<span>${p.id === STANDARD.id ? '⭐ ' : ''}${htmlText(p.name)}${beschreibung ? '<br>' + beschreibung : ''}</span>`;
+      + `${menschBild(p, fotos)}<span>${htmlText(p.name)}${beschreibung ? '<br>' + beschreibung : ''}</span>`;
     zeile.querySelector('input').addEventListener('change', async () => {
       stopAufnahme();
       await profilAktivieren(p.id);
@@ -2209,26 +2334,59 @@ async function profileZeichnen() {
   const eigenes = zustand.profil !== STANDARD.id;
   $('#btn-profil-umbenennen').hidden = !eigenes;
   $('#btn-profil-loeschen').hidden = !eigenes;
+  $('#btn-profil-foto').hidden = !eigenes;
+  const aktiv = liste.find((p) => p.id === zustand.profil);
+  $('#btn-profil-foto').textContent = `📷 Foto von ${aktiv ? aktiv.name : ''}`;
+  // Roter Faden für den markierten Menschen: Foto → Lob → beim Kind
+  const stand = $('#mensch-stand');
+  stand.hidden = !eigenes;
+  if (eigenes) {
+    const lob = (await datenbank.medienVon(aktiv.id)).filter((m) => /\|lob-[1-9]\|stimme$/.test(m.schluessel)).length;
+    const haupt = kinder.filter((k) => k.profil === aktiv.id).map((k) => htmlText(k.name));
+    const gast = kinder.filter((k) => (k.lobGaeste || []).includes(aktiv.id)).map((k) => htmlText(k.name));
+    const name = htmlText(aktiv.name);
+    stand.innerHTML = `Sie bearbeiten <b>${name}</b>:<br>`
+      + `1. ${fotos[aktiv.id] ? '✅' : '⬜'} Foto von ${name}<br>`
+      + `2. ${lob ? '✅' : '⬜'} Lob aufnehmen (${lob} von ${LOB_PLAETZE.length}) – <a href="#lob" data-a="lob">zum Lob ⬇️</a><br>`
+      + `3. ${haupt.length || gast.length ? '✅' : '⬜'} beim Kind: ${[haupt.length ? `Hauptstimme für ${haupt.join(', ')}` : '',
+        gast.length ? `lobt ab und zu ${gast.join(', ')}` : ''].filter(Boolean).join('; ') || (kinder.length ? 'noch bei keinem Kind (Kinder → Kind antippen)' : 'gilt für die ganze App')}`;
+    stand.querySelector('[data-a=lob]').addEventListener('click', (e) => { e.preventDefault(); $('#lob').scrollIntoView({ behavior: 'smooth' }); });
+  }
+  Object.values(fotos).forEach((url) => setTimeout(() => URL.revokeObjectURL(url), 60000));
 }
+
+// Foto der Person (erscheint klein, wenn sie als Gast lobt, und in den Listen)
+$('#btn-profil-foto').addEventListener('click', () => {
+  const profil = zustand.profil;
+  fotoWaehlen(async (blob) => {
+    await datenbank.medienSetzen(profil, 'ich', 'bild', blob);
+    await medienLaden();
+    profileZeichnen();
+  });
+});
 
 async function aktivesProfil() {
   return (await datenbank.profile()).find((p) => p.id === zustand.profil);
 }
 
 async function profilNeu() {
-  const name = (prompt('Wie soll das neue Profil heißen? (z. B. Mama)') || '').trim();
+  const name = (prompt('Wer spricht? Name, z. B. Mama, Papa, Oma:') || '').trim();
   if (!name) return;
   const profil = { id: `p-${Date.now().toString(36)}`, name: name.slice(0, 30), erstellt: Date.now() };
   await datenbank.profilSpeichern(profil);
   // Browser bitten, Fotos und Aufnahmen nicht bei Speicherknappheit zu löschen
   speicherSchuetzen();
   await profilAktivieren(profil.id);
-  // Mit Kindern: sonst hört das Kind die eingesprochene Stimme nie (es hört sein eigenes, im Kind eingestelltes Profil)
+  // Mit Kindern immer fragen: Hauptstimme oder nur ab und zu loben (Oma soll nicht still alle Laute sprechen)
   for (const k of kinder) {
-    if (kinder.length === 1 || confirm(`Soll ${k.name} die Stimme und Fotos von „${profil.name}“ hören und sehen?`)) {
+    if (confirm(`Soll „${profil.name}“ die Hauptstimme für ${k.name} sein (Laute, Wörter, Ansagen)?\n\n`
+      + `OK = Hauptstimme.\nAbbrechen = „${profil.name}“ lobt ${k.name} nur ab und zu (sobald ein Lob aufgenommen ist).`)) {
       k.profil = profil.id;
-      await datenbank.kindSpeichern(k);
+      k.lobGaeste = (k.lobGaeste || []).filter((id) => id !== profil.id);
+    } else {
+      k.lobGaeste = [...new Set([...(k.lobGaeste || []), profil.id])];
     }
+    await datenbank.kindSpeichern(k);
   }
   if (kinder.length) await kinderLaden();
   elternZeichnen();
@@ -2253,8 +2411,9 @@ $('#btn-profil-loeschen').addEventListener('click', async () => {
   stopAufnahme();
   await datenbank.profilLoeschen(profil.id);
   // Kinder mit diesem Profil hören wieder den Standard
-  for (const k of kinder.filter((kk) => kk.profil === profil.id)) {
-    k.profil = STANDARD.id;
+  for (const k of kinder.filter((kk) => kk.profil === profil.id || (kk.lobGaeste || []).includes(profil.id))) {
+    if (k.profil === profil.id) k.profil = STANDARD.id;
+    k.lobGaeste = (k.lobGaeste || []).filter((id) => id !== profil.id);
     await datenbank.kindSpeichern(k);
   }
   await profilAktivieren(STANDARD.id);
@@ -3069,7 +3228,7 @@ async function jagdSpeichern() {
   void jubel.offsetWidth;
   jubel.classList.add('zeigen');
   glockenspiel();
-  folgeAbspielen([...lobMitName(), { url: `audio/${dateiName(jagd.b)}-laut.wav` }, ...(jagd.stimme ? [blobQuelle(jagd.stimme)] : [])], 'Super!');
+  folgeAbspielen([...lobMitName(jagd.b), { url: `audio/${dateiName(jagd.b)}-laut.wav` }, ...(jagd.stimme ? [blobQuelle(jagd.stimme)] : [])], 'Super!');
   jagd.gefunden++;
   jagd.timer = setTimeout(() => {
     if (jagd.gefunden >= JAGD_ENDE_NACH) {
@@ -3196,7 +3355,7 @@ function legenSteinGetippt(st, btn) {
   legen.runde++;
   legenZeichnen();
   glockenspiel();
-  folgeAbspielen([...lobMitName(), ...legen.wahl.wortAllein()], `Super! ${legen.wahl.wort}`);
+  folgeAbspielen([...lobMitName(legen.wahl.b), ...legen.wahl.wortAllein()], `Super! ${legen.wahl.wort}`);
   legen.timer = setTimeout(() => (legen.runde >= LEGEN_RUNDEN ? legenGeschafft() : legenNeuesWort()), 2600);
 }
 
@@ -3618,7 +3777,7 @@ async function zeigenGetippt(b, btn) {
   if (lektion.stufe === 0) { await warten(500); if (zeigenAktuell(nr)) zeigenSpuren(b, nr); return; }
   if (lektion.stufe === 1) { btn.classList.add('richtig'); glockenspiel(); }
   // Treffer in Stufe 2 bekommen ein kurzes Lob
-  if (!(await zeigenSagen(nr, [lautQuelle(b), ...(lektion.stufe === 1 ? lobMitName() : [])], lautText(b)))) return;
+  if (!(await zeigenSagen(nr, [lautQuelle(b), ...(lektion.stufe === 1 ? lobMitName(b) : [])], lautText(b)))) return;
   await warten(lektion.stufe === 1 ? 900 : 600);
   if (zeigenAktuell(nr)) zeigenWeiter(nr);
 }
@@ -4666,7 +4825,7 @@ async function silbenRundeGeschafft(nr, zusammen) {
   if (!zusammen) glockenspiel();
   await warten(300);
   const folge = zusammen ? [{ url: 'audio/ansage-silben-zusammen-geschafft.wav' }, ...silben.wahl.wortAllein()]
-    : [...lobMitName(), ...silben.wahl.wortAllein()];
+    : [...lobMitName(silben.wahl.b), ...silben.wahl.wortAllein()];
   if (!(await silbenSagen(nr, folge, zusammen ? 'Zusammen geschafft!' : `Super! ${silben.wahl.wort}`))) return;
   silben.timer = setTimeout(() => {
     if (!silbenAktuell(nr)) return;
@@ -4753,7 +4912,7 @@ const textZuBlob = async (daten) => {
 };
 
 // Erlaubte Medien-Schlüssel eines Profils: Buchstabe, eigenes Wort, Lob-Platz oder Studio-Datei; Art bild/stimme
-const MEDIEN_SCHLUESSEL = /^[^|]+\|([a-zäöüß]|w-[\w-]+|lob-[1-9]|datei:[a-z0-9-]+\.wav)\|(bild|stimme)$/;
+const MEDIEN_SCHLUESSEL = /^[^|]+\|([a-zäöüß]|w-[\w-]+|lob-[1-9]|ich|datei:[a-z0-9-]+\.wav)\|(bild|stimme)$/;
 
 // Alles Eigene einsammeln: Profile mit Medien, Kinder mit Foto/Namensaufnahme, App-weite Einstellungen
 // nurStimme: nur die eigenen Profile (Stimme, Fotos, eigene Wörter) – ohne Kinder, Namen, Sterne und Funde,
@@ -4827,6 +4986,7 @@ function kindSauber(k) {
     ...(Array.isArray(k.spieleAus) ? { spieleAus: k.spieleAus.filter((id) => ALLE_SPIELE.includes(id)) } : {}),
     ...(Array.isArray(k.spiele) ? { spiele: k.spiele.filter((id) => ALLE_SPIELE.includes(id)) } : {}),
     reimHoeren: !!k.reimHoeren, erstellt: Number(k.erstellt) || Date.now(),
+    lobGaeste: stringListe(k.lobGaeste, /^p-[a-z0-9-]+$/, 10),
   };
 }
 function profilSauber(p) {
