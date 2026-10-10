@@ -80,6 +80,8 @@ Elternbereich → „Sichern & Übertragen“: alle eigenen Profile (Fotos, Aufn
 Namensaufnahme, Sterne, Einstellungen) als eine JSON-Datei speichern oder teilen (Android-Teilen-Menü)
 und auf einem anderen Gerät einspielen. Einspielen ergänzt bzw. aktualisiert (gleiche ID), löscht nichts.
 Die Datei enthält Fotos und Stimmen der Familie – nicht öffentlich ablegen.
+„🎙️ Nur Stimme & Fotos speichern“ sichert nur die eigenen Profile – ohne Kinder, Namen, Sterne und Funde (z. B. für die
+Großeltern). Der Elternbereich zeigt, wie viel Speicher belegt ist.
 
 ## Spiele
 Die Startseite zeigt nur große Spiel-Kacheln (ohne Scrollen); die Buchstaben gibt es erst nach ✏️.

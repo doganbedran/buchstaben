@@ -74,6 +74,22 @@
 
   await elternOeffnen();
   document.querySelector('#btn-sichern').scrollIntoView();
+  // Nur Stimme & Fotos: eigene Profile ja, aber keine Kinder, Funde oder Einstellungen
+  const nurStimme = await sicherungErstellen(true);
+  pruefe(nurStimme.nurStimme === true && nurStimme.kinder.length === 0 && nurStimme.funde.length === 0 && !nurStimme.einstellungen,
+    'Sicherung „nur Stimme“ enthält Kinderdaten');
+  pruefe(nurStimme.profile.length === (await datenbank.profile()).length, 'Sicherung „nur Stimme“ ohne Profile');
+  pruefe(JSON.stringify(nurStimme).length < JSON.stringify(await sicherungErstellen()).length, '„Nur Stimme“ nicht kleiner');
+  const ergebnisStimme = await sicherungEinspielen(nurStimme);
+  pruefe(ergebnisStimme.kinder === 0 && kinder.length > 0, 'Einspielen „nur Stimme“ löscht Kinder');
+  // Lob mit Namen: ab und zu, nie zweimal hintereinander
+  const k = aktivesKind();
+  if (k && k.nameStimme) {
+    let mit = 0; let doppelt = false; let vorher = false;
+    for (let i = 0; i < 60; i++) { const n = lobMitName().length === 2; if (n && vorher) doppelt = true; vorher = n; if (n) mit++; }
+    pruefe(mit > 5 && mit < 40 && !doppelt, `Lob mit Namen: ${mit}/60, doppelt ${doppelt}`);
+  }
+
   const d = document.createElement('div');
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;color:#fff;font:12px monospace;padding:6px;z-index:9;background:'
     + (fehler.length ? '#c62828' : '#1b7f3a');

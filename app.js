@@ -1,7 +1,7 @@
 'use strict';
 
 // Bei jeder Änderung zusammen mit CACHE in sw.js erhöhen (wird im Elternbereich angezeigt)
-const APP_VERSION = 54;
+const APP_VERSION = 55;
 
 // ---------- Speicher (lokal auf dem Gerät) ----------
 
@@ -347,6 +347,14 @@ function lobQuelle() {
   const eigene = LOB_PLAETZE.filter((k) => medien[k] && medien[k].stimme);
   if (eigene.length) return { url: URL.createObjectURL(medien[lobWaehlen(eigene)].stimme), eigen: true };
   return { url: `audio/${lobWaehlen(LOB_PLAETZE)}.wav`, eigen: false };
+}
+
+// Lob wie beim Nachspuren: ab und zu mit dem aufgenommenen Namen des Kindes (nie zweimal hintereinander)
+function lobMitName() {
+  const k = aktivesKind();
+  const folge = [lobQuelle()];
+  if (k && k.nameStimme && nameImLob()) folge.push({ url: URL.createObjectURL(k.nameStimme), eigen: true, name: true });
+  return folge;
 }
 
 function wiedergabeStoppen() {
@@ -2477,6 +2485,7 @@ async function studioAufnahmeStart() {
   r.start();
   $('#btn-studio-mikro').classList.add('aktiv');
   studioMeldung('Ich höre zu …');
+  studioPegelStarten(studio.stream, r);
   // Sicherheitsstopp: Laute/Wörter kurz, Lob etwas länger
   studio.stoppTimer = setTimeout(() => { if (r.state === 'recording') r.stop(); }, ['lob', 'ansagen'].includes(studio.bereich) ? 6000 : 4000);
 }
@@ -2485,6 +2494,28 @@ function studioAufnahmeStopp() {
   studio.gedrueckt = false;
   clearTimeout(studio.stoppTimer);
   if (studio.rekorder && studio.rekorder.state === 'recording') studio.rekorder.stop();
+}
+
+// Pegel-Balken während der Aufnahme: zeigt, dass die App hört (und ob es zu leise ist)
+function studioPegelStarten(stream, rekorder) {
+  const ctx = audio();
+  const balken = $('#studio-pegel');
+  if (!ctx || !balken) return;
+  let quelle;
+  try { quelle = ctx.createMediaStreamSource(stream); } catch { return; }
+  const analyse = ctx.createAnalyser();
+  analyse.fftSize = 512;
+  quelle.connect(analyse);
+  const daten = new Uint8Array(analyse.fftSize);
+  const schritt = () => {
+    if (rekorder.state !== 'recording') { balken.style.width = '0'; quelle.disconnect(); return; }
+    analyse.getByteTimeDomainData(daten);
+    let spitze = 0;
+    for (const x of daten) spitze = Math.max(spitze, Math.abs(x - 128));
+    balken.style.width = `${Math.min(100, (spitze / 128) * 160)}%`;
+    requestAnimationFrame(schritt);
+  };
+  requestAnimationFrame(schritt);
 }
 
 // Auf 22050 Hz umrechnen, Stille abschneiden, Lautstärke angleichen (wie das Aufnahme-Studio am Laptop)
@@ -2788,7 +2819,7 @@ async function jagdSpeichern() {
   void jubel.offsetWidth;
   jubel.classList.add('zeigen');
   glockenspiel();
-  folgeAbspielen([lobQuelle(), { url: `audio/${dateiName(jagd.b)}-laut.wav` }, ...(jagd.stimme ? [blobQuelle(jagd.stimme)] : [])], 'Super!');
+  folgeAbspielen([...lobMitName(), { url: `audio/${dateiName(jagd.b)}-laut.wav` }, ...(jagd.stimme ? [blobQuelle(jagd.stimme)] : [])], 'Super!');
   jagd.timer = setTimeout(() => { jubel.classList.remove('zeigen'); jagdNeuerBuchstabe(); }, 3600);
 }
 
@@ -2893,7 +2924,7 @@ function legenSteinGetippt(st, btn) {
   legen.runde++;
   legenZeichnen();
   glockenspiel();
-  folgeAbspielen([lobQuelle(), ...legen.wahl.wortAllein()], `Super! ${legen.wahl.wort}`);
+  folgeAbspielen([...lobMitName(), ...legen.wahl.wortAllein()], `Super! ${legen.wahl.wort}`);
   legen.timer = setTimeout(() => (legen.runde >= LEGEN_RUNDEN ? legenGeschafft() : legenNeuesWort()), 2600);
 }
 
@@ -3304,7 +3335,7 @@ async function zeigenGetippt(b, btn) {
   if (lektion.stufe === 0) { await warten(500); if (zeigenAktuell(nr)) zeigenSpuren(b, nr); return; }
   if (lektion.stufe === 1) { btn.classList.add('richtig'); glockenspiel(); }
   // Treffer in Stufe 2 bekommen ein kurzes Lob
-  if (!(await zeigenSagen(nr, [lautQuelle(b), ...(lektion.stufe === 1 ? [lobQuelle()] : [])], lautText(b)))) return;
+  if (!(await zeigenSagen(nr, [lautQuelle(b), ...(lektion.stufe === 1 ? lobMitName() : [])], lautText(b)))) return;
   await warten(lektion.stufe === 1 ? 900 : 600);
   if (zeigenAktuell(nr)) zeigenWeiter(nr);
 }
@@ -3660,7 +3691,7 @@ async function kisteGeschafft(nr) {
   kiste.punkte++;
   kistePunkteZeichnen();
   glockenspiel();
-  if (!(await kisteSagen(nr, [lobQuelle()], 'Super!'))) return;
+  if (!(await kisteSagen(nr, lobMitName(), 'Super!'))) return;
   kisteErzaehlen();
 }
 
@@ -3697,7 +3728,7 @@ async function kisteGetippt(id, btn) {
   btn.classList.remove('pulsiert');
   karteAnimieren(btn, 'huepft');
   if (kiste.stufe === 1) { btn.classList.add('richtig'); glockenspiel(); }
-  if (!(await kisteSagen(nr, [kisteQuelle(id), ...(kiste.stufe === 1 ? [lobQuelle()] : [])], kisteText(id)))) return;
+  if (!(await kisteSagen(nr, [kisteQuelle(id), ...(kiste.stufe === 1 ? lobMitName() : [])], kisteText(id)))) return;
   await warten(kiste.stufe === 1 ? 900 : 600);
   if (kisteAktuell(nr)) kisteWeiter(nr);
 }
@@ -4318,7 +4349,7 @@ async function silbenRundeGeschafft(nr, zusammen) {
   if (!zusammen) glockenspiel();
   await warten(300);
   const folge = zusammen ? [{ url: 'audio/ansage-silben-zusammen-geschafft.wav' }, ...silben.wahl.wortAllein()]
-    : [lobQuelle(), ...silben.wahl.wortAllein()];
+    : [...lobMitName(), ...silben.wahl.wortAllein()];
   if (!(await silbenSagen(nr, folge, zusammen ? 'Zusammen geschafft!' : `Super! ${silben.wahl.wort}`))) return;
   silben.timer = setTimeout(() => {
     if (!silbenAktuell(nr)) return;
@@ -4402,7 +4433,9 @@ const textZuBlob = async (daten) => {
 const MEDIEN_SCHLUESSEL = /^[^|]+\|([a-zäöüß]|w-[\w-]+|lob-[1-9]|datei:[a-z0-9-]+\.wav)\|(bild|stimme)$/;
 
 // Alles Eigene einsammeln: Profile mit Medien, Kinder mit Foto/Namensaufnahme, App-weite Einstellungen
-async function sicherungErstellen() {
+// nurStimme: nur die eigenen Profile (Stimme, Fotos, eigene Wörter) – ohne Kinder, Namen, Sterne und Funde,
+// z. B. um die eigene Stimme an Großeltern weiterzugeben
+async function sicherungErstellen(nurStimme = false) {
   const medienAlle = await datenbank.alleMedien();
   const profile = [];
   for (const p of await datenbank.profile()) {
@@ -4413,7 +4446,7 @@ async function sicherungErstellen() {
     profile.push({ ...p, medien });
   }
   const kinderListe = [];
-  for (const k of await datenbank.kinder()) {
+  for (const k of nurStimme ? [] : await datenbank.kinder()) {
     kinderListe.push({
       ...k,
       foto: k.foto ? await blobZuText(k.foto) : null,
@@ -4424,7 +4457,8 @@ async function sicherungErstellen() {
     format: SICHERUNG_FORMAT,
     version: SICHERUNG_VERSION,
     erstellt: new Date().toISOString(),
-    einstellungen: {
+    ...(nurStimme ? { nurStimme: true } : {}),
+    einstellungen: nurStimme ? undefined : {
       schreibweise: speicher.lesen('schreibweise', 'klein'),
       sterne: speicher.lesen('sterne', {}),
       profil: speicher.lesen('profil', STANDARD.id),
@@ -4437,7 +4471,7 @@ async function sicherungErstellen() {
     },
     profile,
     kinder: kinderListe,
-    funde: await Promise.all(medienAlle.filter((m) => m.schluessel.startsWith('fund-'))
+    funde: nurStimme ? [] : await Promise.all(medienAlle.filter((m) => m.schluessel.startsWith('fund-'))
       .map(async (m) => ({ schluessel: m.schluessel, daten: await blobZuText(m.blob) }))),
   };
 }
@@ -4510,9 +4544,10 @@ function sicherungDateiname() {
   return `buchstaben-sicherung-${new Date().toISOString().slice(0, 10)}.json`;
 }
 
-async function sicherungAlsDatei() {
-  const daten = await sicherungErstellen();
-  return new File([JSON.stringify(daten)], sicherungDateiname(), { type: 'application/json' });
+async function sicherungAlsDatei(nurStimme = false) {
+  const daten = await sicherungErstellen(nurStimme);
+  const name = nurStimme ? sicherungDateiname().replace('sicherung', 'stimme') : sicherungDateiname();
+  return new File([JSON.stringify(daten)], name, { type: 'application/json' });
 }
 
 function sicherungZusammenfassung() {
@@ -4520,14 +4555,19 @@ function sicherungZusammenfassung() {
   datenbank.profile().then((profile) => {
     box.textContent = `Auf diesem Gerät: ${profile.length} eigene${profile.length === 1 ? 's Profil' : ' Profile'}, `
       + `${kinder.length} ${kinder.length === 1 ? 'Kind' : 'Kinder'}.`;
+    // Wie viel Platz Fotos und Aufnahmen belegen (damit „Speicher voll“ nicht überrascht)
+    if (navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then(({ usage }) => {
+        if (usage) box.textContent += ` Belegt: etwa ${Math.max(1, Math.round(usage / 1e6))} MB.`;
+      }).catch(() => {});
+    }
   });
 }
 
-$('#btn-sichern').addEventListener('click', async (e) => {
-  const knopf = e.currentTarget;
+async function sicherungHerunterladen(knopf, nurStimme) {
   knopf.disabled = true;
   try {
-    const datei = await sicherungAlsDatei();
+    const datei = await sicherungAlsDatei(nurStimme);
     const url = URL.createObjectURL(datei);
     const a = document.createElement('a');
     a.href = url;
@@ -4541,7 +4581,9 @@ $('#btn-sichern').addEventListener('click', async (e) => {
   } finally {
     knopf.disabled = false;
   }
-});
+}
+$('#btn-sichern').addEventListener('click', (e) => sicherungHerunterladen(e.currentTarget, false));
+$('#btn-sichern-stimme').addEventListener('click', (e) => sicherungHerunterladen(e.currentTarget, true));
 
 $('#btn-teilen').addEventListener('click', async (e) => {
   const knopf = e.currentTarget;

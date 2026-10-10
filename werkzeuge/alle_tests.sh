@@ -48,6 +48,9 @@ fehler=0
 for lauf in "${LAEUFE[@]}"; do
   IFS='|' read -r name seite groesse zeit <<< "$lauf"
   rm -rf "$D/p-$name" "$D/t-$name.png"; mkdir -p "$D/p-$name"
+  # Sprachausgabe im Test-Firefox aus: sonst schreibt speech-dispatcher bei jedem Start Tausende Zeilen
+  # Stimmenliste in /run/user/<uid>/speech-dispatcher/log (lief einmal voll und legte die Sitzung lahm)
+  echo 'user_pref("media.webspeech.synth.enabled", false);' > "$D/p-$name/user.js"
   timeout "$zeit" "$FF" --headless --profile "$D/p-$name" --window-size="$groesse" --screenshot "$D/t-$name.png" "$URL/$seite" >/dev/null 2>&1
   # System-Python (hat PIL), auch wenn .venv aktiv ist
   ergebnis=$(/usr/bin/python3 -c "

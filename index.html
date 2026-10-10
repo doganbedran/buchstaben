@@ -315,10 +315,13 @@
           sichern – z. B. um sie auf ein Tablet zu übertragen oder für den Notfall aufzuheben.
           Beim Einspielen geht nichts verloren: Gleiche Profile und Kinder werden aktualisiert, andere bleiben.</p>
         <p class="hinweis" id="sicherung-info"></p>
+        <p class="hinweis">„Nur Stimme &amp; Fotos“: die eigenen Profile ohne Kinder (keine Namen, Kinderfotos, Sterne oder
+          Funde) – z. B. um Ihre Stimme an die Großeltern weiterzugeben.</p>
         <div class="knopf-reihe">
           <button id="btn-sichern" class="text-btn">💾 Sicherung speichern</button>
           <button id="btn-teilen" class="text-btn" hidden>📤 Sicherung teilen</button>
           <button id="btn-einspielen" class="text-btn">📥 Sicherung einspielen</button>
+          <button id="btn-sichern-stimme" class="text-btn">🎙️ Nur Stimme &amp; Fotos speichern</button>
         </div>
         <input type="file" id="sicherung-input" accept=".json,application/json" hidden>
       </div>
@@ -427,6 +430,7 @@
           <button id="btn-studio-meins" class="text-btn">▶ Meins</button>
         </div>
         <button id="btn-studio-mikro" class="studio-mikro" aria-label="Gedrückt halten zum Aufnehmen">🎙️</button>
+        <div class="studio-pegel" aria-hidden="true"><span id="studio-pegel"></span></div>
         <p class="hinweis studio-meldung" id="studio-meldung">Gedrückt halten und sprechen, dann loslassen.</p>
         <div class="knopf-reihe">
           <button id="btn-studio-gut" class="text-btn studio-gut" disabled>✓ Gut, weiter</button>
