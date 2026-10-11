@@ -83,6 +83,22 @@ fremden Code unterschieben** – alle Schutzregeln der App helfen dann nicht meh
 - Eine Kopie des Repos liegt auf dem Laptop; zusätzlich ab und zu `git bundle create wortnest.bundle --all` an einem
   sicheren Ort ablegen.
 
+**Stand 2026-10-11:** Zwei-Faktor-Anmeldung an, Wiederherstellungscodes offline gesichert; Regel „main schützen“
+(kein Löschen, kein Force-Push) in `buchstaben` und `zahlennest`; Secret scanning + Push-Schutz an; keine SSH-Schlüssel,
+keine Tokens, keine Mitarbeiter; nur offizielle Apps freigegeben (GitHub CLI, VS Code). E-Mail-Postfach mit
+Zwei-Faktor-Anmeldung. Laptop: Bildschirmsperre an, keine automatische Anmeldung, Festplatte **nicht** verschlüsselt
+(bei der nächsten Neuinstallation „Festplatte verschlüsseln“ wählen; der GitHub-Zugang liegt im Schlüsselbund und ist
+durch das Anmelde-Passwort geschützt).
+
+## Notfall: Laptop verloren oder Konto verdächtig
+1. https://github.com/settings/applications → „GitHub CLI“ (und alles Unbekannte) → Revoke.
+2. https://github.com/settings/sessions → fremde Sitzungen abmelden.
+3. Passwörter von GitHub und E-Mail ändern; Zwei-Faktor prüfen.
+4. https://github.com/doganbedran/buchstaben/commits/main (und `zahlennest`) ansehen: fremde Commits? Dann mit
+   `git revert` zurücknehmen, Version erhöhen, Tests, Push (siehe oben) – die Geräte holen den sauberen Stand beim
+   nächsten Öffnen.
+5. Neuen Laptop einrichten, `gh auth login`.
+
 ## Laptop einrichten (falls neu)
 - Ubuntu, `git`, `gh`, Firefox (Snap), System-`python3` mit PIL (für die Bildprüfung der Tests).
 - `.venv` mit Piper: `python3 -m venv .venv`, pip per `get-pip.py` ins venv, dann `pip install piper-tts`;
