@@ -56,6 +56,7 @@ seite datenvertrag 4000
 seite pause 6000 '  // Alte Wortnest-Pause (vor der gemeinsamen Pause mit Zahlennest)
   localStorage.setItem("pauseNach", "15");
   localStorage.setItem("spielzeit", JSON.stringify({ ms: 60000, letzte: Date.now() }));'
-seite offline 20000
+seite offline 20000 '  // Zahlennest liegt unter derselben Adresse: sein Offline-Speicher darf beim Wortnest-Update nicht verschwinden
+  caches.open("zahlennest-v1").then((c) => c.put("/zahlennest/probe.txt", new Response("zahlennest")));'
 seite reime 10000
 echo "Testseiten erzeugt"

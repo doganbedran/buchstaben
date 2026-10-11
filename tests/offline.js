@@ -21,6 +21,9 @@
     pruefe(await cache.match(datei), `Nicht im Cache: ${datei}`);
   }
   pruefe((await caches.keys()).includes(`buchstaben-v${APP_VERSION}`), 'Cache-Name passt nicht zu APP_VERSION');
+  // Fremde Caches derselben Adresse (Zahlennest) bleiben beim Aufräumen unangetastet
+  pruefe((await caches.keys()).includes('zahlennest-v1'), `Zahlennest-Cache gelöscht: ${await caches.keys()}`);
+  pruefe((await caches.keys()).every((k) => k === `buchstaben-v${APP_VERSION}` || !k.startsWith('buchstaben-')), 'Alte Wortnest-Caches nicht aufgeräumt');
   // Schrift Andika: mitgeliefert, offline im Cache und wirklich geladen (sonst zeigt jedes Gerät seine eigene Schrift)
   for (const w of ['400', '700']) pruefe(await cache.match(`fonts/andika-latin-${w}.woff2`), `Schrift ${w} nicht im Cache`);
   await document.fonts.load('700 20px Andika', 'Wortnest');

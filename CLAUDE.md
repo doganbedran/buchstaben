@@ -26,6 +26,11 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
 6. Dem User kurz auf Deutsch berichten: was neu ist, was getestet wurde, was nur auf dem echten Handy prüfbar ist
    (Kamera, Mikrofon, Vibration, Finger).
 
+## Dokumentation (`docs/`)
+- Eltern: `eltern-hilfe.md`, `fragen.md`, `aenderungen.md` (bei jeder sichtbaren Änderung in einfachen Worten ergänzen);
+  Kitas: `kita.md`; Pflege: `betrieb.md`, `technik.md`, `datenvertrag.md`. Neue Funktionen/Tests dort nachtragen;
+  README bleibt kurz und verweist auf `docs/`.
+
 ## Team und Abläufe (`.claude/`)
 - Rollen in `.claude/agents/`: `paedagogin`, `bildungsplan` (Berlin + Bayern/Sachsen + Studienlage), `kinderpsychologin`,
   `ux-kinder`, `testerin`, `reviewer`, `datenschutz`, `kinder-tester` – Befunde jeweils als Muss / Sollte / Idee.
