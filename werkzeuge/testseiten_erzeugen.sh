@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Erzeugt die Testseiten tests/<name>.html aus der aktuellen index.html (läuft automatisch in alle_tests.sh).
 # Jede Seite = App + tests/<name>.js; <base href="/"> lässt die App ihre Dateien (app.js, audio/ …) vom Hauptordner laden.
-# Die erzeugten .html-Dateien stehen in .gitignore.
+# Die erzeugten .html- und .vorher.js-Dateien stehen in .gitignore.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -16,8 +16,10 @@ seite() {
 import os, sys
 s = open('index.html', encoding='utf-8').read()
 s = s.replace('<head>', '<head>\n  <base href="/">', 1)
+# Vorbereitung als eigene Datei (die Sicherheitsregel der App verbietet eingebettete Skripte – auch in Testseiten)
 if os.environ['VORHER']:
-    s = s.replace('  <script src="letters.js"></script>', f"  <script>\n{os.environ['VORHER']}\n  </script>\n  <script src=\"letters.js\"></script>", 1)
+    open(f'tests/{sys.argv[1]}.vorher.js', 'w', encoding='utf-8').write(os.environ['VORHER'] + '\n')
+    s = s.replace('  <script src="letters.js"></script>', f'  <script src="tests/{sys.argv[1]}.vorher.js"></script>\n  <script src="letters.js"></script>', 1)
 s = s.replace('  <script src="app.js"></script>', '  <script src="app.js"></script>\n' + os.environ['NACHHER'], 1)
 open(f'tests/{sys.argv[1]}.html', 'w', encoding='utf-8').write(s)
 PY
@@ -53,6 +55,7 @@ seite menschen 12000
 seite mitmachen 12000
 seite info 5000
 seite datenvertrag 4000
+seite sicherheit 9000
 seite pause 6000 '  // Alte Wortnest-Pause (vor der gemeinsamen Pause mit Zahlennest)
   localStorage.setItem("pauseNach", "15");
   localStorage.setItem("spielzeit", JSON.stringify({ ms: 60000, letzte: Date.now() }));'

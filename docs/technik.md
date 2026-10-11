@@ -51,6 +51,22 @@ Neues Gerät = kein `sterne` im localStorage → Montessori-Reihenfolge und klei
 - In `importScripts` jede Datei nur einmal (sonst „redeclaration of const“ → keine Installation; Test `offline`).
 - Auf der Mitmach-Seite wird kein Service Worker angemeldet (Oma soll keine 18 MB laden).
 
+## Schutz gegen Angriffe
+- **Sicherheitsregel (Content Security Policy)** als `<meta>` in `index.html`: Skripte, Stile, Schriften, Bilder, Töne
+  und Verbindungen nur von der eigenen Adresse; Fotos und Aufnahmen vom Gerät als `blob:`/`data:`. Damit laufen
+  eingeschleuste Skripte, `onerror`-/`onclick`-Attribute und `javascript:`-Links nicht, und nichts kann Daten an fremde
+  Adressen schicken. `object-src 'none'`, `base-uri 'self'`, `form-action 'none'`.
+  Folgen für den Code: **keine eingebetteten `<script>`-Blöcke, keine `on…`-Attribute, kein `eval`/`new Function`,
+  keine fremden Adressen** (auch nicht in Testseiten – deren Vorbereitung steht in `tests/<name>.vorher.js`).
+  Stil-Attribute sind erlaubt (`style-src-attr`), Stylesheets nur eigene.
+- **Nicht einbettbar:** Läuft die App in einem fremden Rahmen (`window.top !== window.self`), zeigt sie nur einen
+  Link „in einem eigenen Fenster öffnen“ und startet nicht (Schutz vor Klick-Fallen). GitHub Pages erlaubt keine
+  eigenen HTTP-Header, darum per Skript.
+- **Link-Schutz:** `<meta name="referrer" content="no-referrer">`; externe Links mit `rel="noopener"`.
+- Test `sicherheit` versucht all das (Skript einschleusen, Attribut, `javascript:`, fremdes Skript, Bild und `fetch` an
+  fremde Adresse, Einbetten) und prüft, dass eigene Fotos und Sicherungen weiter funktionieren.
+- Grenze: Wer das GitHub-Konto übernimmt, kann auch diese Regeln ändern – darum Konto-Schutz (siehe [betrieb.md](betrieb.md)).
+
 ## Sicherheit beim Einspielen
 Sicherungen (`format: 'buchstaben-sicherung'`, Version 1) und Stimm-Pakete (`format: 'buchstaben-stimmpaket'`) werden nie
 roh übernommen:
@@ -95,6 +111,7 @@ Firefox (headless, frisches Profil, Sprachausgabe aus), macht einen Screenshot u
 | `pause` | gemeinsame Pause mit Zahlennest, Umzug der alten Einstellung |
 | `datenvertrag` | Format, das Zahlennest liest |
 | `offline` | Offline-Speicher installiert, Dateien und Schrift im Cache, fremde Caches bleiben |
+| `sicherheit` | Sicherheitsregel, eingeschleuster Code läuft nicht, nichts geht nach außen, nicht einbettbar |
 
 Stolperfallen: Firefox-Snap darf nur unter `~/snap/firefox/common/` schreiben; Firefox direkt starten
 (`/snap/firefox/current/usr/lib/firefox/firefox`); Bildprüfung mit System-`python3`; asynchrone Tests binden

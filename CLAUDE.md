@@ -11,6 +11,8 @@ kleine Spiele. Läuft offline im Browser, keine Cloud, kein Tracking. Live: http
   Nie Kinderstimmen, nie Namen der Kinder – vor dem Commit neue Sprecher-Aufnahmen auf Hintergrund prüfen lassen.
 - Keine Cloud-KI/-Dienste (z. B. Replicate) einbauen oder vorschlagen, außer der User fragt ausdrücklich.
 - Zielgruppe 3–4 Jahre: große Knöpfe, keine Texte für Kinder, kein „falsch“ (sanft wackeln + Hinweis), Eltern-Funktionen hinter dem Zahnrad (2 s halten).
+- **Sicherheitsregel (CSP) in `index.html`:** keine eingebetteten `<script>`-Blöcke, keine `on…`-Attribute, kein `eval`,
+  keine fremden Adressen – auch nicht in Tests (Vorbereitung in `tests/<name>.vorher.js`). Test `sicherheit`.
 - Farben farbenblind-sicher: Blau (Startpunkt) + Orange (Pfeile), Unterschiede auch über Helligkeit (Werte in README).
 - Wörter nur mit sauberem Anlaut; „Wörter legen“ nur lautgetreue Wörter.
 

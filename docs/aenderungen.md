@@ -3,7 +3,9 @@
 Für Eltern, in einfachen Worten. Die Versionsnummer steht im Elternbereich unter „App“.
 Ausführlich (für Technik-Interessierte): die [Versionsgeschichte auf GitHub](https://github.com/doganbedran/buchstaben/commits/main).
 
-## 11. Oktober 2026 (Version 71–73)
+## 11. Oktober 2026 (Version 71–74)
+- **Mehr Schutz gegen Angriffe:** Die App führt nur noch ihre eigenen Dateien aus, schickt nichts an fremde Adressen
+  und läuft nicht mehr versteckt in fremden Webseiten.
 - **Hilfe für Eltern** – auf der Infoseite verlinkt; dazu häufige Fragen und ein Infoblatt für Kitas.
 - Behoben: Ein Wortnest-Update hat den Offline-Speicher von Zahlennest gelöscht.
 - **Eine Pause für Wortnest und Zahlennest zusammen:** Die Spielzeit beider Apps zählt gemeinsam. Nach der Pause

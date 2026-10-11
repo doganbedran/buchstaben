@@ -67,8 +67,17 @@ derselben Adresse im Browser. Darum:
 
 ## Konto und Zugänge sichern
 Das GitHub-Konto `doganbedran` *ist* die Adresse der App. Geht es verloren, gibt es keine Updates mehr; wird es
-umbenannt, verlieren alle Familien ihre Daten.
-- Zwei-Faktor-Anmeldung einschalten und die **Wiederherstellungscodes** offline aufbewahren.
+umbenannt, verlieren alle Familien ihre Daten. **Wer das Konto übernimmt, kann jedem Gerät beim nächsten Öffnen
+fremden Code unterschieben** – alle Schutzregeln der App helfen dann nicht mehr. Das ist der wichtigste Schutz:
+- **Zwei-Faktor-Anmeldung** (github.com → Settings → Password and authentication): am besten ein Passkey oder eine
+  Authenticator-App, keine SMS. Die **Wiederherstellungscodes** ausdrucken und offline aufbewahren.
+- **Zweig `main` schützen** (Repo → Settings → Rules → Rulesets → New branch ruleset, Ziel `main`): „Restrict
+  deletions“ und „Block force pushes“ einschalten. Normales Veröffentlichen bleibt möglich.
+- **Zugänge prüfen:** Settings → Applications (verbundene Apps), Settings → SSH and GPG keys, Repo → Settings →
+  Collaborators und Deploy keys – alles entfernen, was Sie nicht kennen. Tokens nur mit Ablaufdatum.
+- **Benachrichtigungen:** E-Mail bei neuen Anmeldungen ist Standard – ernst nehmen. Ab und zu
+  https://github.com/doganbedran/buchstaben/commits/main ansehen: Stammt jeder Commit von Ihnen?
+- Repo → Settings → Code security: „Secret scanning“ und „Push protection“ einschalten (falls angeboten).
 - Das Konto nicht umbenennen, das Repo nicht umbenennen oder privat stellen (Pages würde abgeschaltet).
 - Repository-Einstellungen: Pages aus Branch `main`, Ordner `/`; die Datei `.nojekyll` muss bleiben.
 - Eine Kopie des Repos liegt auf dem Laptop; zusätzlich ab und zu `git bundle create wortnest.bundle --all` an einem
